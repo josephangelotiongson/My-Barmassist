@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle } from 'lucide-react';
 import { MasterIngredient, AppSettings } from '../types';
 
 interface Props {
@@ -9,8 +8,10 @@ interface Props {
   masterData: MasterIngredient[];
   onAddMasterItem: (item: MasterIngredient) => void;
   onRemoveMasterItem: (id: string) => void;
+  onUpdateMasterItem: (item: MasterIngredient) => void;
   settings: AppSettings;
   onUpdateSettings: (settings: AppSettings) => void;
+  onResetPalate?: () => void;
 }
 
 const SettingsModal: React.FC<Props> = ({ 
@@ -19,30 +20,109 @@ const SettingsModal: React.FC<Props> = ({
   masterData, 
   onAddMasterItem, 
   onRemoveMasterItem,
+  onUpdateMasterItem,
   settings,
-  onUpdateSettings
+  onUpdateSettings,
+  onResetPalate
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'master'>('general');
   
   // Master Data Input State
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState<'Spirit' | 'Mixer' | 'Garnish' | 'Other'>('Spirit');
+  const [newItemSubCategory, setNewItemSubCategory] = useState('');
+  const [newItemABV, setNewItemABV] = useState('');
+  const [newItemNotes, setNewItemNotes] = useState('');
+  const [newItemIsGeneric, setNewItemIsGeneric] = useState(false);
 
   // Settings State
   const [keywordsInput, setKeywordsInput] = useState(settings.lowStockKeywords.join(', '));
   const [newAllergy, setNewAllergy] = useState('');
 
+  // Grouping State
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Group Master Data
+  const groupedData = useMemo(() => {
+    const groups: Record<string, MasterIngredient[]> = {};
+    masterData.forEach(item => {
+        // Use subCategory if available, otherwise fallback to Category
+        const key = item.subCategory || item.category;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+    });
+    return groups;
+  }, [masterData]);
+
+  const sortedGroupKeys = useMemo(() => {
+      return Object.keys(groupedData).sort();
+  }, [groupedData]);
+
   if (!isOpen) return null;
 
-  const handleAddMaster = () => {
+  const resetForm = () => {
+      setEditingId(null);
+      setNewItemName('');
+      setNewItemCategory('Spirit');
+      setNewItemSubCategory('');
+      setNewItemABV('');
+      setNewItemNotes('');
+      setNewItemIsGeneric(false);
+  };
+
+  const handleSaveMaster = () => {
     if (!newItemName.trim()) return;
-    const newItem: MasterIngredient = {
-      id: `master-${Date.now()}`,
+    
+    const abv = newItemABV ? parseFloat(newItemABV) : undefined;
+    
+    const itemPayload: MasterIngredient = {
+      id: editingId || `master-${Date.now()}`,
       name: newItemName.trim(),
-      category: newItemCategory
+      category: newItemCategory,
+      subCategory: newItemSubCategory.trim() || undefined,
+      abv: abv,
+      defaultFlavorNotes: newItemNotes.trim() || undefined,
+      isGeneric: newItemIsGeneric
     };
-    onAddMasterItem(newItem);
-    setNewItemName('');
+
+    if (editingId) {
+        onUpdateMasterItem(itemPayload);
+    } else {
+        onAddMasterItem(itemPayload);
+    }
+    
+    resetForm();
+  };
+
+  const handleEditClick = (item: MasterIngredient) => {
+      setEditingId(item.id);
+      setNewItemName(item.name);
+      setNewItemCategory(item.category);
+      setNewItemSubCategory(item.subCategory || '');
+      setNewItemABV(item.abv !== undefined ? item.abv.toString() : '');
+      setNewItemNotes(item.defaultFlavorNotes || '');
+      setNewItemIsGeneric(item.isGeneric || false);
+      
+      // Ensure the group this item belongs to is expanded so it doesn't disappear if user is looking there
+      const groupKey = item.subCategory || item.category;
+      setExpandedGroups(prev => new Set(prev).add(groupKey));
+      
+      // Scroll to top of modal content to show editor
+      const container = document.getElementById('settings-content');
+      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleGroup = (group: string) => {
+      setExpandedGroups(prev => {
+          const next = new Set(prev);
+          if (next.has(group)) {
+              next.delete(group);
+          } else {
+              next.add(group);
+          }
+          return next;
+      });
   };
 
   const handleSaveSettings = () => {
@@ -78,6 +158,13 @@ const SettingsModal: React.FC<Props> = ({
           handedness: mode
       });
   };
+  
+  const handleReset = () => {
+      if (confirm('Are you sure? This will remove all your ratings and reset your palate profile. Recipes will be kept.')) {
+          if (onResetPalate) onResetPalate();
+          alert('Palate reset successfully.');
+      }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/90 backdrop-blur-sm animate-in fade-in duration-200">
@@ -111,7 +198,7 @@ const SettingsModal: React.FC<Props> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 pb-24">
+        <div id="settings-content" className="flex-1 overflow-y-auto p-6 pb-24">
             
             {/* GENERAL SETTINGS */}
             {activeTab === 'general' && (
@@ -212,6 +299,21 @@ const SettingsModal: React.FC<Props> = ({
                             />
                         </div>
                     </div>
+                    
+                    {/* DANGER ZONE */}
+                    <div className="pt-6 border-t border-stone-800">
+                        <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-2">Danger Zone</h3>
+                        <button 
+                            onClick={handleReset}
+                            className="w-full bg-red-950/30 border border-red-900/50 hover:bg-red-900/50 text-red-400 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors group"
+                        >
+                            <RefreshCcw className="w-5 h-5 group-hover:rotate-180 transition-transform" />
+                            <span className="font-bold">Reset Palate & Clear Ratings</span>
+                        </button>
+                        <p className="text-[10px] text-stone-500 mt-2 text-center">
+                            This will remove all ratings (stars) from recipes. Your recipes and pantry will be kept safe.
+                        </p>
+                    </div>
                 </div>
             )}
 
@@ -219,32 +321,84 @@ const SettingsModal: React.FC<Props> = ({
             {activeTab === 'master' && (
                 <div className="space-y-6">
                     <div className="bg-stone-800 p-4 rounded-xl border border-stone-700">
-                        <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Add New Ingredient</h3>
-                        <div className="flex gap-2 mb-2">
-                            <input 
-                                type="text"
-                                value={newItemName}
-                                onChange={(e) => setNewItemName(e.target.value)}
-                                placeholder="Ingredient Name"
-                                className="flex-1 bg-stone-950 border border-stone-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider">
+                                {editingId ? 'Edit Ingredient' : 'Add Custom Item'}
+                            </h3>
+                            {editingId && (
+                                <button 
+                                    onClick={resetForm} 
+                                    className="text-[10px] text-stone-400 hover:text-white flex items-center gap-1 bg-stone-900 px-2 py-1 rounded"
+                                >
+                                    <XCircle className="w-3 h-3" /> Cancel Edit
+                                </button>
+                            )}
+                        </div>
+                        
+                        <div className="flex flex-col gap-3">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text"
+                                    value={newItemName}
+                                    onChange={(e) => setNewItemName(e.target.value)}
+                                    placeholder="Ingredient Name"
+                                    className="flex-1 bg-stone-950 border border-stone-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                                />
+                                <select 
+                                    value={newItemCategory}
+                                    onChange={(e) => setNewItemCategory(e.target.value as any)}
+                                    className="bg-stone-950 border border-stone-700 rounded px-2 py-2 text-sm text-white outline-none"
+                                >
+                                    <option value="Spirit">Spirit</option>
+                                    <option value="Mixer">Mixer</option>
+                                    <option value="Garnish">Garnish</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <input 
+                                    type="text"
+                                    value={newItemSubCategory}
+                                    onChange={(e) => setNewItemSubCategory(e.target.value)}
+                                    placeholder="Sub-Type (e.g. Gin)"
+                                    className="w-full bg-stone-950 border border-stone-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                                />
+                                <div className="relative">
+                                     <input 
+                                        type="number"
+                                        value={newItemABV}
+                                        onChange={(e) => setNewItemABV(e.target.value)}
+                                        placeholder="ABV %"
+                                        className="w-full bg-stone-950 border border-stone-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-500">%</span>
+                                </div>
+                            </div>
+                            
+                            <textarea 
+                                value={newItemNotes}
+                                onChange={(e) => setNewItemNotes(e.target.value)}
+                                placeholder="Flavor notes (e.g. Juniper-forward, citrusy)..."
+                                className="w-full bg-stone-950 border border-stone-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary resize-none h-16"
                             />
-                            <select 
-                                value={newItemCategory}
-                                onChange={(e) => setNewItemCategory(e.target.value as any)}
-                                className="bg-stone-950 border border-stone-700 rounded px-2 py-2 text-sm text-white outline-none"
-                            >
-                                <option value="Spirit">Spirit</option>
-                                <option value="Mixer">Mixer</option>
-                                <option value="Garnish">Garnish</option>
-                                <option value="Other">Other</option>
-                            </select>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setNewItemIsGeneric(!newItemIsGeneric)}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${newItemIsGeneric ? 'bg-stone-700 text-white border-stone-600' : 'bg-stone-950 text-stone-500 border-stone-800'}`}
+                                >
+                                    {newItemIsGeneric ? 'Type: Generic Category' : 'Type: Specific Brand'}
+                                </button>
+                            </div>
                         </div>
                         <button 
-                            onClick={handleAddMaster}
+                            onClick={handleSaveMaster}
                             disabled={!newItemName.trim()}
-                            className="w-full bg-stone-700 hover:bg-stone-600 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                            className={`w-full font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-2 mt-2 disabled:opacity-50 transition-colors ${editingId ? 'bg-secondary text-stone-900 hover:bg-yellow-500' : 'bg-stone-700 hover:bg-stone-600 text-white'}`}
                         >
-                            <Plus className="w-4 h-4" /> Add to Master List
+                            {editingId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />} 
+                            {editingId ? 'Update Item' : 'Add to Master List'}
                         </button>
                     </div>
 
@@ -253,26 +407,75 @@ const SettingsModal: React.FC<Props> = ({
                             <Database className="w-4 h-4 text-secondary" />
                             Global Ingredients ({masterData.length})
                         </h3>
-                        <div className="bg-stone-950 border border-stone-800 rounded-xl overflow-hidden">
+                        
+                        <div className="space-y-3">
                             {masterData.length === 0 ? (
-                                <div className="p-4 text-center text-stone-500 text-xs">No data.</div>
+                                <div className="p-4 text-center text-stone-500 text-xs bg-stone-950 border border-stone-800 rounded-xl">No data.</div>
                             ) : (
-                                <ul className="divide-y divide-stone-800">
-                                    {masterData.map((item) => (
-                                        <li key={item.id} className="flex justify-between items-center p-3 hover:bg-stone-900 transition-colors group">
-                                            <div>
-                                                <div className="text-sm font-medium text-stone-200">{item.name}</div>
-                                                <div className="text-[10px] text-stone-500 uppercase">{item.category}</div>
-                                            </div>
+                                sortedGroupKeys.map(groupKey => {
+                                    const items = groupedData[groupKey];
+                                    const isExpanded = expandedGroups.has(groupKey);
+                                    
+                                    return (
+                                        <div key={groupKey} className="border border-stone-800 rounded-xl overflow-hidden bg-stone-900/50">
                                             <button 
-                                                onClick={() => onRemoveMasterItem(item.id)}
-                                                className="text-stone-600 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => toggleGroup(groupKey)}
+                                                className="w-full flex items-center justify-between p-3 bg-stone-900 hover:bg-stone-800 transition-colors"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <div className="flex items-center gap-2">
+                                                    <Layers className="w-3 h-3 text-stone-500" />
+                                                    <span className="font-bold text-sm text-stone-300">{groupKey}</span>
+                                                    <span className="text-[10px] text-stone-600 bg-stone-950 px-1.5 rounded">{items.length}</span>
+                                                </div>
+                                                {isExpanded ? <ChevronDown className="w-4 h-4 text-stone-500" /> : <ChevronRight className="w-4 h-4 text-stone-500" />}
                                             </button>
-                                        </li>
-                                    ))}
-                                </ul>
+                                            
+                                            {isExpanded && (
+                                                <div className="p-2 space-y-1">
+                                                    {items.sort((a,b) => a.name.localeCompare(b.name)).map((item) => (
+                                                        <div key={item.id} className="bg-stone-950/50 rounded-lg p-2 flex justify-between items-center group hover:bg-stone-950">
+                                                            <div className="flex-1 cursor-pointer" onClick={() => handleEditClick(item)}>
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <div className="text-sm font-medium text-stone-300 group-hover:text-white transition-colors">{item.name}</div>
+                                                                    {item.isGeneric ? (
+                                                                        <span className="text-[9px] bg-stone-800 text-stone-500 px-1.5 rounded border border-stone-700">Generic</span>
+                                                                    ) : (
+                                                                        <span className="text-[9px] bg-secondary/10 text-secondary px-1.5 rounded border border-secondary/20">Brand</span>
+                                                                    )}
+                                                                    {item.abv !== undefined && (
+                                                                        <span className="text-[9px] bg-stone-800 text-stone-400 px-1.5 rounded border border-stone-700">{item.abv}%</span>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                {item.defaultFlavorNotes && (
+                                                                    <div className="text-[10px] text-stone-500 italic opacity-70">
+                                                                        {item.defaultFlavorNotes}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <button 
+                                                                    onClick={() => handleEditClick(item)}
+                                                                    className="text-stone-600 hover:text-secondary p-2"
+                                                                    title="Edit"
+                                                                >
+                                                                    <Edit3 className="w-3 h-3" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => onRemoveMasterItem(item.id)}
+                                                                    className="text-stone-600 hover:text-red-400 p-2"
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { X, ShoppingCart, AlertTriangle, Plus, Search, Check } from 'lucide-react';
+import { X, ShoppingCart, AlertTriangle, Plus, Search, Check, Droplets } from 'lucide-react';
 import { MasterIngredient, Ingredient, AppSettings } from '../types';
 
 interface Props {
@@ -27,7 +27,8 @@ const ShoppingListAddModal: React.FC<Props> = ({
   const filteredMasterData = useMemo(() => {
     if (!searchQuery.trim()) return [];
     return masterData.filter(item => 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (item.subCategory && item.subCategory.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [masterData, searchQuery]);
 
@@ -96,7 +97,7 @@ const ShoppingListAddModal: React.FC<Props> = ({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Type ingredient name..."
+                        placeholder="Type ingredient name (e.g. Sazerac, Gin)..."
                         className="w-full bg-stone-950 border border-stone-700 rounded-xl py-3 pl-10 pr-4 text-white focus:border-primary outline-none"
                         autoFocus
                     />
@@ -104,16 +105,36 @@ const ShoppingListAddModal: React.FC<Props> = ({
                 
                 {/* Autocomplete / Results */}
                 {searchQuery && (
-                    <div className="bg-stone-900 border border-stone-700 rounded-xl overflow-hidden mt-2">
+                    <div className="bg-stone-900 border border-stone-700 rounded-xl overflow-hidden mt-2 max-h-60 overflow-y-auto">
                         {filteredMasterData.length > 0 ? (
                             filteredMasterData.map(item => (
                                 <button
                                     key={item.id}
                                     onClick={() => handleAddMasterItem(item.name)}
-                                    className="w-full text-left px-4 py-3 hover:bg-stone-800 text-stone-300 border-b border-stone-800 last:border-0 flex justify-between items-center"
+                                    className="w-full text-left px-4 py-3 hover:bg-stone-800 text-stone-300 border-b border-stone-800 last:border-0 flex flex-col gap-1"
                                 >
-                                    <span>{item.name}</span>
-                                    <span className="text-[10px] text-stone-500 uppercase border border-stone-700 px-1 rounded">{item.category}</span>
+                                    <div className="flex justify-between items-center w-full">
+                                        <span className="font-bold text-sm text-white">{item.name}</span>
+                                        <div className="flex items-center gap-1">
+                                            {item.abv !== undefined && item.abv > 0 && (
+                                                <span className="text-[9px] bg-red-900/30 text-red-300 px-1.5 py-0.5 rounded border border-red-900/50 flex items-center gap-0.5">
+                                                    <Droplets className="w-2 h-2" /> {item.abv}%
+                                                </span>
+                                            )}
+                                            <span className="text-[9px] text-stone-500 uppercase border border-stone-700 px-1 rounded">{item.category}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px]">
+                                        {item.isGeneric ? (
+                                            <span className="bg-stone-800 text-stone-500 px-1 rounded">Generic</span>
+                                        ) : (
+                                            <span className="bg-secondary/10 text-secondary px-1 rounded">Brand</span>
+                                        )}
+                                        {item.subCategory && <span className="text-stone-400">• {item.subCategory}</span>}
+                                    </div>
+                                    {item.defaultFlavorNotes && (
+                                        <div className="text-[10px] text-stone-500 italic">"{item.defaultFlavorNotes}"</div>
+                                    )}
                                 </button>
                             ))
                         ) : (

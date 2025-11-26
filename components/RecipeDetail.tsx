@@ -1,7 +1,8 @@
-
 import React, { useMemo } from 'react';
-import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle } from 'lucide-react';
+import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon } from 'lucide-react';
 import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem } from '../types';
+import FlavorWheel from './FlavorWheel';
+import FlavorRadar from './RadarChart';
 
 interface Props {
   cocktail: Cocktail | null;
@@ -11,9 +12,11 @@ interface Props {
   onViewRecipe?: (cocktail: Cocktail) => void;
   onSave?: (cocktail: Cocktail) => void;
   onAddToShoppingList?: (ingredients: string[]) => void;
+  onRate?: (rating: number) => void;
+  onDelete?: (id: string) => void;
 }
 
-const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList }) => {
+const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete }) => {
   
   // Calculate missing ingredients
   // Hooks must be called unconditionally, so we handle null cocktail inside the hook
@@ -43,6 +46,13 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
      if (pantry.length === 0) return false;
      // Simple check: does any pantry item name appear in the ingredient line?
      return pantry.some(item => ingredientLine.toLowerCase().includes(item.name.toLowerCase()));
+  };
+
+  const handleDelete = () => {
+      if (confirm("Are you sure you want to remove this recipe?")) {
+          onDelete && onDelete(cocktail.id);
+          onClose();
+      }
   };
 
   return (
@@ -87,7 +97,18 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                         </p>
                     )}
                     <h2 className="text-3xl font-bold text-white leading-tight mb-1">{cocktail.name}</h2>
-                    <p className="text-stone-300 text-sm italic line-clamp-2">{cocktail.description}</p>
+                    
+                    {/* Tags row moved here for quick context */}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {(Object.entries(cocktail.flavorProfile) as [string, number][])
+                            .filter(([_, score]) => score > 5)
+                            .map(([flavor]) => (
+                                <span key={flavor} className="px-2 py-0.5 bg-stone-800/80 backdrop-blur-sm border border-stone-600 rounded text-[10px] uppercase font-bold text-stone-300">
+                                    {flavor}
+                                </span>
+                            ))
+                        }
+                    </div>
                 </div>
             </div>
           </div>
@@ -102,23 +123,71 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-24">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
             
-            {/* Flavor Tags */}
-            <div className="flex flex-wrap gap-2">
-                {Object.entries(cocktail.flavorProfile)
-                    .filter(([_, score]) => score > 5)
-                    .map(([flavor]) => (
-                        <span key={flavor} className="px-2 py-1 bg-stone-800 border border-stone-700 rounded text-[10px] uppercase font-bold text-stone-400">
-                            {flavor}
-                        </span>
-                    ))
-                }
-                {(cocktail.imageUrl && cocktail.imageUrl.startsWith('data:')) || cocktail.creator === 'AI Bartender' ? (
-                    <span className="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-[10px] uppercase font-bold text-primary flex items-center gap-1">
+            {/* Quick Stats Row: Rating */}
+            <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-1 bg-stone-800 rounded-lg p-2 border border-stone-700">
+                     {[1, 2, 3, 4, 5].map((star) => (
+                         <button
+                             key={star}
+                             onClick={() => onRate && onRate(star)}
+                             className="focus:outline-none p-1 transition-transform active:scale-90"
+                         >
+                             <Star 
+                                 className={`w-6 h-6 ${
+                                     (cocktail.rating || 0) >= star 
+                                     ? 'fill-secondary text-secondary' 
+                                     : 'text-stone-600' 
+                                 }`} 
+                             />
+                         </button>
+                     ))}
+                 </div>
+
+                 {(cocktail.imageUrl && cocktail.imageUrl.startsWith('data:')) || cocktail.creator === 'AI Bartender' ? (
+                    <span className="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-[10px] uppercase font-bold text-primary flex items-center gap-1 h-fit">
                         <Sparkles className="w-3 h-3" /> AI Generated
                     </span>
-                ) : null}
+                 ) : null}
+            </div>
+
+            {/* FLAVOR ANALYSIS SECTION (Wheel + Text) */}
+            <div className="bg-stone-800/50 rounded-2xl p-6 border border-stone-700 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-3 opacity-10">
+                    <Disc className="w-24 h-24 text-white" />
+                </div>
+                
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Disc className="w-4 h-4 text-secondary" />
+                    Flavor Analysis
+                </h3>
+
+                <div className="flex flex-col items-center gap-4">
+                    {/* Wheel Visualization */}
+                    <div className="w-full max-w-[200px] aspect-square">
+                        <FlavorWheel userProfile={cocktail.flavorProfile} />
+                    </div>
+                    
+                    {/* Agent Summary Text */}
+                    <div className="bg-stone-900/80 p-4 rounded-xl border border-stone-700 w-full text-center">
+                         <div className="text-[10px] text-primary font-bold uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+                            <Sparkles className="w-3 h-3" /> Mixologist Agent Notes
+                         </div>
+                         <p className="text-sm text-stone-300 italic leading-relaxed">
+                            "{cocktail.description}"
+                         </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* FLAVOR BALANCE (Radar) */}
+            <div className="bg-stone-800/50 rounded-2xl p-6 border border-stone-700">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Hexagon className="w-4 h-4 text-primary" />
+                    Flavor Balance
+                </h3>
+                <FlavorRadar data={cocktail.flavorProfile} height={300} />
             </div>
             
             {/* Order Log Info - Specific to Orders */}
@@ -136,8 +205,8 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                                 onClick={() => onViewRecipe(cocktail)}
                                 className="bg-secondary text-stone-900 text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1 hover:bg-yellow-500 transition-colors shadow-lg shadow-yellow-500/20"
                              >
-                                <Beaker className="w-3 h-3" />
-                                Make at Home
+                                <BookOpen className="w-3 h-3" />
+                                Add to Barmulary
                              </button>
                          )}
                     </div>
@@ -174,7 +243,7 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                     {/* Warning if assumed instructions */}
                     {cocktail.instructions && cocktail.instructions.length > 0 && cocktail.instructions[0].includes('Ordered at bar') && (
                          <div className="mb-3 text-xs text-stone-500 italic bg-stone-800/50 p-2 rounded">
-                            Standard recipe not captured. Click "Make at Home" to have the AI Bartender deduce it.
+                            Standard recipe not captured. Click "Add to Barmulary" to have the AI Bartender deduce it.
                          </div>
                     )}
                     
@@ -196,9 +265,9 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                 </div>
             </div>
             
-            {/* Footer Link */}
-            {cocktail.originalLink && (
-                <div className="pt-4 border-t border-stone-800">
+            {/* Footer Links & Actions */}
+            <div className="pt-4 border-t border-stone-800 space-y-3">
+                {cocktail.originalLink && (
                     <a 
                         href={cocktail.originalLink} 
                         target="_blank" 
@@ -208,8 +277,18 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                         <ExternalLink className="w-3 h-3" />
                         View Original Source
                     </a>
-                </div>
-            )}
+                )}
+                
+                {onDelete && (
+                    <button 
+                        onClick={handleDelete}
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl hover:bg-red-950/30 text-stone-500 hover:text-red-400 text-xs font-bold transition-colors"
+                    >
+                        <Trash2 className="w-3 h-3" />
+                        Delete Recipe
+                    </button>
+                )}
+            </div>
         </div>
 
         {/* Sticky Actions Footer */}

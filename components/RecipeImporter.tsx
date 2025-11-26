@@ -1,8 +1,8 @@
-
 import React, { useState, useRef } from 'react';
-import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, Camera, ScanLine, Link } from 'lucide-react';
-import { analyzeDrinkText, generateCocktailImage } from '../services/geminiService';
+import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, Camera, ScanLine, Link, Mic, MicOff, Disc } from 'lucide-react';
+import { analyzeDrinkText, generateCocktailImage, transcribeAudio } from '../services/geminiService';
 import { Cocktail, FlavorProfile } from '../types';
+import FlavorWheel from './FlavorWheel';
 
 interface Props {
   isOpen: boolean;
@@ -18,6 +18,11 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
+  
+  // Audio State
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Refs for file inputs
   const menuInputRef = useRef<HTMLInputElement>(null);
@@ -39,12 +44,63 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
 
   if (!isOpen) return null;
 
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        setIsLoading(true);
+        setLoadingStep('Transcribing Voice...');
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        
+        // Convert Blob to Base64
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+            const base64String = (reader.result as string).split(',')[1];
+            try {
+                 const transcript = await transcribeAudio(base64String, recorder.mimeType || 'audio/webm');
+                 setInput(prev => (prev ? prev + " " + transcript : transcript));
+            } catch (e) {
+                alert("Voice transcription failed.");
+            } finally {
+                setIsLoading(false);
+                setLoadingStep('');
+                stream.getTracks().forEach(track => track.stop()); // cleanup
+            }
+        };
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Mic error:", err);
+      alert("Could not access microphone.");
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
   const handleAnalyzeText = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     setIsLoading(true);
-    setLoadingStep('Scanning Video & Captions...');
+    setLoadingStep('Mixologist Agent Analyzing...');
     
     try {
       // 1. Scrape / Analyze Text
@@ -241,11 +297,10 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                            className="bg-stone-800 hover:bg-stone-700 p-4 rounded-xl border border-stone-600 flex flex-col items-center gap-2 transition-colors group"
                         >
                             {isScanningMenu ? <Loader2 className="w-8 h-8 text-secondary animate-spin" /> : <ScanLine className="w-8 h-8 text-secondary group-hover:scale-110 transition-transform" />}
-                            <span className="text-sm font-bold text-white">Scan Menu</span>
+                            <span className="text-sm font-bold text-white">Scan or Upload Menu</span>
                             <input 
                                 type="file" 
                                 accept="image/*"
-                                capture="environment"
                                 ref={menuInputRef}
                                 className="hidden"
                                 onChange={(e) => e.target.files && onScanMenu(e.target.files[0])}
@@ -294,7 +349,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                             <div className="w-full border-t border-stone-800"></div>
                         </div>
                         <div className="relative flex justify-center">
-                            <span className="bg-surface px-2 text-xs text-stone-500 uppercase font-bold tracking-widest">Or Paste Link</span>
+                            <span className="bg-surface px-2 text-xs text-stone-500 uppercase font-bold tracking-widest">Describe, Link, or Dictate</span>
                         </div>
                     </div>
 
@@ -302,22 +357,35 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                         <textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="https://instagram.com/p/... or 'Ordered a Penicillin at Attaboy...'"
-                            className="w-full bg-background text-stone-200 p-4 rounded-xl border border-stone-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[100px] resize-none font-mono text-sm"
+                            placeholder="e.g. 'I had a fantastic Mezcal cocktail with agave and lime...' or paste a URL"
+                            className="w-full bg-background text-stone-200 p-4 rounded-xl border border-stone-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[120px] resize-none font-mono text-sm"
                         />
+                        
+                        {/* Mic Button */}
+                        <div className="absolute bottom-3 left-3">
+                            <button
+                                type="button"
+                                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-600 animate-pulse text-white' : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700'}`}
+                            >
+                                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                            </button>
+                        </div>
+
                         {isLoading && (
-                            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center rounded-xl backdrop-blur-[1px]">
+                            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center rounded-xl backdrop-blur-[1px] z-10">
                                 <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
                                 <span className="text-xs font-bold text-primary animate-pulse uppercase">{loadingStep}</span>
                             </div>
                         )}
+                        
                         <div className="flex justify-end mt-2">
                             <button 
                                 onClick={handleAnalyzeText}
                                 disabled={isLoading || !input.trim()}
                                 className="bg-stone-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-stone-700 disabled:opacity-50 transition-colors flex items-center gap-2 text-xs"
                             >
-                                Analyze Text <Send className="w-3 h-3" />
+                                Analyze Input <Send className="w-3 h-3" />
                             </button>
                         </div>
                     </form>
@@ -387,6 +455,18 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                         />
                     </div>
 
+                    {/* New: Flavor Wheel in Review */}
+                    {draftProfile && (
+                        <div className="bg-stone-800/50 rounded-xl border border-stone-700 p-3 flex flex-col items-center gap-2">
+                            <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                                <Disc className="w-3 h-3" /> Flavor Profile
+                            </h4>
+                            <div className="w-40 h-40">
+                                <FlavorWheel userProfile={draftProfile} />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex gap-3">
                         <div className="flex-1">
                             <label className="block text-[10px] font-bold text-primary uppercase mb-1">
@@ -447,7 +527,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                     
                     <div>
                         <label className="block text-[10px] font-bold text-primary uppercase mb-1">
-                            {entryType === 'Order' ? 'Tasting Notes / Description' : 'Instructions'}
+                            {entryType === 'Order' ? 'Flavor Summary / Description' : 'Instructions'}
                         </label>
                         <textarea
                             value={draftInstructions}

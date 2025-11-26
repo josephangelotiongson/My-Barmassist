@@ -8,6 +8,27 @@ const ai = new GoogleGenAI({ apiKey });
 const MODEL_FLASH = 'gemini-2.5-flash';
 const MODEL_IMAGE = 'gemini-2.5-flash-image';
 
+// --- STANDARDIZED SCORING RUBRICS ---
+const FLAVOR_RUBRIC = `
+FLAVOR SCORING RUBRIC (0-10 Scale):
+- SWEET: 0 (Bone Dry, e.g., Dry Martini) -> 3 (Old Fashioned) -> 5 (Balanced Sour/Daisy) -> 8 (Tiki) -> 10 (Liqueur/Syrup heavy).
+- SOUR: 0 (No Acid, e.g., Manhattan) -> 5 (Standard Sour, e.g., Whiskey Sour) -> 8 (Lime heavy) -> 10 (Vinegar/Shrub based).
+- BITTER: 0 (None) -> 2 (Angostura dashes) -> 5 (Negroni/Campari) -> 8 (Amaro/Fernet) -> 10 (Malort/Suze neat).
+- BOOZY: 0 (Mocktail) -> 4 (Standard Highball) -> 6 (Sour/Shake) -> 8 (Stirred/Spirit-Forward) -> 10 (Cask Strength/Overproof).
+- HERBAL: 0 (None) -> 3 (Gin) -> 6 (Chartreuse/Benedictine) -> 10 (Absinthe/Medicinal).
+- FRUITY: 0 (None) -> 3 (Twist/Garnish) -> 6 (Juice Modifier) -> 10 (Fruit Puree/Tiki Bomb).
+- SPICY: 0 (None) -> 3 (Rye Whiskey spice) -> 6 (Ginger Beer) -> 10 (Habanero/Ghost Pepper).
+- SMOKY: 0 (None) -> 3 (Scotch Float) -> 6 (Mezcal) -> 10 (Heavily Peated Islay).
+`;
+
+const MATCH_LOGIC = `
+MATCH SCORING RULES (0-100%):
+- 90-100%: Perfect Ingredient Match OR Perfect Flavor Profile overlap with User History.
+- 75-89%: 1 Minor substitution needed (e.g., Lemon vs Lime) OR Strong Flavor alignment.
+- 50-74%: Missing 1 modifier OR Moderate flavor alignment.
+- <50%: Missing Base Spirit OR Clash in flavor profile.
+`;
+
 // Schema for Flavor Profile
 const flavorProfileSchema: Schema = {
   type: Type.OBJECT,
@@ -98,41 +119,36 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
     }
 
     const prompt = `
-      You are an Expert Mixologist and Digital Archivist. 
+      You are an Expert Mixologist Agent. 
       Analyze this cocktail input (text or URL).
       
       Input: "${text}"
 
-      Your Goal: Extract the full recipe data.
+      ${FLAVOR_RUBRIC}
+
+      Your Goal: Extract recipe data and GENERATE A PRECISE FLAVOR PROFILE based on the Rubric above.
+
+      DESCRIPTION GENERATION:
+      - Write a "Flavor Summary" as the description. 
+      - Do NOT just say "A classic cocktail."
+      - Format: "A [Texture] and [Dominant Flavor] drink with notes of [Secondary Flavor] and a [Finish] finish."
 
       STRATEGY:
       1. CAPTION CHECK: First, look for a written recipe in the caption, description, or page text.
-      2. VIDEO CONTENT EXTRACTION (CRITICAL): If the recipe is NOT in the text/caption, assume it is contained within the video content.
-         - Use the search tool to access the page content, looking specifically for transcripts, video metadata, or descriptive text of the actions.
-         - "Watch" the video by inferring steps from the audio transcript or visual descriptions (e.g., "pouring dark liquid from square bottle" -> likely Bourbon or Rye).
-      3. MIXOLOGY FRAMEWORK FALLBACK: If ingredients are identified but specific quantities are missing (e.g., video just shows pouring without measurements):
-         - Apply standard Mixology Frameworks to balance the drink.
-         - For Sours: Use the Golden Ratio (2:1:1 -> 2 parts Spirit, 1 part Sweet, 1 part Sour).
-         - For Stirred/Boozy: Use 2:1 (2 parts Base, 1 part Modifier).
-         - If you estimate the specs, explicitly mention "Estimated via Mixology Framework based on video actions" in the description.
+      2. VIDEO CONTENT EXTRACTION: If the recipe is NOT in the text/caption, assume it is contained within the video content.
+      3. MIXOLOGY FRAMEWORK FALLBACK: If quantities are missing, use standard frameworks (e.g. Sour = 2:1:1).
 
-      RETURN JSON ONLY. No markdown blocks.
+      RETURN JSON ONLY.
       JSON Structure:
       {
         "name": "string",
         "creator": "string (optional)",
-        "description": "string",
+        "description": "string (The Flavor Summary)",
         "ingredients": ["string", "string"],
         "instructions": ["string", "string"],
         "flavorProfile": {
-          "Sweet": number,
-          "Sour": number,
-          "Bitter": number,
-          "Boozy": number,
-          "Herbal": number,
-          "Fruity": number,
-          "Spicy": number,
-          "Smoky": number
+          "Sweet": number, "Sour": number, "Bitter": number, "Boozy": number,
+          "Herbal": number, "Fruity": number, "Spicy": number, "Smoky": number
         }
       }
     `;
@@ -153,24 +169,18 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
 
     } catch (error: any) {
       const errorMessage = error.message || JSON.stringify(error);
-      // Handle XHR/RPC errors (common with Search Tool in some environments)
       if (tools && (errorMessage.includes('xhr') || errorMessage.includes('Rpc') || errorMessage.includes('fetch') || errorMessage.includes('error code: 6') || errorMessage.includes('500'))) {
-        console.warn("Search tool failed (likely network/blocker). Retrying with pure text analysis.", error);
+        console.warn("Search tool failed. Retrying with pure inference.", error);
         
-        // Fallback: Try without tools (Pure inference)
         const fallbackResponse = await ai.models.generateContent({
           model: MODEL_FLASH,
-          contents: prompt + "\n(Note: External search failed. Infer recipe details from the URL text or known cocktail knowledge.)",
-          config: {
-            temperature: 0.4, // Slightly higher temp for better inference/hallucination of standard recipes
-          }
+          contents: prompt + "\n(Note: External search failed. Infer details from text/URL context and mixology knowledge.)",
+          config: { temperature: 0.4 }
         });
         
         const jsonText = cleanJsonString(fallbackResponse.text || '{}');
         return JSON.parse(jsonText);
       }
-      
-      // If it's not a tool error, rethrow
       throw error;
     }
 
@@ -182,25 +192,22 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
 
 export const generateCocktailImage = async (name: string, description: string, ingredients: string[]): Promise<string | undefined> => {
   try {
-    // STRICT TEMPLATE FOR CONSISTENCY
     const prompt = `
       Create a hyper-realistic, cinematic professional food photography shot of a cocktail named "${name}".
 
-      VISUAL TEMPLATE (STRICT - FOLLOW EXACTLY):
-      - SETTING: Placed on a dark, textured charcoal slate bar counter.
-      - BACKGROUND: A dark, out-of-focus (bokeh) vintage bar shelf with amber glass bottles. The background must be dark and moody, deep stone grey and warm amber tones.
-      - LIGHTING: Dramatic chiaroscuro single-source side lighting (Rembrandt style) coming from the left. High contrast. Golden rim light highlighting the glass edges and condensation.
-      - CAMERA: 85mm macro lens, f/1.8 aperture. Sharp focus on the garnish and condensation droplets on the glass.
-      - COMPOSITION: Eye-level, centered subject.
+      VISUAL TEMPLATE:
+      - SETTING: Dark, textured charcoal slate bar counter.
+      - BACKGROUND: Dark, bokeh vintage bar shelf with amber bottles. Moody, deep stone grey and warm amber tones.
+      - LIGHTING: Dramatic chiaroscuro single-source side lighting (Rembrandt style). Golden rim light.
+      - CAMERA: 85mm macro lens, f/1.8 aperture. Sharp focus on garnish/glass.
+      - COMPOSITION: Eye-level, centered.
 
       COCKTAIL SPECIFICS:
-      - Description/Context: ${description}
-      - Key Ingredients (for color/texture implication): ${ingredients.join(', ')}
-      - Garnish: Perfectly placed, fresh, high-detail.
+      - Context: ${description}
+      - Ingredients: ${ingredients.join(', ')}
+      - Garnish: Perfectly placed, high-detail.
 
-      QUALITY:
-      - 8k resolution, Unreal Engine 5 render style, highly detailed, appetizing.
-      - NO TEXT, NO LOGOS, NO PEOPLE, NO HANDS in the frame.
+      QUALITY: 8k resolution, Unreal Engine 5 render style, detailed. NO TEXT.
     `;
 
     const response = await ai.models.generateContent({
@@ -208,7 +215,6 @@ export const generateCocktailImage = async (name: string, description: string, i
       contents: { parts: [{ text: prompt }] },
     });
 
-    // Extract image from response parts
     if (response.candidates && response.candidates[0].content.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData && part.inlineData.data) {
@@ -219,7 +225,6 @@ export const generateCocktailImage = async (name: string, description: string, i
     return undefined;
   } catch (error) {
     console.error("Error generating cocktail image:", error);
-    // Return undefined to handle gracefully in UI
     return undefined;
   }
 };
@@ -227,18 +232,11 @@ export const generateCocktailImage = async (name: string, description: string, i
 export const identifyIngredientsFromImage = async (base64Image: string): Promise<any[]> => {
   try {
     const response = await ai.models.generateContent({
-      model: MODEL_FLASH, // 2.5 Flash is multimodal
+      model: MODEL_FLASH,
       contents: {
         parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: base64Image
-            }
-          },
-          {
-            text: "Identify all visible cocktail ingredients (bottles, fruits, mixers) in this image. IMPORTANT: Also estimate the remaining volume/liquid level in the bottles (e.g., 'Full 750ml', 'Half Bottle', '~2oz remaining')."
-          }
+          { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+          { text: "Identify all visible cocktail ingredients (bottles, fruits, mixers). Estimate remaining volume." }
         ]
       },
       config: {
@@ -255,21 +253,17 @@ export const identifyIngredientsFromImage = async (base64Image: string): Promise
   }
 };
 
-// New function to enrich ingredient details using Search
 export const enrichIngredientDetails = async (ingredientName: string): Promise<string> => {
   try {
     const prompt = `
-      Search for the flavor profile and tasting notes of the alcohol or ingredient: "${ingredientName}".
-      Return a concise, 1-sentence description of its flavor profile (e.g. "Juniper-forward with citrus and floral notes" for Gin).
-      If it is a common brand, be specific about that brand's profile.
+      Search for the flavor profile of: "${ingredientName}".
+      Return a 1-sentence description (e.g. "Juniper-forward with citrus notes").
     `;
 
     const response = await ai.models.generateContent({
       model: MODEL_FLASH,
       contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }]
-      }
+      config: { tools: [{ googleSearch: {} }] }
     });
 
     return response.text?.trim() || "Flavor profile unavailable.";
@@ -285,15 +279,17 @@ export const getRecommendations = async (
 ): Promise<Recommendation[]> => {
   try {
     const prompt = `
-      User Palate Profile (0-10): ${JSON.stringify(userPalate)}
+      You are a Master Mixologist Algorithm.
+      
+      User Palate (0-10): ${JSON.stringify(userPalate)}
       Available Ingredients: ${JSON.stringify(pantryIngredients)}
+
+      ${FLAVOR_RUBRIC}
+      ${MATCH_LOGIC}
       
-      Suggest 3 cocktail recipes. 
-      1. One that uses ONLY available ingredients (if possible).
-      2. One that is a perfect match for their palate (might require buying 1-2 things).
-      3. An adventurous choice slightly outside their comfort zone but still appealing.
-      
-      Provide a match score (0-100) based on how well it fits their palate.
+      Suggest 3 cocktail recipes based on available ingredients.
+      Calculate Match Score (0-100) based on Ingredient Availability AND Palate Fit.
+      Ensure description highlights flavor profile match.
     `;
 
     const response = await ai.models.generateContent({
@@ -302,7 +298,7 @@ export const getRecommendations = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: recommendationSchema,
-        temperature: 0.7, // A bit of creativity
+        temperature: 0.7,
       }
     });
 
@@ -320,24 +316,21 @@ export const recommendFromMenu = async (
 ): Promise<Recommendation[]> => {
   try {
     const prompt = `
-      You are a Sommelier/Mixologist.
+      You are a Master Mixologist Agent.
       I will provide a photo of a Cocktail Menu and a User's Flavor Palate.
       
       User Palate: ${JSON.stringify(userPalate)}
       
+      ${FLAVOR_RUBRIC}
+      ${MATCH_LOGIC}
+
       TASK:
-      1. Read the menu items (Cocktail names, ingredients, descriptions).
-      2. Compare each valid option against the User's Palate.
-      3. Select the TOP 3 recommendations from the menu.
+      1. Identify ALL valid cocktail options listed on the menu image.
+      2. INGREDIENT ANALYSIS: For each drink, analyze the listed ingredients to DEDUCE the flavor profile (0-10) using the RUBRIC above.
+      3. DESCRIPTION: Generate a "Flavor Summary" description. e.g. "A refreshing and herbal gin cocktail with strong notes of cucumber and a tart lime finish."
+      4. Compare against User Palate for Match Score.
       
-      OUTPUT JSON with fields:
-      - name: Drink Name
-      - description: A reasoning string explaining WHY this fits their palate, combined with the menu description.
-      - matchScore: 0-100 compatibility.
-      - ingredientsToUse: The ingredients listed on the menu.
-      - missingIngredients: LEAVE EMPTY [].
-      - instructions: DEDUCE the likely preparation instructions (e.g., "Shake with ice and strain") based on the ingredients. DO NOT output "Order at the bar".
-      - flavorProfile: Estimate the profile of the drink.
+      OUTPUT JSON.
     `;
 
     const response = await ai.models.generateContent({
@@ -363,25 +356,16 @@ export const recommendFromMenu = async (
   }
 };
 
-// New function for "Help Me" Bar Mode
 export const getBarOrderSuggestion = async (
   userPalate: FlavorProfile,
   mode: 'typical' | 'adventurous'
 ): Promise<{ script: string, suggestion: string, reasoning: string }> => {
   try {
     const prompt = `
-      You are a Wingman / Mixology Guide for someone at a bar.
-      User Palate (0-10): ${JSON.stringify(userPalate)}
+      You are a Wingman / Mixology Guide.
+      User Palate: ${JSON.stringify(userPalate)}
       Mode: ${mode.toUpperCase()}
-
-      Task: Create a short, natural script the user can READ ALOUD to a bartender to get a drink they will like.
-
-      Rules:
-      - IF Mode is 'typical': Look at their highest flavor scores. Write a request that asks for those specific flavors (e.g., "I usually love bitter and herbal drinks, what do you have like that?").
-      - IF Mode is 'adventurous': Look at their lower scores or opposites. Write a request that pushes their boundaries but is still balanced (e.g., "I usually drink bourbon, but I want to try something refreshing and floral today.").
-      - The 'suggestion' field should be a specific classic cocktail name they can keep in their back pocket if the bartender asks for an example.
-      - Keep the script colloquial, polite, and short.
-
+      Create a short, natural script the user can READ ALOUD to a bartender.
       Output JSON.
     `;
 
@@ -398,7 +382,6 @@ export const getBarOrderSuggestion = async (
     const data = JSON.parse(response.text || '{}');
     return data;
   } catch (error) {
-    console.error("Error getting bar suggestion:", error);
     return {
       script: "I'm not sure what I want, what is your signature drink?",
       suggestion: "Old Fashioned",
@@ -407,50 +390,56 @@ export const getBarOrderSuggestion = async (
   }
 };
 
-// --- Bartender Agent to Deduce Recipes ---
 export const deduceRecipe = async (name: string, knownIngredients: string[]): Promise<any> => {
   try {
     const prompt = `
       You are an Expert Bartender Agent.
-      TASK: Convert a drink order into a functional recipe for home use.
+      TASK: Deduce a recipe for: "${name}".
+      Known Ingredients: ${JSON.stringify(knownIngredients)}
 
-      Drink Name: "${name}"
-      Known Ingredients (may be incomplete or just a list): ${JSON.stringify(knownIngredients)}
+      ${FLAVOR_RUBRIC}
 
-      Goal: Deduce a balanced recipe (measurements and instructions) using standard mixology frameworks (Golden Ratio, Classic Specs).
+      Goal: 
+      1. Create balanced measurements (Mixology Frameworks).
+      2. Generate a 1-sentence FLAVOR SUMMARY as the description.
+      3. Estimate the Flavor Profile (0-10) using the Rubric.
       
-      Examples:
-      - If it looks like a Sour: Use 2oz Spirit, 1oz Sweet, 1oz Sour.
-      - If it looks like a Stirred/Spirit-Forward: Use 2oz Spirit, 1oz Modifier, Bitters.
-      - If it's a Highball: Use 2oz Spirit, 4oz Mixer.
-      
-      OUTPUT JSON:
-      {
-        "ingredients": ["2 oz Bourbon", "0.75 oz Lemon Juice"],
-        "instructions": ["Shake with ice", "Strain"],
-        "description": "A deduction of the recipe based on standard mixology balance.",
-        "flavorProfile": { ... }
-      }
+      OUTPUT JSON: { ingredients, instructions, description, flavorProfile }
     `;
 
     const response = await ai.models.generateContent({
       model: MODEL_FLASH,
       contents: prompt,
-      config: {
-        temperature: 0.4
-      }
+      config: { temperature: 0.4 }
     });
 
     const text = cleanJsonString(response.text || '{}');
     return JSON.parse(text);
   } catch (error) {
     console.error("Error deducing recipe:", error);
-    // Fallback safe return
     return {
       ingredients: knownIngredients.length > 0 ? knownIngredients : ["Spirit", "Modifier"],
       instructions: ["Mix ingredients with ice.", "Serve."],
       description: "Could not deduce specific recipe.",
       flavorProfile: { Sweet: 5, Sour: 5, Bitter: 0, Boozy: 5, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 }
     };
+  }
+};
+
+export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL_FLASH,
+      contents: {
+        parts: [
+          { inlineData: { mimeType: mimeType, data: base64Audio } },
+          { text: "Transcribe this audio exactly as spoken." }
+        ]
+      }
+    });
+    return response.text || "";
+  } catch (error) {
+    console.error("Audio transcription failed:", error);
+    throw error;
   }
 };

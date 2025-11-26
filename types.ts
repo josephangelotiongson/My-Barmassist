@@ -35,6 +35,7 @@ export interface Cocktail {
   creatorType?: 'Person' | 'Establishment' | 'Online'; // Added creator type for categorization
   dateAdded: string;
   rating?: number; // 1-5 Stars
+  matchScore?: number; // 0-100 Match score for recommendations/scans
 }
 
 export interface Recommendation {
@@ -65,7 +66,10 @@ export interface MasterIngredient {
   id: string;
   name: string;
   category: 'Spirit' | 'Mixer' | 'Garnish' | 'Other';
+  subCategory?: string; // e.g. "Rye Whiskey", "London Dry Gin"
+  abv?: number; // Alcohol by volume percentage (e.g. 40, 50)
   defaultFlavorNotes?: string;
+  isGeneric?: boolean; // True if it's a category catch-all (e.g. "Rye Whiskey"), false if brand (e.g. "Sazerac Rye")
 }
 
 export interface AppSettings {

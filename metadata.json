@@ -2,6 +2,7 @@
   "name": "My Barmassist",
   "description": "An intelligent cocktail companion that learns your palate through order history and social links, scans your home ingredients via camera, and recommends personalized recipes using Gemini.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }
