@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
-import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon } from 'lucide-react';
+
+import React, { useMemo, useState } from 'react';
+import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets } from 'lucide-react';
 import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem } from '../types';
 import FlavorWheel from './FlavorWheel';
 import FlavorRadar from './RadarChart';
@@ -14,23 +15,22 @@ interface Props {
   onAddToShoppingList?: (ingredients: string[]) => void;
   onRate?: (rating: number) => void;
   onDelete?: (id: string) => void;
+  onAddLink?: (id: string, url: string) => void;
 }
 
-const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete }) => {
+const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink }) => {
+  const [newLink, setNewLink] = useState('');
   
   // Calculate missing ingredients
-  // Hooks must be called unconditionally, so we handle null cocktail inside the hook
   const missingIngredients = useMemo(() => {
       if (!cocktail || !cocktail.ingredients) return [];
       return cocktail.ingredients.filter(ing => {
-          // Check if ingredient is available in pantry
-          if (pantry.length === 0) return true; // Missing if pantry empty
+          if (pantry.length === 0) return true;
           const inPantry = pantry.some(item => ing.toLowerCase().includes(item.name.toLowerCase()));
           return !inPantry;
       });
   }, [cocktail, pantry]);
 
-  // Calculate actual items needed to buy (items not in pantry AND not in shopping list)
   const itemsToBuy = useMemo(() => {
       return missingIngredients.filter(ing => 
           !shoppingList.some(item => item.name.toLowerCase() === ing.toLowerCase())
@@ -41,10 +41,8 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
 
   const isTemporary = cocktail.id.startsWith('temp-');
 
-  // Helper to check availability for render
   const isAvailable = (ingredientLine: string) => {
      if (pantry.length === 0) return false;
-     // Simple check: does any pantry item name appear in the ingredient line?
      return pantry.some(item => ingredientLine.toLowerCase().includes(item.name.toLowerCase()));
   };
 
@@ -54,6 +52,18 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
           onClose();
       }
   };
+
+  const handleAddLink = () => {
+      if (newLink.trim() && onAddLink) {
+          onAddLink(cocktail.id, newLink);
+          setNewLink('');
+      }
+  };
+
+  const allLinks = [
+      ...(cocktail.originalLink ? [cocktail.originalLink] : []),
+      ...(cocktail.externalLinks || [])
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/90 backdrop-blur-sm animate-in fade-in duration-200">
@@ -98,7 +108,6 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                     )}
                     <h2 className="text-3xl font-bold text-white leading-tight mb-1">{cocktail.name}</h2>
                     
-                    {/* Tags row moved here for quick context */}
                     <div className="flex flex-wrap gap-2 mt-2">
                         {(Object.entries(cocktail.flavorProfile) as [string, number][])
                             .filter(([_, score]) => score > 5)
@@ -125,8 +134,8 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
             
-            {/* Quick Stats Row: Rating */}
-            <div className="flex items-center gap-4">
+            {/* Quick Stats Row: Rating + Nutrition */}
+            <div className="flex items-center justify-between gap-2">
                  <div className="flex items-center gap-1 bg-stone-800 rounded-lg p-2 border border-stone-700">
                      {[1, 2, 3, 4, 5].map((star) => (
                          <button
@@ -144,12 +153,26 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                          </button>
                      ))}
                  </div>
-
-                 {(cocktail.imageUrl && cocktail.imageUrl.startsWith('data:')) || cocktail.creator === 'AI Bartender' ? (
-                    <span className="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-[10px] uppercase font-bold text-primary flex items-center gap-1 h-fit">
-                        <Sparkles className="w-3 h-3" /> AI Generated
-                    </span>
-                 ) : null}
+                 
+                 {/* Nutrition Badge */}
+                 {cocktail.nutrition && (
+                     <div className="flex items-center gap-2 bg-stone-900/50 p-2 rounded-lg border border-stone-800" title="Nutritionist AI Estimate">
+                         <div className="flex items-center gap-1 border-r border-stone-800 pr-2">
+                            <Activity className="w-4 h-4 text-green-400" />
+                            <div className="flex flex-col items-end leading-none">
+                                <span className="text-sm font-bold text-white">{cocktail.nutrition.calories} cal</span>
+                                <span className="text-[9px] text-stone-500">{cocktail.nutrition.carbs}g carb*</span>
+                            </div>
+                         </div>
+                         <div className="flex flex-col items-center leading-none pl-1">
+                             <div className="flex items-center gap-1 text-white font-bold text-sm">
+                                <Droplets className="w-3 h-3 text-blue-400" />
+                                {cocktail.nutrition.abv}%
+                             </div>
+                             <span className="text-[9px] text-stone-500">ABV</span>
+                         </div>
+                     </div>
+                 )}
             </div>
 
             {/* FLAVOR ANALYSIS SECTION (Wheel + Text) */}
@@ -265,21 +288,59 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                 </div>
             </div>
             
-            {/* Footer Links & Actions */}
+            {/* References Section */}
             <div className="pt-4 border-t border-stone-800 space-y-3">
-                {cocktail.originalLink && (
-                    <a 
-                        href={cocktail.originalLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold transition-colors"
-                    >
-                        <ExternalLink className="w-3 h-3" />
-                        View Original Source
-                    </a>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Link className="w-4 h-4 text-secondary" />
+                    References & Media
+                </h3>
+                
+                {allLinks.length > 0 && (
+                    <div className="space-y-2">
+                        {allLinks.map((link, idx) => (
+                             <a 
+                                key={idx}
+                                href={link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 w-full p-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs transition-colors border border-stone-700 group"
+                            >
+                                <ExternalLink className="w-3 h-3 text-stone-500 group-hover:text-secondary" />
+                                <span className="truncate flex-1">{link}</span>
+                            </a>
+                        ))}
+                    </div>
                 )}
                 
-                {onDelete && (
+                {onAddLink && (
+                    <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            value={newLink}
+                            onChange={(e) => setNewLink(e.target.value)}
+                            placeholder="Paste video/web link..."
+                            className="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-3 text-xs text-white focus:border-secondary outline-none"
+                        />
+                        <button 
+                            onClick={handleAddLink}
+                            disabled={!newLink.trim()}
+                            className="bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg border border-stone-700 disabled:opacity-50"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+            </div>
+             {/* Nutrition Disclaimer */}
+            {cocktail.nutrition && (
+                <div className="text-[10px] text-stone-600 italic text-center">
+                    * Nutrition & ABV estimates based on standard ingredient values.
+                </div>
+            )}
+
+            {/* Delete Actions */}
+            {onDelete && (
+                <div className="pt-4 border-t border-stone-800">
                     <button 
                         onClick={handleDelete}
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl hover:bg-red-950/30 text-stone-500 hover:text-red-400 text-xs font-bold transition-colors"
@@ -287,8 +348,8 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                         <Trash2 className="w-3 h-3" />
                         Delete Recipe
                     </button>
-                )}
-            </div>
+                </div>
+            )}
         </div>
 
         {/* Sticky Actions Footer */}

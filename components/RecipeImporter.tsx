@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, Camera, ScanLine, Link, Mic, MicOff, Disc } from 'lucide-react';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, Camera, ScanLine, Link, Mic, MicOff, Disc, Trash2, Tag, Activity, Droplets } from 'lucide-react';
 import { analyzeDrinkText, generateCocktailImage, transcribeAudio } from '../services/geminiService';
-import { Cocktail, FlavorProfile } from '../types';
+import { Cocktail, FlavorProfile, Nutrition } from '../types';
 import FlavorWheel from './FlavorWheel';
 
 interface Props {
@@ -11,9 +12,10 @@ interface Props {
   onScanMenu: (file: File) => void;
   isScanningMenu: boolean;
   recentMenuDrafts?: Cocktail[];
+  initialDraft?: Cocktail | null;
 }
 
-const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onScanMenu, isScanningMenu, recentMenuDrafts }) => {
+const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onScanMenu, isScanningMenu, recentMenuDrafts, initialDraft }) => {
   const [mode, setMode] = useState<'input' | 'review'>('input');
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,14 +35,37 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
   const [draftId, setDraftId] = useState('');
   const [draftName, setDraftName] = useState('');
   const [draftDesc, setDraftDesc] = useState('');
-  const [draftLink, setDraftLink] = useState('');
+  const [draftCategory, setDraftCategory] = useState('');
+  
+  // Multiple Links State
+  const [draftLinks, setDraftLinks] = useState<string[]>([]);
+  const [newLinkInput, setNewLinkInput] = useState('');
+
   const [draftCreator, setDraftCreator] = useState('');
   const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
   const [draftInstructions, setDraftInstructions] = useState<string>('');
   const [draftProfile, setDraftProfile] = useState<FlavorProfile | null>(null);
+  const [draftNutrition, setDraftNutrition] = useState<Nutrition>({ calories: 0, carbs: 0, abv: 0 });
   const [draftRating, setDraftRating] = useState<number>(0);
   const [draftImageUrl, setDraftImageUrl] = useState<string>('');
   const [newIngredient, setNewIngredient] = useState('');
+
+  useEffect(() => {
+    if (isOpen && initialDraft) {
+        populateDraft({
+            name: initialDraft.name,
+            description: initialDraft.description,
+            category: initialDraft.category,
+            ingredients: initialDraft.ingredients,
+            instructions: initialDraft.instructions,
+            flavorProfile: initialDraft.flavorProfile,
+            imageUrl: initialDraft.imageUrl,
+            creator: initialDraft.creator,
+            links: initialDraft.externalLinks,
+            nutrition: initialDraft.nutrition
+        });
+    }
+  }, [isOpen, initialDraft]);
 
   if (!isOpen) return null;
 
@@ -100,7 +125,8 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
     if (!input.trim()) return;
 
     setIsLoading(true);
-    setLoadingStep('Mixologist Agent Analyzing...');
+    const hasLink = input.includes('http') || input.includes('tiktok.com');
+    setLoadingStep(hasLink ? 'Agent watching video...' : 'Mixologist Agent Analyzing...');
     
     try {
       // 1. Scrape / Analyze Text
@@ -108,7 +134,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       
       // Extract URL if present in input for the 'source' field
       const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const foundUrl = input.match(urlRegex)?.[0] || '';
+      const foundUrls = input.match(urlRegex) || [];
 
       // 2. Automatically Visualize (Force Generation)
       setLoadingStep('Synthesizing Visuals...');
@@ -127,11 +153,13 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       populateDraft({
         name: data.name,
         description: data.description,
+        category: data.category,
         ingredients: data.ingredients,
         instructions: data.instructions,
         flavorProfile: data.flavorProfile,
+        nutrition: data.nutrition,
         imageUrl: finalImageUrl,
-        link: foundUrl,
+        links: foundUrls,
         creator: data.creator
       });
       
@@ -155,8 +183,10 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
             imageUrl: base64,
             name: 'New Drink',
             description: 'Captured via camera',
+            category: 'Uncategorized',
             ingredients: [],
-            instructions: []
+            instructions: [],
+            nutrition: { calories: 0, carbs: 0, abv: 0 }
         });
     };
     reader.readAsDataURL(file);
@@ -167,7 +197,8 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       setDraftId(Math.random().toString(36).substr(2, 9));
       setDraftName(data.name || 'Unknown Elixir');
       setDraftDesc(data.description || '');
-      setDraftLink(data.link || '');
+      setDraftCategory(data.category || 'Uncategorized');
+      setDraftLinks(data.links || []);
       setDraftCreator(data.creator || '');
       setDraftIngredients(data.ingredients || []);
       
@@ -177,6 +208,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       setDraftInstructions(instructionsText);
 
       setDraftProfile(data.flavorProfile || null);
+      setDraftNutrition(data.nutrition || { calories: 0, carbs: 0, abv: 0 });
       setDraftImageUrl(data.imageUrl || '');
       setDraftRating(0);
       
@@ -190,7 +222,9 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       setDraftIngredients(menuItem.ingredients);
       setDraftInstructions(menuItem.instructions.join('\n'));
       setDraftCreator(menuItem.creator || '');
+      // If menu scan didn't have category, we can leave it blank or default
       if (menuItem.flavorProfile) setDraftProfile(menuItem.flavorProfile);
+      if (menuItem.nutrition) setDraftNutrition(menuItem.nutrition);
       
       // Keep existing image if we took a photo, otherwise use placeholder/generated
       if (!draftImageUrl && menuItem.imageUrl) {
@@ -206,7 +240,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
     let creatorType: 'Person' | 'Establishment' | 'Online' = 'Person';
     if (entryType === 'Order') {
         creatorType = 'Establishment';
-    } else if (draftLink) {
+    } else if (draftLinks.length > 0) {
         creatorType = 'Online';
     }
 
@@ -214,11 +248,13 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       id: draftId,
       name: draftName,
       description: draftDesc,
+      category: draftCategory,
       ingredients: draftIngredients,
       instructions: instructionsArray,
       flavorProfile: draftProfile || { Sweet: 0, Sour: 0, Bitter: 0, Boozy: 0, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 },
-      source: entryType === 'Order' ? 'Order' : (draftLink ? 'Social' : 'Manual'),
-      originalLink: draftLink,
+      nutrition: draftNutrition,
+      source: entryType === 'Order' ? 'Order' : (draftLinks.length > 0 ? 'Social' : 'Manual'),
+      externalLinks: draftLinks,
       creator: draftCreator,
       creatorType: creatorType,
       dateAdded: new Date().toISOString(),
@@ -240,12 +276,14 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
     setEntryType('Recipe');
     setInput('');
     setDraftName('');
+    setDraftCategory('');
     setDraftIngredients([]);
     setDraftInstructions('');
-    setDraftLink('');
+    setDraftLinks([]);
     setDraftCreator('');
     setDraftRating(0);
     setDraftImageUrl('');
+    setDraftNutrition({ calories: 0, carbs: 0, abv: 0 });
   };
 
   const addIngredient = () => {
@@ -257,6 +295,17 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
 
   const removeIngredient = (idx: number) => {
     setDraftIngredients(draftIngredients.filter((_, i) => i !== idx));
+  };
+  
+  const addLink = () => {
+      if (newLinkInput.trim()) {
+          setDraftLinks([...draftLinks, newLinkInput.trim()]);
+          setNewLinkInput('');
+      }
+  };
+  
+  const removeLink = (idx: number) => {
+      setDraftLinks(draftLinks.filter((_, i) => i !== idx));
   };
 
   return (
@@ -275,7 +324,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                 ) : (
                     <>
                         <Check className="w-5 h-5 text-accent" />
-                        Verify Entry
+                        Review Entry
                     </>
                 )}
             </h2>
@@ -288,7 +337,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
         <div className="flex-1 overflow-y-auto p-6">
             {mode === 'input' ? (
                 <div className="space-y-8">
-                    
+                    {/* ... (Input mode content same as before) ... */}
                     {/* 1. Quick Actions */}
                     <div className="grid grid-cols-2 gap-4">
                         <button 
@@ -332,7 +381,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                                 {recentMenuDrafts.map((draft) => (
                                     <button 
                                         key={draft.id}
-                                        onClick={() => populateDraft({ ...draft, imageUrl: '' })} // Pass blank image so we don't force AI gen if user wants to just edit text
+                                        onClick={() => populateDraft({ ...draft, imageUrl: '' })} 
                                         className="flex-none w-32 bg-stone-900 border border-stone-800 p-3 rounded-xl hover:border-secondary transition-colors text-left flex flex-col gap-1 group"
                                     >
                                         <div className="text-xs font-bold text-white truncate w-full group-hover:text-secondary">{draft.name}</div>
@@ -357,7 +406,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                         <textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="e.g. 'I had a fantastic Mezcal cocktail with agave and lime...' or paste a URL"
+                            placeholder="e.g. 'I had a fantastic Mezcal cocktail with agave and lime...' or paste a TikTok/Instagram link..."
                             className="w-full bg-background text-stone-200 p-4 rounded-xl border border-stone-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[120px] resize-none font-mono text-sm"
                         />
                         
@@ -392,7 +441,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {/* Menu Linking Logic */}
+                    {/* ... (Review Mode) ... */}
                     {recentMenuDrafts && recentMenuDrafts.length > 0 && (
                          <div className="bg-secondary/10 border border-secondary/20 rounded-lg p-3 mb-4">
                             <label className="block text-[10px] font-bold text-secondary uppercase mb-1 flex items-center gap-1">
@@ -414,7 +463,6 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                          </div>
                     )}
 
-                    {/* Entry Type Toggle */}
                     <div className="bg-stone-950 p-1 rounded-lg border border-stone-700 flex">
                         <button
                             onClick={() => setEntryType('Recipe')}
@@ -445,27 +493,91 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                          </div>
                     </div>
 
-                    <div>
-                        <label className="block text-[10px] font-bold text-primary uppercase mb-1">Name</label>
-                        <input 
-                            type="text" 
-                            value={draftName} 
-                            onChange={(e) => setDraftName(e.target.value)}
-                            className="w-full bg-stone-950 border border-stone-700 rounded-lg p-3 text-white focus:border-secondary outline-none"
-                        />
+                    {/* Basic Info */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-[10px] font-bold text-primary uppercase mb-1">Name</label>
+                            <input 
+                                type="text" 
+                                value={draftName} 
+                                onChange={(e) => setDraftName(e.target.value)}
+                                className="w-full bg-stone-950 border border-stone-700 rounded-lg p-3 text-white focus:border-secondary outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-bold text-primary uppercase mb-1 flex items-center gap-1">
+                                <Tag className="w-3 h-3" /> Family / Category
+                            </label>
+                            <select 
+                                value={draftCategory}
+                                onChange={(e) => setDraftCategory(e.target.value)}
+                                className="w-full bg-stone-950 border border-stone-700 rounded-lg p-3 text-white text-xs focus:border-secondary outline-none appearance-none"
+                            >
+                                <option value="Uncategorized">Uncategorized</option>
+                                <option value="Ancestrals">Ancestrals (Old Fashioned style)</option>
+                                <option value="Spirit-Forward">Spirit-Forward (Martini/Negroni)</option>
+                                <option value="Sours & Daisies">Sours & Daisies</option>
+                                <option value="Highballs & Fizzes">Highballs & Fizzes</option>
+                                <option value="Tiki & Tropical">Tiki & Tropical</option>
+                                <option value="Dessert & Digestif">Dessert & Digestif</option>
+                                <option value="Modern Classics">Modern Classics</option>
+                                <option value="Punches & Juleps">Punches & Juleps</option>
+                            </select>
+                        </div>
                     </div>
 
-                    {/* New: Flavor Wheel in Review */}
-                    {draftProfile && (
-                        <div className="bg-stone-800/50 rounded-xl border border-stone-700 p-3 flex flex-col items-center gap-2">
-                            <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
-                                <Disc className="w-3 h-3" /> Flavor Profile
-                            </h4>
-                            <div className="w-40 h-40">
-                                <FlavorWheel userProfile={draftProfile} />
+                    {/* NUTRITION & FLAVOR */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {draftProfile && (
+                            <div className="bg-stone-800/50 rounded-xl border border-stone-700 p-3 flex flex-col items-center gap-2">
+                                <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                                    <Disc className="w-3 h-3" /> Flavor Profile
+                                </h4>
+                                <div className="w-32 h-32">
+                                    <FlavorWheel userProfile={draftProfile} />
+                                </div>
                             </div>
+                        )}
+                        
+                        <div className="bg-stone-800/50 rounded-xl border border-stone-700 p-3 flex flex-col justify-center gap-3">
+                            <h4 className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                                <Activity className="w-3 h-3" /> Nutrition Est.
+                            </h4>
+                            <div>
+                                <label className="block text-[9px] text-stone-400 font-bold mb-1">Calories</label>
+                                <input 
+                                    type="number" 
+                                    value={draftNutrition.calories} 
+                                    onChange={(e) => setDraftNutrition({...draftNutrition, calories: parseInt(e.target.value) || 0})}
+                                    className="w-full bg-stone-950 border border-stone-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-[9px] text-stone-400 font-bold mb-1">Carbs (g)</label>
+                                    <input 
+                                        type="number" 
+                                        value={draftNutrition.carbs} 
+                                        onChange={(e) => setDraftNutrition({...draftNutrition, carbs: parseInt(e.target.value) || 0})}
+                                        className="w-full bg-stone-950 border border-stone-700 rounded px-2 py-1 text-xs text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[9px] text-stone-400 font-bold mb-1">ABV (%)</label>
+                                    <input 
+                                        type="number" 
+                                        value={draftNutrition.abv || 0} 
+                                        onChange={(e) => setDraftNutrition({...draftNutrition, abv: parseInt(e.target.value) || 0})}
+                                        className="w-full bg-stone-950 border border-stone-700 rounded px-2 py-1 text-xs text-white"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-[8px] text-stone-600 italic leading-tight">
+                                *AI estimates. Actual nutrition may vary.
+                            </p>
                         </div>
-                    )}
+                    </div>
 
                     <div className="flex gap-3">
                         <div className="flex-1">
@@ -538,14 +650,34 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                     </div>
 
                     <div>
-                        <label className="block text-[10px] font-bold text-primary uppercase mb-1">Source URL</label>
-                        <input 
-                            type="text" 
-                            value={draftLink} 
-                            onChange={(e) => setDraftLink(e.target.value)}
-                            placeholder="Optional link"
-                            className="w-full bg-stone-950 border border-stone-700 rounded-lg p-3 text-white text-xs font-mono focus:border-secondary outline-none"
-                        />
+                        <label className="block text-[10px] font-bold text-primary uppercase mb-1">Reference Links</label>
+                        <div className="bg-stone-950 border border-stone-700 rounded-lg p-3">
+                            {draftLinks.length > 0 && (
+                                <ul className="space-y-2 mb-3">
+                                    {draftLinks.map((link, idx) => (
+                                        <li key={idx} className="flex justify-between items-center text-xs text-stone-300 bg-stone-900 px-3 py-2 rounded border border-stone-800">
+                                            <span className="truncate flex-1 mr-2">{link}</span>
+                                            <button onClick={() => removeLink(idx)} className="text-stone-500 hover:text-red-400">
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text"
+                                    value={newLinkInput}
+                                    onChange={(e) => setNewLinkInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && addLink()}
+                                    placeholder="Paste URL..."
+                                    className="flex-1 bg-stone-800 border border-stone-700 rounded px-3 py-2 text-xs text-white outline-none"
+                                />
+                                <button onClick={addLink} type="button" className="bg-stone-700 hover:bg-stone-600 text-white p-2 rounded">
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

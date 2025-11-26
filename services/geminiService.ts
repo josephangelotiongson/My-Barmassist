@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { FlavorProfile, FlavorDimension, Recommendation, Ingredient } from '../types';
 
@@ -6,6 +7,7 @@ const ai = new GoogleGenAI({ apiKey });
 
 // Models
 const MODEL_FLASH = 'gemini-2.5-flash';
+const MODEL_PRO = 'gemini-3-pro-preview'; // Used for complex tasks like Social Media analysis
 const MODEL_IMAGE = 'gemini-2.5-flash-image';
 
 // --- STANDARDIZED SCORING RUBRICS ---
@@ -45,6 +47,17 @@ const flavorProfileSchema: Schema = {
   required: ['Sweet', 'Sour', 'Bitter', 'Boozy', 'Herbal', 'Fruity', 'Spicy', 'Smoky'],
 };
 
+// Schema for Nutrition
+const nutritionSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    calories: { type: Type.NUMBER },
+    carbs: { type: Type.NUMBER },
+    abv: { type: Type.NUMBER, description: "Estimated Alcohol By Volume percentage (e.g., 22)" }
+  },
+  required: ['calories', 'carbs']
+};
+
 // Schema for Ingredient Recognition with Volume
 const ingredientScanSchema: Schema = {
   type: Type.OBJECT,
@@ -77,12 +90,25 @@ const recommendationSchema: Schema = {
           name: { type: Type.STRING },
           description: { type: Type.STRING },
           matchScore: { type: Type.NUMBER },
-          ingredientsToUse: { type: Type.ARRAY, items: { type: Type.STRING } },
-          missingIngredients: { type: Type.ARRAY, items: { type: Type.STRING } },
-          instructions: { type: Type.STRING },
-          flavorProfile: flavorProfileSchema
+          ingredientsToUse: { 
+             type: Type.ARRAY, 
+             items: { type: Type.STRING }, 
+             description: "List of ingredients WITH VOLUMES (e.g. '2 oz Gin', '0.75 oz Lime Juice')." 
+          },
+          missingIngredients: { 
+             type: Type.ARRAY, 
+             items: { type: Type.STRING }, 
+             description: "List of missing ingredients WITH VOLUMES." 
+          },
+          instructions: { 
+             type: Type.ARRAY, 
+             items: { type: Type.STRING },
+             description: "Step-by-step preparation instructions." 
+          },
+          flavorProfile: flavorProfileSchema,
+          nutrition: nutritionSchema
         },
-        required: ['name', 'description', 'matchScore', 'ingredientsToUse', 'missingIngredients', 'instructions', 'flavorProfile']
+        required: ['name', 'description', 'matchScore', 'ingredientsToUse', 'missingIngredients', 'instructions', 'flavorProfile', 'nutrition']
       }
     }
   },
@@ -102,46 +128,134 @@ const barAssistSchema: Schema = {
 
 // Helper to clean JSON string from markdown code blocks
 const cleanJsonString = (text: string): string => {
+  // Try to find JSON object structure first
+  const firstOpen = text.indexOf('{');
+  const lastClose = text.lastIndexOf('}');
+  
+  if (firstOpen !== -1 && lastClose !== -1) {
+    return text.substring(firstOpen, lastClose + 1);
+  }
+  
+  // Fallback cleanup
   let clean = text;
-  // Remove markdown code blocks (```json ... ``` or just ``` ... ```)
   clean = clean.replace(/```json/gi, '').replace(/```/g, '');
   return clean.trim();
+};
+
+const cleanUrl = (url: string): string => {
+    try {
+        const urlObj = new URL(url);
+        // Remove query parameters
+        return `${urlObj.origin}${urlObj.pathname}`;
+    } catch (e) {
+        return url;
+    }
 };
 
 export const analyzeDrinkText = async (text: string): Promise<any> => {
   try {
     const isUrl = /(https?:\/\/[^\s]+)/g.test(text);
-    
     let tools = undefined;
-    // Use Google Search grounding if a URL is detected to read the recipe
+    let enrichedContext = text;
+    
+    // Social Media / URL Logic
     if (isUrl) {
       tools = [{ googleSearch: {} }];
+      
+      const foundUrlMatch = text.match(/(https?:\/\/[^\s]+)/);
+      const rawUrl = foundUrlMatch ? foundUrlMatch[0] : '';
+      const cleanLink = cleanUrl(rawUrl);
+
+      // Regex Metadata Extraction for TikTok/IG to help the Search Tool
+      if (cleanLink.includes('tiktok.com')) {
+         const userMatch = cleanLink.match(/@([a-zA-Z0-9_.-]+)/);
+         const idMatch = cleanLink.match(/\/video\/(\d+)/);
+         
+         if (userMatch && idMatch) {
+            const username = userMatch[1];
+            const videoId = idMatch[1];
+            enrichedContext = `\n[SYSTEM HINT]: The user provided a TikTok link. 
+            Clean Link: ${cleanLink}
+            Creator: ${username}
+            Video ID: ${videoId}
+            
+            CRITICAL SEARCH INSTRUCTIONS:
+            Search for the VIDEO ID "${videoId}" directly. This is the most effective way to find the caption.
+            Suggested Queries:
+            1. "tiktok ${username} ${videoId} recipe"
+            2. "tiktok video ${videoId} transcript"
+            3. "${username} tiktok ${videoId} ingredients"
+            `;
+         } else {
+             // Handle generic or short tiktok links (vm.tiktok.com etc)
+             enrichedContext += `\n[SYSTEM HINT]: A TikTok link was detected (${cleanLink}). 
+             This appears to be a short link or a variation. 
+             ACTION REQUIRED: 
+             1. Use Google Search to find this URL directly to get the real page title.
+             2. "Watch" the video by finding the caption, transcript, or comments in the search results.
+             3. Extract any mentioned ingredients.
+             `;
+         }
+      } else if (cleanLink.includes('instagram.com')) {
+         const userMatch = cleanLink.match(/instagram\.com\/([a-zA-Z0-9_.-]+)/);
+         if (userMatch) {
+             enrichedContext += `\n[SYSTEM HINT]: This is an Instagram post by user @${userMatch[1]}. Search for "instagram @${userMatch[1]} cocktail recipe".`;
+         }
+      }
     }
 
+    // Using gemini-3-pro-preview for advanced reasoning on search results (TikTok/IG)
     const prompt = `
-      You are an Expert Mixologist Agent. 
-      Analyze this cocktail input (text or URL).
+      You are an Expert Mixologist Agent and Nutritionist AI.
       
-      Input: "${text}"
+      Input Context: "${enrichedContext}"
 
       ${FLAVOR_RUBRIC}
 
-      Your Goal: Extract recipe data and GENERATE A PRECISE FLAVOR PROFILE based on the Rubric above.
+      TASK: 
+      1. Extract recipe data (ingredients with volumes, instructions).
+      2. Classify the Family.
+      3. Generate a Flavor Profile.
+      4. ESTIMATE NUTRITION: Calculate total calories and grams of carbohydrates. 
+         - Assume standard values (e.g. 1.5oz Spirit ~96cal, 1oz Simple Syrup ~50cal/14g carb, 1oz Citrus ~8cal/2g carb). 
+         - Be reasonably accurate but explicit that this is an estimate.
+      5. ESTIMATE ABV: Calculate the final Alcohol By Volume (%) based on the ingredients.
 
-      DESCRIPTION GENERATION:
+      ### VIDEO "WATCHING" & LINK ANALYSIS STRATEGY
+      - The user has likely provided a link to a cocktail video (TikTok/Instagram/YouTube).
+      - **"WATCH" VIA SEARCH**: You cannot directly view pixels, but you MUST use the 'googleSearch' tool to find the textual content (captions, transcripts, comments) of this video.
+      - **SEARCH TACTICS**: 
+        1. Search for the specific URL to find the page title/snippet.
+        2. Search for the Video ID or Username + "recipe" to find cross-posts or aggregators.
+        3. Look for "ingredients" or measurements in the search snippets.
+
+      ### RECIPE DEDUCTION RULES
+      1. **Explicit**: If search results list ingredients (e.g. "2oz Gin"), use them exactly.
+      2. **Implicit**: If the search confirms the drink name (e.g. "Making a Paper Plane") but lacks full specs, USE YOUR KNOWLEDGE of the standard recipe for that drink to fill in the missing parts.
+      3. **Riff/Twist**: If it's a variation, prioritize the ingredients mentioned in the search, but fall back to standard ratios for the rest.
+
+      ### CLASSIFICATION STRATEGY
+      Classify the drink into one of these strict families based on structure:
+      - Ancestrals (Spirit + Sugar + Bitters) e.g. Old Fashioned, Sazerac
+      - Spirit-Forward (Spirit + Vermouth/Amaro) e.g. Martini, Negroni, Manhattan
+      - Sours (Spirit + Citrus + Sugar) e.g. Daiquiri, Margarita, Whiskey Sour
+      - Highballs (Spirit + Carbonation/Mixer) e.g. G&T, Mule
+      - Tiki (Complex Rum/Fruit/Spice) e.g. Mai Tai, Zombie
+      - Flips & Nogs (Egg/Dairy/Cream) e.g. White Russian, Egg Nog
+      - Champagne (Sparkling Wine base) e.g. French 75
+      - Punches (Fruit heavy/Batched style) e.g. Sangria
+      - Juleps (Spirit + Herb + Sugar) e.g. Mint Julep
+      - Modern Classics (Specific complex modern era drinks) e.g. Paper Plane, Penicillin
+
+      ### DESCRIPTION GENERATION
       - Write a "Flavor Summary" as the description. 
-      - Do NOT just say "A classic cocktail."
       - Format: "A [Texture] and [Dominant Flavor] drink with notes of [Secondary Flavor] and a [Finish] finish."
-
-      STRATEGY:
-      1. CAPTION CHECK: First, look for a written recipe in the caption, description, or page text.
-      2. VIDEO CONTENT EXTRACTION: If the recipe is NOT in the text/caption, assume it is contained within the video content.
-      3. MIXOLOGY FRAMEWORK FALLBACK: If quantities are missing, use standard frameworks (e.g. Sour = 2:1:1).
 
       RETURN JSON ONLY.
       JSON Structure:
       {
         "name": "string",
+        "category": "string (One of the families listed above)",
         "creator": "string (optional)",
         "description": "string (The Flavor Summary)",
         "ingredients": ["string", "string"],
@@ -149,18 +263,24 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
         "flavorProfile": {
           "Sweet": number, "Sour": number, "Bitter": number, "Boozy": number,
           "Herbal": number, "Fruity": number, "Spicy": number, "Smoky": number
+        },
+        "nutrition": {
+          "calories": number,
+          "carbs": number,
+          "abv": number
         }
       }
     `;
 
     try {
+      // Switch to MODEL_PRO for better search synthesis
       const response = await ai.models.generateContent({
-        model: MODEL_FLASH,
+        model: MODEL_PRO,
         contents: prompt,
         config: {
           // responseSchema is not compatible with googleSearch tool, so we parse manually
           tools: tools,
-          temperature: 0.3,
+          temperature: 0.1, // Low temp for factual extraction
         }
       });
       
@@ -169,11 +289,12 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
 
     } catch (error: any) {
       const errorMessage = error.message || JSON.stringify(error);
+      // Fallback to Flash if Pro/Search fails
       if (tools && (errorMessage.includes('xhr') || errorMessage.includes('Rpc') || errorMessage.includes('fetch') || errorMessage.includes('error code: 6') || errorMessage.includes('500'))) {
         console.warn("Search tool failed. Retrying with pure inference.", error);
         
         const fallbackResponse = await ai.models.generateContent({
-          model: MODEL_FLASH,
+          model: MODEL_FLASH, 
           contents: prompt + "\n(Note: External search failed. Infer details from text/URL context and mixology knowledge.)",
           config: { temperature: 0.4 }
         });
@@ -288,6 +409,12 @@ export const getRecommendations = async (
       ${MATCH_LOGIC}
       
       Suggest 3 cocktail recipes based on available ingredients.
+      
+      CRITICAL FORMATTING:
+      1. Ingredients MUST include standard volumes/measurements (e.g. "2 oz Gin", "0.75 oz Lime Juice"). Do not just list the name.
+      2. Instructions MUST be a detailed step-by-step array.
+      3. Include NUTRITION estimates (calories, carbs, and ABV) in the output.
+      
       Calculate Match Score (0-100) based on Ingredient Availability AND Palate Fit.
       Ensure description highlights flavor profile match.
     `;
@@ -328,7 +455,9 @@ export const recommendFromMenu = async (
       1. Identify ALL valid cocktail options listed on the menu image.
       2. INGREDIENT ANALYSIS: For each drink, analyze the listed ingredients to DEDUCE the flavor profile (0-10) using the RUBRIC above.
       3. DESCRIPTION: Generate a "Flavor Summary" description. e.g. "A refreshing and herbal gin cocktail with strong notes of cucumber and a tart lime finish."
-      4. Compare against User Palate for Match Score.
+      4. INSTRUCTIONS: Since these are menu items, set instructions to ["Order at bar"].
+      5. ESTIMATE NUTRITION: Provide an educated guess for calories, carbs, and final ABV based on likely ingredients.
+      6. Compare against User Palate for Match Score.
       
       OUTPUT JSON.
     `;
@@ -403,8 +532,10 @@ export const deduceRecipe = async (name: string, knownIngredients: string[]): Pr
       1. Create balanced measurements (Mixology Frameworks).
       2. Generate a 1-sentence FLAVOR SUMMARY as the description.
       3. Estimate the Flavor Profile (0-10) using the Rubric.
+      4. Determine the Cocktail Category (e.g. Sours, Spirit-Forward, Tiki).
+      5. Estimate Nutrition (Calories/Carbs/ABV).
       
-      OUTPUT JSON: { ingredients, instructions, description, flavorProfile }
+      OUTPUT JSON: { ingredients, instructions, description, flavorProfile, category, nutrition }
     `;
 
     const response = await ai.models.generateContent({
@@ -421,7 +552,9 @@ export const deduceRecipe = async (name: string, knownIngredients: string[]): Pr
       ingredients: knownIngredients.length > 0 ? knownIngredients : ["Spirit", "Modifier"],
       instructions: ["Mix ingredients with ice.", "Serve."],
       description: "Could not deduce specific recipe.",
-      flavorProfile: { Sweet: 5, Sour: 5, Bitter: 0, Boozy: 5, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 }
+      flavorProfile: { Sweet: 5, Sour: 5, Bitter: 0, Boozy: 5, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 },
+      category: "Uncategorized",
+      nutrition: { calories: 150, carbs: 5, abv: 15 }
     };
   }
 };

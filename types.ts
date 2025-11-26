@@ -21,39 +21,49 @@ export interface FlavorProfile {
   [FlavorDimension.SMOKY]: number;
 }
 
+export interface Nutrition {
+  calories: number;
+  carbs: number; // in grams
+  abv?: number; // Final Alcohol by Volume percentage
+}
+
 export interface Cocktail {
   id: string;
   name: string;
+  category?: string; // New field for AI classification (e.g. "Ancestrals", "Tiki")
   description: string;
   ingredients: string[];
-  instructions: string[]; // Added instructions
+  instructions: string[]; 
   flavorProfile: FlavorProfile;
+  nutrition?: Nutrition; // New field for AI Nutritionist estimates
   imageUrl?: string;
   source?: 'Manual' | 'Social' | 'Scan' | 'Order';
-  originalLink?: string;
+  originalLink?: string; 
+  externalLinks?: string[]; 
   creator?: string;
-  creatorType?: 'Person' | 'Establishment' | 'Online'; // Added creator type for categorization
+  creatorType?: 'Person' | 'Establishment' | 'Online'; 
   dateAdded: string;
-  rating?: number; // 1-5 Stars
-  matchScore?: number; // 0-100 Match score for recommendations/scans
+  rating?: number; 
+  matchScore?: number; 
 }
 
 export interface Recommendation {
   name: string;
   description: string;
-  matchScore: number; // 0-100
+  matchScore: number; 
   ingredientsToUse: string[];
   missingIngredients: string[];
-  instructions: string;
+  instructions: string[]; 
   flavorProfile: FlavorProfile;
+  nutrition?: Nutrition;
 }
 
 export interface Ingredient {
   id: string;
   name: string;
   category: 'Spirit' | 'Mixer' | 'Garnish' | 'Other';
-  volume?: string; // e.g. "750ml", "50% full"
-  flavorNotes?: string; // e.g. "Juniper, citrus, floral"
+  volume?: string; 
+  flavorNotes?: string; 
 }
 
 export interface ShoppingListItem {
@@ -66,14 +76,18 @@ export interface MasterIngredient {
   id: string;
   name: string;
   category: 'Spirit' | 'Mixer' | 'Garnish' | 'Other';
-  subCategory?: string; // e.g. "Rye Whiskey", "London Dry Gin"
-  abv?: number; // Alcohol by volume percentage (e.g. 40, 50)
+  subCategory?: string; 
+  abv?: number; 
   defaultFlavorNotes?: string;
-  isGeneric?: boolean; // True if it's a category catch-all (e.g. "Rye Whiskey"), false if brand (e.g. "Sazerac Rye")
+  isGeneric?: boolean;
+  nutritionEstimate?: {
+    caloriesPerOz: number;
+    carbsPerOz: number;
+  };
 }
 
 export interface AppSettings {
-  lowStockKeywords: string[]; // e.g., ["empty", "low", "10%", "near empty"]
-  allergies: string[]; // New field for user allergies
-  handedness: 'right' | 'left'; // UI preference for one-handed use
+  lowStockKeywords: string[]; 
+  allergies: string[]; 
+  handedness: 'right' | 'left'; 
 }
