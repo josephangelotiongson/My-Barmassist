@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow } from 'lucide-react';
+import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow, LogIn, LogOut } from 'lucide-react';
+import { useAuth } from './client/src/hooks/useAuth';
 import FlavorRadar from './components/RadarChart';
 import IngredientScanner from './components/IngredientScanner';
 import RecipeImporter from './components/RecipeImporter';
@@ -167,6 +168,8 @@ const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1514362545857-3bc16549
 const TABS: Array<'palate' | 'recipes' | 'bar' | 'recommend'> = ['palate', 'recipes', 'bar', 'recommend'];
 
 export default function App() {
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  
   const [activeTab, setActiveTab] = useState<'palate' | 'recipes' | 'bar' | 'recommend'>('palate');
   const [palateView, setPalateView] = useState<'diagnosis' | 'wheel'>('diagnosis');
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
@@ -660,6 +663,38 @@ export default function App() {
                  >
                     <Settings className="w-5 h-5" />
                  </button>
+                 {isAuthLoading ? (
+                    <div className="w-8 h-8 rounded-full bg-stone-800 animate-pulse" />
+                 ) : isAuthenticated ? (
+                    <div className="flex items-center gap-2">
+                       {user?.profileImageUrl ? (
+                          <img 
+                             src={user.profileImageUrl} 
+                             alt={user.firstName || 'User'} 
+                             className="w-8 h-8 rounded-full object-cover border-2 border-primary"
+                          />
+                       ) : (
+                          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
+                             {user?.firstName?.[0] || user?.email?.[0] || 'U'}
+                          </div>
+                       )}
+                       <a 
+                          href="/api/logout" 
+                          className="p-2 rounded-full hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
+                          title="Log out"
+                       >
+                          <LogOut className="w-4 h-4" />
+                       </a>
+                    </div>
+                 ) : (
+                    <a 
+                       href="/api/login" 
+                       className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary hover:bg-primary/80 text-white text-sm font-medium transition-colors"
+                    >
+                       <LogIn className="w-4 h-4" />
+                       <span>Log In</span>
+                    </a>
+                 )}
               </div>
             </>
           )}
