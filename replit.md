@@ -9,6 +9,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 ## Recent Changes (November 28, 2025)
 
 - Initial import and setup for Replit environment
+- Added missing script tag to index.html for Vite entry point (project was exported from AI Studio with CDN-based loading)
 - Configured Vite to run on port 5000 with proxy support (`allowedHosts: true`)
 - Set up GEMINI_API_KEY as a secret for AI functionality
 - Configured deployment as static site with build step
