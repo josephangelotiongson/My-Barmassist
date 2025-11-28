@@ -2,19 +2,19 @@
 
 ## Overview
 
-This is a sophisticated cocktail/bar assistant application built with React, TypeScript, Express, and PostgreSQL. It leverages Google's Gemini AI to provide intelligent recipe recommendations, ingredient scanning, flavor profiling, and cocktail creation assistance. The application includes user authentication via Replit Auth and persistent storage for user preferences, recipes, and ratings.
+This is a sophisticated cocktail/bar assistant application built with React, TypeScript, Express, and PostgreSQL. It leverages Google's Gemini AI to provide intelligent recipe recommendations, ingredient scanning, flavor profiling, and cocktail creation assistance. The application includes custom email/password authentication and persistent storage for user preferences, recipes, and ratings.
 
-**Current State**: Full-stack application running in the Replit environment on port 5000 with Replit Auth integration.
+**Current State**: Full-stack application running in the Replit environment on port 5000 with email/password authentication.
 
 ## Recent Changes (November 28, 2025)
 
 - Converted from frontend-only to full-stack architecture
-- Added Replit Auth integration for user login/logout functionality
+- Added custom email/password authentication (signup and login with any email)
 - Set up PostgreSQL database with Drizzle ORM for data persistence
 - Created database schema for users, sessions, recipes, ratings, shopping lists, and settings
 - Added React Query for API state management
 - Updated deployment configuration for full-stack app (autoscale)
-- Added login/logout UI to the app header
+- Added login/logout UI with modal-based authentication forms
 
 ## Project Architecture
 
@@ -23,7 +23,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - **Backend Framework**: Express.js with TypeScript
 - **Build Tool**: Vite 6.2.0
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Replit Auth (Passport + OpenID Connect)
+- **Authentication**: Custom email/password auth with bcrypt
 - **Session Storage**: PostgreSQL-backed sessions (connect-pg-simple)
 - **UI Components**: Custom components with Lucide React icons
 - **Charts**: Recharts for flavor profile visualization
@@ -36,7 +36,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 ├── server/              # Backend server code
 │   ├── index.ts         # Express server entry point
 │   ├── routes.ts        # API route definitions
-│   ├── replitAuth.ts    # Replit Auth configuration
+│   ├── auth.ts          # Email/password auth configuration
 │   ├── storage.ts       # Database storage methods
 │   ├── db.ts            # Database connection
 │   └── vite.ts          # Vite middleware for development
@@ -49,6 +49,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 │       └── lib/
 │           └── queryClient.ts  # React Query client
 ├── components/          # React components
+│   ├── AuthModal.tsx    # Login/Signup modal
 │   ├── FlavorWheel.tsx
 │   ├── HistoryInput.tsx
 │   ├── HowItWorksModal.tsx
@@ -69,7 +70,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 ```
 
 ### Database Schema
-- **users**: User profiles (synced from Replit Auth)
+- **users**: User profiles with email/password authentication
 - **sessions**: PostgreSQL-backed session storage
 - **recipes**: User-created cocktail recipes
 - **ratings**: User ratings for cocktails
@@ -77,7 +78,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - **user_settings**: User preferences (API keys, bar location, etc.)
 
 ### Key Features
-- **User Authentication**: Login with Replit account, persistent sessions
+- **User Authentication**: Signup/login with any email and password, persistent sessions
 - **AI-Powered Recommendations**: Get cocktail suggestions based on available ingredients and flavor preferences
 - **Ingredient Scanner**: Scan your bar inventory using AI image recognition
 - **Flavor Profiling**: Visualize flavor dimensions (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky)
@@ -129,5 +130,5 @@ None set yet - will be documented as user expresses preferences during developme
 - The application uses Tailwind CSS via CDN (development warning is expected)
 - All AI features require the GEMINI_API_KEY to be set
 - User data is stored in PostgreSQL and persists across sessions
-- Authentication is handled by Replit Auth - users log in with their Replit accounts
+- Authentication is handled by custom email/password auth - users can sign up with any email
 - The backend serves the frontend in production and uses Vite middleware in development
