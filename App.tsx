@@ -200,6 +200,9 @@ export default function App() {
   const [isScanningMenu, setIsScanningMenu] = useState(false);
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
   
+  // Rate Limiter State for Image Generation
+  const [isImageGenCoolingDown, setIsImageGenCoolingDown] = useState(false);
+  
   const [barHelpMode, setBarHelpMode] = useState<'selection' | 'result' | null>(null);
   const [barHelpResult, setBarHelpResult] = useState<{ script: string, suggestion: string, reasoning: string } | null>(null);
   const [isGeneratingHelp, setIsGeneratingHelp] = useState(false);
@@ -222,6 +225,7 @@ export default function App() {
   const menuInputRef = useRef<HTMLInputElement>(null);
   const fabPosition = settings.handedness === 'left' ? 'left-4' : 'right-4';
 
+  // Swipe State
   const [touchStart, setTouchStart] = useState<{ x: number, y: number } | null>(null);
   const [touchEnd, setTouchEnd] = useState<{ x: number, y: number } | null>(null);
 
@@ -229,29 +233,66 @@ export default function App() {
       setTouchEnd(null);
       setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
   };
+
   const onTouchMove = (e: React.TouchEvent) => {
       setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
   };
+
   const onTouchEnd = () => {
       if (!touchStart || !touchEnd) return;
+      
       const distanceX = touchStart.x - touchEnd.x;
       const distanceY = touchStart.y - touchEnd.y;
+      
+      // Determine if swipe is more horizontal than vertical
       const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
-      const minSwipeDistance = 50;
+      const minSwipeDistance = 50; // Threshold in px
+
       if (isHorizontalSwipe && Math.abs(distanceX) > minSwipeDistance) {
-          const currentIndex = TABS.indexOf(activeTab);
-          if (distanceX > 0 && currentIndex < TABS.length - 1) setActiveTab(TABS[currentIndex + 1]);
-          if (distanceX < 0 && currentIndex > 0) setActiveTab(TABS[currentIndex - 1]);
+          const isSwipeLeft = distanceX > 0; // Finger moved Left, content moves Left (Go Next)
+          const isSwipeRight = distanceX < 0; // Finger moved Right, content moves Right (Go Prev)
+          
+          // Switch SUB-TABS based on active page
+          if (activeTab === 'palate') {
+              if (isSwipeLeft && palateView === 'diagnosis') setPalateView('wheel');
+              if (isSwipeRight && palateView === 'wheel') setPalateView('diagnosis');
+          } else if (activeTab === 'recipes') {
+              if (isSwipeLeft && formularyView === 'drinks') setFormularyView('creators');
+              if (isSwipeRight && formularyView === 'creators') setFormularyView('drinks');
+          } else if (activeTab === 'bar') {
+              if (isSwipeLeft && barView === 'shopping') setBarView('pantry');
+              if (isSwipeRight && barView === 'pantry') setBarView('shopping');
+          } else if (activeTab === 'recommend') {
+              if (isSwipeLeft && rxView === 'recommend') setRxView('history');
+              if (isSwipeRight && rxView === 'history') setRxView('recommend');
+          }
       }
   };
 
+  // --- THROTTLED IMAGE GENERATION QUEUE ---
   useEffect(() => {
+    // Logic: Find one drink that needs an image, process it, then wait 4 seconds.
+    // This prevents API overload when 200+ drinks are loaded.
+    
+    if (isImageGenCoolingDown) return; // Wait for cool down
+    if (generatingImages.size >= 1) return; // Strict Limit: 1 concurrent generation
+
     const missingImageDrinks = history.filter(drink => !drink.imageUrl && !generatingImages.has(drink.id));
-    if (missingImageDrinks.length > 0 && generatingImages.size < 3) {
+
+    if (missingImageDrinks.length > 0) {
       const drinkToVisualize = missingImageDrinks[0];
-      handleGenerateImage(null, drinkToVisualize);
+      
+      // Start Cool Down Timer immediately to prevent other effects from firing
+      setIsImageGenCoolingDown(true);
+      
+      handleGenerateImage(null, drinkToVisualize).finally(() => {
+          // Keep cooling down for a few seconds AFTER completion to space out requests
+          setTimeout(() => {
+              setIsImageGenCoolingDown(false);
+          }, 4000); // 4 second delay between generations
+      });
     }
-  }, [history, generatingImages]);
+  }, [history, generatingImages, isImageGenCoolingDown]);
 
   const enrichPantryItem = async (ingredient: Ingredient) => {
     if (ingredient.flavorNotes) return;
@@ -361,12 +402,15 @@ export default function App() {
   const handleGenerateImage = async (e: React.MouseEvent | null, cocktail: Cocktail) => {
       e?.stopPropagation();
       if (generatingImages.has(cocktail.id)) return;
+      
       setGeneratingImages(prev => new Set(prev).add(cocktail.id));
+      
       try {
           const imageUrl = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
           if (imageUrl) {
               setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl } : c));
           } else {
+             // Set fallback if undefined returned
              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));
           }
       } catch (e) {
@@ -416,6 +460,7 @@ export default function App() {
             dateAdded: new Date().toISOString()
         };
         setSelectedCocktail(tempRecipe);
+        // Force generation for new view
         handleGenerateImage(null, tempRecipe);
     } catch (e) { alert("Could not generate recipe."); }
   };

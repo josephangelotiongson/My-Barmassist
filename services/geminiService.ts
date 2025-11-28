@@ -220,6 +220,7 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
          - Assume standard values (e.g. 1.5oz Spirit ~96cal, 1oz Simple Syrup ~50cal/14g carb, 1oz Citrus ~8cal/2g carb). 
          - Be reasonably accurate but explicit that this is an estimate.
       5. ESTIMATE ABV: Calculate the final Alcohol By Volume (%) based on the ingredients.
+      6. GENERATE LORE: Write a brief but engaging 'history' section explaining the origin, creator, or interesting trivia about this cocktail (or ingredient combo if it's a riff).
 
       ### VIDEO "WATCHING" & LINK ANALYSIS STRATEGY
       - The user has likely provided a link to a cocktail video (TikTok/Instagram/YouTube).
@@ -258,6 +259,7 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
         "category": "string (One of the families listed above)",
         "creator": "string (optional)",
         "description": "string (The Flavor Summary)",
+        "history": "string (Historical background, origin story, or fun fact)",
         "ingredients": ["string", "string"],
         "instructions": ["string", "string"],
         "flavorProfile": {
@@ -314,7 +316,9 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
 export const generateCocktailImage = async (name: string, description: string, ingredients: string[]): Promise<string | undefined> => {
   try {
     const prompt = `
-      Create a hyper-realistic, cinematic professional food photography shot of a cocktail named "${name}".
+      Generate an image.
+      
+      Subject: A hyper-realistic, cinematic professional food photography shot of a cocktail named "${name}".
 
       VISUAL TEMPLATE:
       - SETTING: Dark, textured charcoal slate bar counter.
@@ -334,6 +338,11 @@ export const generateCocktailImage = async (name: string, description: string, i
     const response = await ai.models.generateContent({
       model: MODEL_IMAGE,
       contents: { parts: [{ text: prompt }] },
+      config: {
+        imageConfig: {
+            aspectRatio: "1:1"
+        }
+      }
     });
 
     if (response.candidates && response.candidates[0].content.parts) {
@@ -534,8 +543,9 @@ export const deduceRecipe = async (name: string, knownIngredients: string[]): Pr
       3. Estimate the Flavor Profile (0-10) using the Rubric.
       4. Determine the Cocktail Category (e.g. Sours, Spirit-Forward, Tiki).
       5. Estimate Nutrition (Calories/Carbs/ABV).
+      6. Write a brief History/Lore paragraph.
       
-      OUTPUT JSON: { ingredients, instructions, description, flavorProfile, category, nutrition }
+      OUTPUT JSON: { ingredients, instructions, description, flavorProfile, category, nutrition, history }
     `;
 
     const response = await ai.models.generateContent({
@@ -554,7 +564,8 @@ export const deduceRecipe = async (name: string, knownIngredients: string[]): Pr
       description: "Could not deduce specific recipe.",
       flavorProfile: { Sweet: 5, Sour: 5, Bitter: 0, Boozy: 5, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 },
       category: "Uncategorized",
-      nutrition: { calories: 150, carbs: 5, abv: 15 }
+      nutrition: { calories: 150, carbs: 5, abv: 15 },
+      history: "History unavailable for this deducted recipe."
     };
   }
 };

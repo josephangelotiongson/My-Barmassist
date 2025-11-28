@@ -32,6 +32,7 @@ export interface Cocktail {
   name: string;
   category?: string; // New field for AI classification (e.g. "Ancestrals", "Tiki")
   description: string;
+  history?: string; // New field for Historical Background / Lore
   ingredients: string[];
   instructions: string[]; 
   flavorProfile: FlavorProfile;
