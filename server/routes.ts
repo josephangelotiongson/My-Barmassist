@@ -1,27 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  await setupAuth(app);
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  setupAuth(app);
 
   // User recipes routes
   app.get('/api/recipes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const recipes = await storage.getUserRecipes(userId);
       res.json(recipes);
     } catch (error) {
@@ -32,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recipes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const recipe = await storage.createRecipe({ ...req.body, userId });
       res.json(recipe);
     } catch (error) {
@@ -43,7 +31,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/recipes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       const recipe = await storage.updateRecipe(id, userId, req.body);
       if (!recipe) {
@@ -58,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/recipes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       await storage.deleteRecipe(id, userId);
       res.json({ success: true });
@@ -71,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User ratings/history routes
   app.get('/api/ratings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const ratings = await storage.getUserRatings(userId);
       res.json(ratings);
     } catch (error) {
@@ -82,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/ratings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const rating = await storage.createRating({ ...req.body, userId });
       res.json(rating);
     } catch (error) {
@@ -93,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/ratings/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       await storage.deleteRating(id, userId);
       res.json({ success: true });
@@ -106,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Shopping list routes
   app.get('/api/shopping-list', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const items = await storage.getUserShoppingList(userId);
       res.json(items);
     } catch (error) {
@@ -117,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/shopping-list', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const item = await storage.addToShoppingList({ ...req.body, userId });
       res.json(item);
     } catch (error) {
@@ -128,7 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/shopping-list/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       const item = await storage.updateShoppingItem(id, userId, req.body);
       if (!item) {
@@ -143,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/shopping-list/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       await storage.removeFromShoppingList(id, userId);
       res.json({ success: true });
@@ -156,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User settings routes
   app.get('/api/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const settings = await storage.getUserSettings(userId);
       res.json(settings || {});
     } catch (error) {
@@ -167,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const settings = await storage.upsertUserSettings({ ...req.body, userId });
       res.json(settings);
     } catch (error) {

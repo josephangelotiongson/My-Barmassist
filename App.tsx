@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from './client/src/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import FlavorRadar from './components/RadarChart';
 import IngredientScanner from './components/IngredientScanner';
 import RecipeImporter from './components/RecipeImporter';
@@ -10,6 +11,7 @@ import FlavorWheel from './components/FlavorWheel';
 import SettingsModal from './components/SettingsModal';
 import ShoppingListAddModal from './components/ShoppingListAddModal';
 import HowItWorksModal from './components/HowItWorksModal';
+import AuthModal from './components/AuthModal';
 import { Cocktail, Ingredient, FlavorProfile, FlavorDimension, Recommendation, ShoppingListItem, MasterIngredient, AppSettings, Nutrition } from './types';
 import { getRecommendations, generateCocktailImage, enrichIngredientDetails, recommendFromMenu, getBarOrderSuggestion, deduceRecipe } from './services/geminiService';
 import { INITIAL_MASTER_DATA, INITIAL_RECIPES_DATA } from './initialData';
@@ -169,7 +171,9 @@ const TABS: Array<'palate' | 'recipes' | 'bar' | 'recommend'> = ['palate', 'reci
 
 export default function App() {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'palate' | 'recipes' | 'bar' | 'recommend'>('palate');
   const [palateView, setPalateView] = useState<'diagnosis' | 'wheel'>('diagnosis');
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
@@ -678,22 +682,25 @@ export default function App() {
                              {user?.firstName?.[0] || user?.email?.[0] || 'U'}
                           </div>
                        )}
-                       <a 
-                          href="/api/logout" 
+                       <button 
+                          onClick={async () => {
+                            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                            queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                          }}
                           className="p-2 rounded-full hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
                           title="Log out"
                        >
                           <LogOut className="w-4 h-4" />
-                       </a>
+                       </button>
                     </div>
                  ) : (
-                    <a 
-                       href="/api/login" 
+                    <button 
+                       onClick={() => setIsAuthModalOpen(true)}
                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary hover:bg-primary/80 text-white text-sm font-medium transition-colors"
                     >
                        <LogIn className="w-4 h-4" />
                        <span>Log In</span>
-                    </a>
+                    </button>
                  )}
               </div>
             </>
@@ -761,6 +768,12 @@ export default function App() {
        <HowItWorksModal 
           isOpen={isHowItWorksOpen}
           onClose={() => setIsHowItWorksOpen(false)}
+       />
+
+       <AuthModal 
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] })}
        />
 
        <main className="flex-1 bg-background relative overflow-hidden">
