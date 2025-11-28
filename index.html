@@ -10,11 +10,11 @@
         theme: {
           extend: {
             colors: {
-              background: '#1c1917', // Stone 900 (Lighter than previous 950)
-              surface: '#292524', // Stone 800 (Lighter than previous 900)
-              primary: '#b91c1c', // Red 700 (Vintage RX Red)
-              secondary: '#ca8a04', // Yellow 600 (Antique Wheat Gold)
-              accent: '#4d7c0f', // Lime 700 (Herbal Olive Green)
+              background: '#1c1917',
+              surface: '#292524',
+              primary: '#b91c1c',
+              secondary: '#ca8a04',
+              accent: '#4d7c0f',
             },
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
@@ -26,11 +26,10 @@
     <style>
       body {
         background-color: #1c1917;
-        color: #e7e5e4; /* Stone 200 */
+        color: #e7e5e4;
       }
-      /* Custom scrollbar for webkit */
       ::-webkit-scrollbar {
-        width: 4px; /* Thinner for mobile */
+        width: 4px;
       }
       ::-webkit-scrollbar-track {
         background: #1c1917; 
@@ -42,29 +41,15 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #57534e; 
       }
-      /* Hide scrollbar for Chrome, Safari and Opera */
       .scrollbar-hide::-webkit-scrollbar {
           display: none;
       }
-      /* Hide scrollbar for IE, Edge and Firefox */
       .scrollbar-hide {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "recharts": "https://aistudiocdn.com/recharts@^3.4.1"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
