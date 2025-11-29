@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   FlaskConical, Sparkles, ChevronDown, ChevronUp, ArrowRight, 
   Loader2, RefreshCw, Beaker, Target, Lightbulb, Check, X,
-  Plus, Minus, Shuffle, Disc, Sliders
+  Plus, Minus, Shuffle, Disc, Sliders, Save, Wine, BookOpen,
+  ExternalLink, Database
 } from 'lucide-react';
 import { Cocktail, FlavorProfile, FlavorDimension } from '../types';
 import {
@@ -45,6 +46,16 @@ const DEFAULT_PROFILE: FlavorProfile = {
   [FlavorDimension.SMOKY]: 1,
 };
 
+interface ExistingRiff {
+  id: number;
+  slug: string;
+  name: string;
+  ingredients: string[];
+  flavorProfile: FlavorProfile | null;
+  description?: string;
+  parentRecipeName: string;
+}
+
 const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
@@ -55,6 +66,14 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSubs, setAppliedSubs] = useState<Set<number>>(new Set());
   const [editorMode, setEditorMode] = useState<'wheel' | 'sliders'>('wheel');
+  
+  // Riff saving states
+  const [riffName, setRiffName] = useState('');
+  const [isSavingRiff, setIsSavingRiff] = useState(false);
+  const [existingRiff, setExistingRiff] = useState<ExistingRiff | null>(null);
+  const [isCheckingRiff, setIsCheckingRiff] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [savedRiff, setSavedRiff] = useState<ExistingRiff | null>(null);
 
   const getRecipeProfile = (recipe: Cocktail): FlavorProfile => {
     return recipe.flavorProfile && Object.keys(recipe.flavorProfile).length > 0 
@@ -160,6 +179,125 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
     
     return ingredients;
   };
+
+  // Get applied substitutions array
+  const getAppliedSubstitutions = () => {
+    if (!labResult) return [];
+    return labResult.substitutions.filter((_, idx) => appliedSubs.has(idx));
+  };
+
+  // Generate a default riff name
+  const generateRiffName = () => {
+    if (!selectedRecipe) return '';
+    const subs = getAppliedSubstitutions();
+    if (subs.length === 0) return `${selectedRecipe.name} Riff`;
+    const mainSub = subs[0];
+    return `${selectedRecipe.name} (${mainSub.replacement} Riff)`;
+  };
+
+  // Check if a similar riff already exists
+  const checkForExistingRiff = async () => {
+    if (!selectedRecipe) return;
+    
+    const modifiedIngredients = getModifiedIngredients();
+    const parentSlug = selectedRecipe.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    
+    setIsCheckingRiff(true);
+    setExistingRiff(null);
+    
+    try {
+      const response = await fetch('/api/lab/riffs/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          parentRecipeSlug: parentSlug,
+          ingredients: modifiedIngredients,
+          proposedName: riffName || generateRiffName()
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.exists && data.riff) {
+          setExistingRiff(data.riff);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for existing riff:', error);
+    } finally {
+      setIsCheckingRiff(false);
+    }
+  };
+
+  // Save the riff to the database
+  const saveRiff = async () => {
+    if (!selectedRecipe || appliedSubs.size === 0) return;
+    
+    const name = riffName || generateRiffName();
+    const parentSlug = selectedRecipe.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    const modifiedIngredients = getModifiedIngredients();
+    const appliedSubstitutions = getAppliedSubstitutions();
+    
+    setIsSavingRiff(true);
+    setSaveSuccess(false);
+    
+    try {
+      const response = await fetch('/api/lab/riffs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          parentRecipeSlug: parentSlug,
+          parentRecipeName: selectedRecipe.name,
+          ingredients: modifiedIngredients,
+          instructions: selectedRecipe.instructions || [],
+          substitutions: appliedSubstitutions,
+          flavorProfile: labResult?.predictedProfile || targetProfile
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSavedRiff(data);
+        setSaveSuccess(true);
+      } else if (response.status === 409) {
+        // Duplicate exists
+        const data = await response.json();
+        setExistingRiff(data.existingRiff);
+      } else if (response.status === 401) {
+        setErrorMessage('Please log in to save your riff.');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setErrorMessage(errorData.message || 'Failed to save riff. Please try again.');
+      }
+    } catch (error) {
+      setErrorMessage('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSavingRiff(false);
+    }
+  };
+
+  // Reset riff state when substitutions change
+  React.useEffect(() => {
+    setSaveSuccess(false);
+    setSavedRiff(null);
+    setExistingRiff(null);
+  }, [appliedSubs.size, selectedRecipe?.name]);
+
+  // Generate default riff name when substitutions are applied
+  React.useEffect(() => {
+    if (appliedSubs.size > 0 && selectedRecipe && labResult) {
+      const subs = labResult.substitutions.filter((_, idx) => appliedSubs.has(idx));
+      if (subs.length > 0) {
+        const mainSub = subs[0];
+        setRiffName(`${selectedRecipe.name} (${mainSub.replacement} Riff)`);
+      } else {
+        setRiffName(`${selectedRecipe.name} Riff`);
+      }
+    }
+  }, [appliedSubs.size, selectedRecipe?.name, labResult?.substitutions]);
 
   const originalProfile = useMemo(() => {
     return selectedRecipe ? getRecipeProfile(selectedRecipe) : DEFAULT_PROFILE;
@@ -512,18 +650,151 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
               </div>
 
               {appliedSubs.size > 0 && (
-                <div className="bg-surface rounded-2xl border border-stone-700 p-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Beaker className="w-4 h-4 text-secondary" />
-                    Modified Recipe
-                  </h3>
-                  <div className="space-y-1.5">
-                    {getModifiedIngredients().map((ing, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
-                        <span className="text-stone-300">{ing}</span>
+                <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-2xl border border-amber-800/30 overflow-hidden">
+                  <div className="bg-gradient-to-r from-amber-900/40 to-orange-900/30 px-4 py-3 border-b border-amber-800/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wine className="w-5 h-5 text-amber-400" />
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Your New Riff</h3>
                       </div>
-                    ))}
+                      {existingRiff && (
+                        <span className="flex items-center gap-1 text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded-full border border-blue-700/50">
+                          <Database className="w-3 h-3" />
+                          Existing Riff Found
+                        </span>
+                      )}
+                      {saveSuccess && (
+                        <span className="flex items-center gap-1 text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded-full border border-green-700/50">
+                          <Check className="w-3 h-3" />
+                          Saved!
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 space-y-4">
+                    {/* Riff Name Input */}
+                    {!saveSuccess && !existingRiff && (
+                      <div>
+                        <label className="block text-xs text-stone-400 mb-1.5 uppercase tracking-wider">Riff Name</label>
+                        <input
+                          type="text"
+                          value={riffName}
+                          onChange={(e) => setRiffName(e.target.value)}
+                          placeholder={generateRiffName()}
+                          className="w-full bg-stone-800/80 border border-stone-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-600 transition-colors"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Show saved or existing riff name */}
+                    {(saveSuccess || existingRiff) && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-700/50 to-orange-800/50 flex items-center justify-center border border-amber-700/30">
+                          <FlaskConical className="w-6 h-6 text-amber-300" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">
+                            {savedRiff?.name || existingRiff?.name}
+                          </h4>
+                          <p className="text-xs text-stone-400">
+                            Riff of {selectedRecipe?.name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Ingredients List */}
+                    <div>
+                      <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Ingredients</p>
+                      <div className="bg-stone-800/50 rounded-xl p-3 space-y-1.5">
+                        {getModifiedIngredients().map((ing, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span className="text-stone-300">{ing}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Flavor Profile Preview */}
+                    {labResult?.predictedProfile && (
+                      <div>
+                        <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Predicted Flavor Profile</p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {Object.entries(labResult.predictedProfile).map(([dim, value]) => (
+                            <div key={dim} className="text-center">
+                              <div className="h-1.5 bg-stone-700 rounded-full overflow-hidden mb-1">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-600 to-orange-500"
+                                  style={{ width: `${(Number(value) / 10) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] text-stone-400">{dim}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Substitutions Applied */}
+                    <div>
+                      <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Modifications Made</p>
+                      <div className="space-y-1.5">
+                        {getAppliedSubstitutions().map((sub, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs bg-stone-800/50 rounded-lg px-2 py-1.5">
+                            <span className="text-red-400 line-through">{sub.original}</span>
+                            <ArrowRight className="w-3 h-3 text-stone-500" />
+                            <span className="text-green-400 font-medium">{sub.replacement}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Existing Riff Message */}
+                    {existingRiff && (
+                      <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-3">
+                        <p className="text-sm text-blue-300 mb-2">
+                          This riff already exists in your collection!
+                        </p>
+                        <p className="text-xs text-stone-400">
+                          {existingRiff.description || `A variation of ${existingRiff.parentRecipeName} with similar ingredients.`}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Save Button */}
+                    {!saveSuccess && !existingRiff && (
+                      <button
+                        onClick={saveRiff}
+                        disabled={isSavingRiff}
+                        className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+                      >
+                        {isSavingRiff ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving Riff...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Save Riff to Collection
+                          </>
+                        )}
+                      </button>
+                    )}
+                    
+                    {/* Success Message */}
+                    {saveSuccess && savedRiff && (
+                      <div className="bg-green-950/30 border border-green-800/50 rounded-xl p-3 text-center">
+                        <p className="text-sm text-green-300 mb-1">
+                          Your riff has been saved and added to the cocktail family tree!
+                        </p>
+                        <p className="text-xs text-stone-400">
+                          Find it in your Barmulary under Lab Riffs.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

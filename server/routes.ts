@@ -1010,6 +1010,312 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper: Compute ingredient signature hash for deduplication
+  function computeIngredientSignature(ingredients: string[], parentSlug: string): string {
+    // Normalize ingredients: lowercase, remove measurements, sort alphabetically
+    const normalized = ingredients
+      .map(ing => {
+        // Remove common measurements and quantities
+        return ing.toLowerCase()
+          .replace(/\d+(\.\d+)?/g, '') // Remove numbers
+          .replace(/(oz|ml|cl|dash|dashes|splash|drop|drops|tsp|tbsp|bar\s*spoon|cup|slice|slices|wedge|wedges|wheel|wheels|twist|twists|sprig|sprigs|leaf|leaves|piece|pieces|inch|cm)/gi, '')
+          .replace(/[^\w\s]/g, '') // Remove special characters
+          .trim()
+          .split(/\s+/)
+          .filter(w => w.length > 2) // Remove short words
+          .sort()
+          .join(' ');
+      })
+      .filter(ing => ing.length > 0)
+      .sort()
+      .join('|');
+    
+    // Create a simple hash from the normalized string + parent
+    const combined = `${parentSlug}:${normalized}`;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return `sig_${Math.abs(hash).toString(16)}`;
+  }
+
+  // Helper: Generate a URL-friendly slug
+  function generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 100);
+  }
+
+  // Lab Riffs - Detect if similar riff exists
+  app.post('/api/lab/riffs/detect', async (req, res) => {
+    try {
+      const { parentRecipeSlug, ingredients, proposedName } = req.body;
+      
+      if (!parentRecipeSlug || !ingredients) {
+        return res.status(400).json({ 
+          message: "Missing required fields: parentRecipeSlug and ingredients" 
+        });
+      }
+      
+      const signatureHash = computeIngredientSignature(ingredients, parentRecipeSlug);
+      console.log(`[Lab] Detecting riff for parent "${parentRecipeSlug}" with signature: ${signatureHash}`);
+      
+      // Check for exact signature match first
+      const existingBySignature = await storage.getLabRiffBySignature(signatureHash);
+      if (existingBySignature) {
+        console.log(`[Lab] Found existing riff by signature: ${existingBySignature.name}`);
+        return res.json({ 
+          exists: true, 
+          matchType: 'signature',
+          riff: existingBySignature 
+        });
+      }
+      
+      // Check for name match if proposed name is provided
+      if (proposedName) {
+        const proposedSlug = generateSlug(proposedName);
+        const existingByName = await storage.getLabRiffBySlug(proposedSlug);
+        if (existingByName) {
+          console.log(`[Lab] Found existing riff by name: ${existingByName.name}`);
+          return res.json({ 
+            exists: true, 
+            matchType: 'name',
+            riff: existingByName 
+          });
+        }
+      }
+      
+      // No match found
+      res.json({ 
+        exists: false, 
+        signatureHash,
+        suggestedSlug: proposedName ? generateSlug(proposedName) : null
+      });
+    } catch (error: any) {
+      console.error("Error detecting lab riff:", error);
+      res.status(500).json({ 
+        message: "Failed to detect existing riff",
+        error: error.message 
+      });
+    }
+  });
+
+  // Lab Riffs - Create new riff with enrichment
+  app.post('/api/lab/riffs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { 
+        name, 
+        parentRecipeSlug, 
+        parentRecipeName,
+        ingredients, 
+        instructions,
+        substitutions,
+        flavorProfile 
+      } = req.body;
+      
+      if (!name || !parentRecipeSlug || !parentRecipeName || !ingredients) {
+        return res.status(400).json({ 
+          message: "Missing required fields: name, parentRecipeSlug, parentRecipeName, ingredients" 
+        });
+      }
+      
+      const slug = generateSlug(name);
+      const signatureHash = computeIngredientSignature(ingredients, parentRecipeSlug);
+      
+      // Check for duplicates before creating
+      const existingBySignature = await storage.getLabRiffBySignature(signatureHash);
+      if (existingBySignature) {
+        return res.status(409).json({ 
+          message: "A similar riff already exists",
+          existingRiff: existingBySignature 
+        });
+      }
+      
+      const existingBySlug = await storage.getLabRiffBySlug(slug);
+      if (existingBySlug) {
+        return res.status(409).json({ 
+          message: "A riff with this name already exists",
+          existingRiff: existingBySlug 
+        });
+      }
+      
+      console.log(`[Lab] Creating new riff "${name}" based on "${parentRecipeName}"`);
+      
+      // Create the riff with initial data
+      const newRiff = await storage.createLabRiff({
+        slug,
+        name,
+        parentRecipeSlug,
+        parentRecipeName,
+        userId,
+        ingredients,
+        instructions: instructions || [],
+        substitutions: substitutions || [],
+        flavorProfile: flavorProfile || null,
+        signatureHash,
+        enrichmentStatus: 'pending'
+      });
+      
+      // Trigger enrichment in background (don't await)
+      enrichLabRiff(newRiff.id, name, ingredients, parentRecipeName, substitutions).catch(err => {
+        console.error(`[Lab] Background enrichment failed for riff ${newRiff.id}:`, err);
+      });
+      
+      // Create lineage relationship
+      createRiffLineage(name, parentRecipeName, substitutions).catch(err => {
+        console.error(`[Lab] Failed to create lineage for riff ${name}:`, err);
+      });
+      
+      res.status(201).json(newRiff);
+    } catch (error: any) {
+      console.error("Error creating lab riff:", error);
+      res.status(500).json({ 
+        message: "Failed to create riff",
+        error: error.message 
+      });
+    }
+  });
+
+  // Lab Riffs - Get all riffs (optionally filtered by parent)
+  app.get('/api/lab/riffs', async (req, res) => {
+    try {
+      const { parent } = req.query;
+      
+      if (parent && typeof parent === 'string') {
+        const riffs = await storage.getLabRiffsForParent(parent);
+        return res.json(riffs);
+      }
+      
+      const riffs = await storage.getAllLabRiffs();
+      res.json(riffs);
+    } catch (error: any) {
+      console.error("Error fetching lab riffs:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch riffs",
+        error: error.message 
+      });
+    }
+  });
+
+  // Lab Riffs - Get riff by slug
+  app.get('/api/lab/riffs/:slug', async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const riff = await storage.getLabRiffBySlug(slug);
+      
+      if (!riff) {
+        return res.status(404).json({ message: "Riff not found" });
+      }
+      
+      res.json(riff);
+    } catch (error: any) {
+      console.error("Error fetching lab riff:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch riff",
+        error: error.message 
+      });
+    }
+  });
+
+  // Helper: Enrich lab riff with AI data
+  async function enrichLabRiff(
+    riffId: number, 
+    name: string, 
+    ingredients: string[], 
+    parentName: string,
+    substitutions: { original: string; replacement: string; rationale: string; }[]
+  ) {
+    try {
+      console.log(`[Lab] Starting enrichment for riff ${riffId}: "${name}"`);
+      
+      // Use existing enrichRecipeData function or create specific riff enrichment
+      const enrichmentPrompt = `
+        Analyze this cocktail riff:
+        
+        NAME: "${name}"
+        PARENT COCKTAIL: "${parentName}"
+        INGREDIENTS: ${JSON.stringify(ingredients)}
+        SUBSTITUTIONS MADE: ${JSON.stringify(substitutions)}
+        
+        Provide:
+        1. A brief description (2-3 sentences) explaining what makes this riff unique
+        2. The cocktail category (e.g., "Sours", "Old Fashioned Riffs", "Tiki", "Contemporary")
+        3. Recommended glass type
+        4. Garnish suggestion
+        5. A brief history/story of how this riff relates to its parent
+        6. Estimated nutrition (calories, sugar grams, ABV percent)
+        
+        Return as JSON with keys: description, category, glassType, garnish, history, nutrition (object with calories, sugarGrams, abvPercent)
+      `;
+      
+      // For now, use simpler enrichment - update with AI later
+      await storage.updateLabRiffEnrichment(riffId, {
+        category: 'Lab Riff',
+        description: `A creative variation of ${parentName} featuring ${substitutions.map(s => s.replacement).join(', ')}.`,
+        enrichmentStatus: 'complete',
+        enrichedAt: new Date()
+      });
+      
+      console.log(`[Lab] Enrichment complete for riff ${riffId}`);
+    } catch (error) {
+      console.error(`[Lab] Enrichment failed for riff ${riffId}:`, error);
+      await storage.updateLabRiffEnrichment(riffId, {
+        enrichmentStatus: 'failed'
+      });
+    }
+  }
+
+  // Helper: Create lineage relationship for new riff
+  async function createRiffLineage(
+    riffName: string, 
+    parentName: string,
+    substitutions: { original: string; replacement: string; rationale: string; }[]
+  ) {
+    try {
+      console.log(`[Lab] Creating lineage for riff "${riffName}" -> parent "${parentName}"`);
+      
+      // Get parent's lineage to inherit family
+      const parentLineage = await storage.getLineageByRecipeName(parentName);
+      
+      // Create lineage entry for the riff
+      await storage.upsertLineage({
+        recipeName: riffName,
+        familyId: parentLineage?.familyId || null,
+        relationship: `Lab riff of ${parentName}`,
+        keyModifications: substitutions.map(s => `${s.original} → ${s.replacement}`),
+        evolutionNarrative: `A creative variation born in the Flavor Lab, this riff transforms ${parentName} by ${substitutions.map(s => s.rationale).join('; ')}.`
+      });
+      
+      // Create descendant relationship from parent to riff
+      await storage.upsertRelationship({
+        sourceRecipe: parentName,
+        targetRecipe: riffName,
+        relationshipType: 'descendant',
+        era: 'Contemporary',
+        description: `Lab-created riff featuring: ${substitutions.map(s => `${s.original} → ${s.replacement}`).join(', ')}`
+      });
+      
+      // Create ancestor relationship from riff to parent
+      await storage.upsertRelationship({
+        sourceRecipe: riffName,
+        targetRecipe: parentName,
+        relationshipType: 'ancestor',
+        era: 'Contemporary',
+        description: `Original cocktail that inspired this Lab riff`
+      });
+      
+      console.log(`[Lab] Lineage created for riff "${riffName}"`);
+    } catch (error) {
+      console.error(`[Lab] Failed to create lineage for riff "${riffName}":`, error);
+    }
+  }
+
   const httpServer = createServer(app);
   return httpServer;
 }

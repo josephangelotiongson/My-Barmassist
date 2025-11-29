@@ -10,6 +10,7 @@ import {
   cocktailFamilies,
   cocktailLineage,
   cocktailRelationships,
+  labRiffs,
   type User,
   type UpsertUser,
   type UserRecipe,
@@ -29,6 +30,8 @@ import {
   type InsertCocktailLineage,
   type CocktailRelationship,
   type InsertCocktailRelationship,
+  type LabRiff,
+  type InsertLabRiff,
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, and, isNull, or } from "drizzle-orm";
@@ -96,6 +99,24 @@ export interface IStorage {
   getAllMasterIngredients(): Promise<MasterIngredient[]>;
   getMasterIngredientBySlug(slug: string): Promise<MasterIngredient | undefined>;
   getIngredientEnrichmentStats(): Promise<{ total: number; pending: number; complete: number; failed: number }>;
+  
+  // Lab Riffs operations
+  getAllLabRiffs(): Promise<LabRiff[]>;
+  getLabRiffBySlug(slug: string): Promise<LabRiff | undefined>;
+  getLabRiffBySignature(signatureHash: string): Promise<LabRiff | undefined>;
+  getLabRiffsForParent(parentRecipeSlug: string): Promise<LabRiff[]>;
+  createLabRiff(riff: InsertLabRiff): Promise<LabRiff>;
+  updateLabRiffEnrichment(id: number, enrichment: {
+    flavorProfile?: any;
+    nutrition?: any;
+    category?: string;
+    glassType?: string;
+    garnish?: string;
+    description?: string;
+    history?: string;
+    enrichmentStatus: string;
+    enrichedAt?: Date;
+  }): Promise<LabRiff | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -616,6 +637,52 @@ export class DatabaseStorage implements IStorage {
     const flavorBridges = await this.getRelationshipsByType(recipeName, 'flavor_bridge');
 
     return { lineage, family, ancestors, siblings, descendants, flavorBridges };
+  }
+
+  // Lab Riffs operations
+  async getAllLabRiffs(): Promise<LabRiff[]> {
+    return await db.select().from(labRiffs);
+  }
+
+  async getLabRiffBySlug(slug: string): Promise<LabRiff | undefined> {
+    const [riff] = await db.select().from(labRiffs).where(eq(labRiffs.slug, slug));
+    return riff;
+  }
+
+  async getLabRiffBySignature(signatureHash: string): Promise<LabRiff | undefined> {
+    const [riff] = await db.select().from(labRiffs).where(eq(labRiffs.signatureHash, signatureHash));
+    return riff;
+  }
+
+  async getLabRiffsForParent(parentRecipeSlug: string): Promise<LabRiff[]> {
+    return await db.select().from(labRiffs).where(eq(labRiffs.parentRecipeSlug, parentRecipeSlug));
+  }
+
+  async createLabRiff(riff: InsertLabRiff): Promise<LabRiff> {
+    const [newRiff] = await db.insert(labRiffs).values(riff).returning();
+    return newRiff;
+  }
+
+  async updateLabRiffEnrichment(id: number, enrichment: {
+    flavorProfile?: any;
+    nutrition?: any;
+    category?: string;
+    glassType?: string;
+    garnish?: string;
+    description?: string;
+    history?: string;
+    enrichmentStatus: string;
+    enrichedAt?: Date;
+  }): Promise<LabRiff | undefined> {
+    const [updated] = await db
+      .update(labRiffs)
+      .set({ 
+        ...enrichment, 
+        updatedAt: new Date() 
+      })
+      .where(eq(labRiffs.id, id))
+      .returning();
+    return updated;
   }
 }
 

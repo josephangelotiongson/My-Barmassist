@@ -201,6 +201,53 @@ export const recipeImages = pgTable("recipe_images", {
   index("idx_recipe_images_lookup").on(table.recipeName, table.creatorId),
 ]);
 
+// Lab Riffs - User-created cocktail variations from the Flavor Lab
+export const labRiffs = pgTable("lab_riffs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  slug: varchar("slug").notNull().unique(),
+  name: varchar("name").notNull(),
+  parentRecipeSlug: varchar("parent_recipe_slug").notNull(),
+  parentRecipeName: varchar("parent_recipe_name").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  ingredients: jsonb("ingredients").$type<string[]>().notNull(),
+  instructions: jsonb("instructions").$type<string[]>(),
+  substitutions: jsonb("substitutions").$type<{
+    original: string;
+    replacement: string;
+    rationale: string;
+  }[]>(),
+  flavorProfile: jsonb("flavor_profile").$type<{
+    Sweet: number;
+    Sour: number;
+    Bitter: number;
+    Boozy: number;
+    Herbal: number;
+    Fruity: number;
+    Spicy: number;
+    Smoky: number;
+  }>(),
+  nutrition: jsonb("nutrition").$type<{
+    calories: number;
+    sugarGrams: number;
+    abvPercent: number;
+  }>(),
+  category: varchar("category"),
+  glassType: varchar("glass_type"),
+  garnish: varchar("garnish"),
+  description: text("description"),
+  history: text("history"),
+  signatureHash: varchar("signature_hash").notNull(),
+  enrichmentStatus: varchar("enrichment_status").default("pending"),
+  enrichedAt: timestamp("enriched_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_lab_riffs_slug").on(table.slug),
+  index("idx_lab_riffs_parent").on(table.parentRecipeSlug),
+  index("idx_lab_riffs_signature").on(table.signatureHash),
+  index("idx_lab_riffs_user").on(table.userId),
+]);
+
 // Cocktail Families - The 6 root templates from Cocktail Codex
 export const cocktailFamilies = pgTable("cocktail_families", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -262,3 +309,5 @@ export type CocktailLineage = typeof cocktailLineage.$inferSelect;
 export type InsertCocktailLineage = typeof cocktailLineage.$inferInsert;
 export type CocktailRelationship = typeof cocktailRelationships.$inferSelect;
 export type InsertCocktailRelationship = typeof cocktailRelationships.$inferInsert;
+export type LabRiff = typeof labRiffs.$inferSelect;
+export type InsertLabRiff = typeof labRiffs.$inferInsert;
