@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlavorProfile, FlavorDimension } from '../types';
+import { FLAVOR_TAXONOMY, FlavorSelection, createEmptySelection, selectionToFlavorProfile, getSelectedLabels } from '../shared/flavorTaxonomy';
 
 interface Props {
   profile: FlavorProfile;
@@ -7,28 +8,6 @@ interface Props {
   onProfileChange: (profile: FlavorProfile) => void;
   size?: number;
 }
-
-const FLAVOR_COLORS: Record<FlavorDimension, string> = {
-  [FlavorDimension.SWEET]: '#f59e0b',
-  [FlavorDimension.SOUR]: '#84cc16',
-  [FlavorDimension.BITTER]: '#14b8a6',
-  [FlavorDimension.BOOZY]: '#a78bfa',
-  [FlavorDimension.HERBAL]: '#22c55e',
-  [FlavorDimension.FRUITY]: '#ec4899',
-  [FlavorDimension.SPICY]: '#f97316',
-  [FlavorDimension.SMOKY]: '#78716c',
-};
-
-const DIMENSION_ORDER = [
-  FlavorDimension.SWEET,
-  FlavorDimension.SOUR,
-  FlavorDimension.BITTER,
-  FlavorDimension.BOOZY,
-  FlavorDimension.HERBAL,
-  FlavorDimension.FRUITY,
-  FlavorDimension.SPICY,
-  FlavorDimension.SMOKY,
-];
 
 function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
   const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
@@ -56,88 +35,191 @@ function describeArc(x: number, y: number, innerRadius: number, outerRadius: num
 
 const EditableFlavorWheel: React.FC<Props> = ({ 
   profile, 
-  originalProfile,
   onProfileChange, 
-  size = 280 
+  size = 320 
 }) => {
   const center = size / 2;
-  const innerRadius = 50;
-  const outerRadius = size / 2 - 10;
-  const segmentAngle = 360 / 8;
-  const gap = 2;
+  const innerRingInner = 55;
+  const innerRingOuter = 95;
+  const outerRingInner = 100;
+  const outerRingOuter = size / 2 - 10;
+  
+  const categoryCount = FLAVOR_TAXONOMY.length;
+  const categoryAngle = 360 / categoryCount;
+  const gap = 1.5;
 
-  const toggleFlavor = (dim: FlavorDimension) => {
-    const currentValue = profile[dim] || 0;
-    const newValue = currentValue > 0 ? 0 : 7;
-    onProfileChange({
-      ...profile,
-      [dim]: newValue
+  const [selection, setSelection] = useState<FlavorSelection>(() => {
+    const sel = createEmptySelection();
+    Object.entries(profile).forEach(([key, value]) => {
+      if (typeof value === 'number' && value > 0) {
+        const cat = FLAVOR_TAXONOMY.find(c => c.label === key);
+        if (cat) {
+          sel.categories.add(cat.id);
+        }
+      }
     });
+    return sel;
+  });
+
+  const updateProfile = (newSelection: FlavorSelection) => {
+    setSelection(newSelection);
+    const newProfile = selectionToFlavorProfile(newSelection);
+    onProfileChange(newProfile as unknown as FlavorProfile);
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    const newSelection: FlavorSelection = {
+      categories: new Set<string>(selection.categories),
+      notes: new Set<string>(selection.notes),
+    };
+    
+    if (newSelection.categories.has(categoryId)) {
+      newSelection.categories.delete(categoryId);
+      const cat = FLAVOR_TAXONOMY.find(c => c.id === categoryId);
+      if (cat) {
+        cat.notes.forEach(n => newSelection.notes.delete(n.id));
+      }
+    } else {
+      newSelection.categories.add(categoryId);
+    }
+    
+    updateProfile(newSelection);
+  };
+
+  const toggleNote = (noteId: string, categoryId: string) => {
+    const newSelection: FlavorSelection = {
+      categories: new Set<string>(selection.categories),
+      notes: new Set<string>(selection.notes),
+    };
+    
+    if (newSelection.notes.has(noteId)) {
+      newSelection.notes.delete(noteId);
+      const cat = FLAVOR_TAXONOMY.find(c => c.id === categoryId);
+      if (cat) {
+        const hasOtherNotes = cat.notes.some(n => n.id !== noteId && newSelection.notes.has(n.id));
+        if (!hasOtherNotes && !newSelection.categories.has(categoryId)) {
+        }
+      }
+    } else {
+      newSelection.notes.add(noteId);
+      newSelection.categories.add(categoryId);
+    }
+    
+    updateProfile(newSelection);
   };
 
   const segments = useMemo(() => {
-    return DIMENSION_ORDER.map((dim, index) => {
-      const startAngle = index * segmentAngle + gap / 2;
-      const endAngle = (index + 1) * segmentAngle - gap / 2;
-      const midAngle = startAngle + (segmentAngle - gap) / 2;
+    return FLAVOR_TAXONOMY.map((cat, catIndex) => {
+      const catStartAngle = catIndex * categoryAngle + gap / 2;
+      const catEndAngle = (catIndex + 1) * categoryAngle - gap / 2;
+      const catMidAngle = catStartAngle + (categoryAngle - gap) / 2;
       
-      const value = profile[dim] || 0;
-      const isSelected = value > 0;
+      const isCategorySelected = selection.categories.has(cat.id);
+      const hasSelectedNotes = cat.notes.some(n => selection.notes.has(n.id));
       
-      const labelPos = polarToCartesian(center, center, (innerRadius + outerRadius) / 2, midAngle);
+      const innerLabelPos = polarToCartesian(center, center, (innerRingInner + innerRingOuter) / 2, catMidAngle);
+      
+      const noteSegments = cat.notes.map((note, noteIndex) => {
+        const noteAngleSpan = (categoryAngle - gap) / cat.notes.length;
+        const noteStartAngle = catStartAngle + noteIndex * noteAngleSpan + gap / 4;
+        const noteEndAngle = catStartAngle + (noteIndex + 1) * noteAngleSpan - gap / 4;
+        const noteMidAngle = noteStartAngle + noteAngleSpan / 2;
+        
+        const isNoteSelected = selection.notes.has(note.id);
+        const noteLabelPos = polarToCartesian(center, center, (outerRingInner + outerRingOuter) / 2, noteMidAngle);
+        
+        return {
+          ...note,
+          categoryId: cat.id,
+          startAngle: noteStartAngle,
+          endAngle: noteEndAngle,
+          midAngle: noteMidAngle,
+          isSelected: isNoteSelected,
+          labelPos: noteLabelPos,
+          color: cat.color,
+        };
+      });
 
       return {
-        dim,
-        startAngle,
-        endAngle,
-        midAngle,
-        value,
-        isSelected,
-        labelPos,
-        color: FLAVOR_COLORS[dim],
+        ...cat,
+        startAngle: catStartAngle,
+        endAngle: catEndAngle,
+        midAngle: catMidAngle,
+        isSelected: isCategorySelected,
+        hasSelectedNotes,
+        labelPos: innerLabelPos,
+        notes: noteSegments,
       };
     });
-  }, [profile, center, innerRadius, outerRadius, segmentAngle]);
+  }, [selection, center, categoryAngle]);
 
-  const selectedCount = segments.filter(s => s.isSelected).length;
+  const selectedLabels = getSelectedLabels(selection);
 
   return (
     <div className="flex flex-col items-center">
       <div className="relative" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
-          <circle cx={center} cy={center} r={outerRadius} fill="#1c1917" />
+          <circle cx={center} cy={center} r={outerRingOuter} fill="#1c1917" />
           
-          {segments.map((seg) => (
-            <g key={seg.dim} className="cursor-pointer" onClick={() => toggleFlavor(seg.dim)}>
-              <path
-                d={describeArc(center, center, innerRadius, outerRadius, seg.startAngle, seg.endAngle)}
-                fill={seg.isSelected ? seg.color : '#292524'}
-                stroke="#0c0a09"
-                strokeWidth="1.5"
-                className="transition-all duration-200 hover:brightness-110"
-                style={{ 
-                  opacity: seg.isSelected ? 1 : 0.6,
-                  filter: seg.isSelected ? 'saturate(1.2)' : 'none'
-                }}
-              />
+          {segments.map((cat) => (
+            <g key={cat.id}>
+              {cat.notes.map((note) => (
+                <g key={note.id} className="cursor-pointer" onClick={() => toggleNote(note.id, cat.id)}>
+                  <path
+                    d={describeArc(center, center, outerRingInner, outerRingOuter, note.startAngle, note.endAngle)}
+                    fill={note.isSelected ? note.color : '#292524'}
+                    stroke="#0c0a09"
+                    strokeWidth="1"
+                    className="transition-all duration-200 hover:brightness-125"
+                    style={{ 
+                      opacity: note.isSelected ? 1 : 0.5,
+                    }}
+                  />
+                  <text
+                    x={note.labelPos.x}
+                    y={note.labelPos.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={note.isSelected ? '#1c1917' : '#78716c'}
+                    fontSize="7"
+                    fontWeight={note.isSelected ? '700' : '500'}
+                    className="pointer-events-none select-none"
+                    transform={`rotate(${note.midAngle > 90 && note.midAngle < 270 ? note.midAngle + 180 : note.midAngle}, ${note.labelPos.x}, ${note.labelPos.y})`}
+                  >
+                    {note.label}
+                  </text>
+                </g>
+              ))}
               
-              <text
-                x={seg.labelPos.x}
-                y={seg.labelPos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={seg.isSelected ? '#1c1917' : '#a8a29e'}
-                fontSize="10"
-                fontWeight={seg.isSelected ? '700' : '500'}
-                className="pointer-events-none select-none transition-all duration-200"
-                transform={`rotate(${seg.midAngle > 90 && seg.midAngle < 270 ? seg.midAngle + 180 : seg.midAngle}, ${seg.labelPos.x}, ${seg.labelPos.y})`}
-              >
-                {seg.dim}
-              </text>
+              <g className="cursor-pointer" onClick={() => toggleCategory(cat.id)}>
+                <path
+                  d={describeArc(center, center, innerRingInner, innerRingOuter, cat.startAngle, cat.endAngle)}
+                  fill={cat.isSelected ? cat.color : '#3f3f46'}
+                  stroke="#0c0a09"
+                  strokeWidth="1.5"
+                  className="transition-all duration-200 hover:brightness-110"
+                  style={{ 
+                    opacity: cat.isSelected ? (cat.hasSelectedNotes ? 0.7 : 1) : 0.6,
+                  }}
+                />
+                <text
+                  x={cat.labelPos.x}
+                  y={cat.labelPos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={cat.isSelected ? '#1c1917' : '#a8a29e'}
+                  fontSize="9"
+                  fontWeight="700"
+                  className="pointer-events-none select-none"
+                  transform={`rotate(${cat.midAngle > 90 && cat.midAngle < 270 ? cat.midAngle + 180 : cat.midAngle}, ${cat.labelPos.x}, ${cat.labelPos.y})`}
+                >
+                  {cat.label}
+                </text>
+              </g>
             </g>
           ))}
           
-          <circle cx={center} cy={center} r={innerRadius - 5} fill="#1c1917" stroke="#292524" strokeWidth="2" />
+          <circle cx={center} cy={center} r={innerRingInner - 5} fill="#1c1917" stroke="#292524" strokeWidth="2" />
           
           <text
             x={center}
@@ -160,28 +242,32 @@ const EditableFlavorWheel: React.FC<Props> = ({
             fontWeight="bold"
             className="pointer-events-none select-none"
           >
-            Profile
+            Flavors
           </text>
         </svg>
       </div>
       
-      <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-        {segments.filter(s => s.isSelected).map(seg => (
-          <span 
-            key={seg.dim}
-            className="px-2 py-0.5 rounded-full text-xs font-medium"
-            style={{ backgroundColor: seg.color, color: '#1c1917' }}
-          >
-            {seg.dim}
-          </span>
-        ))}
-        {selectedCount === 0 && (
-          <span className="text-xs text-stone-500">Tap flavors to select</span>
+      <div className="mt-3 flex flex-wrap justify-center gap-1.5 max-w-xs">
+        {selectedLabels.map((label, i) => {
+          const cat = FLAVOR_TAXONOMY.find(c => c.label === label || c.notes.some(n => n.label === label));
+          const color = cat?.color || '#78716c';
+          return (
+            <span 
+              key={i}
+              className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+              style={{ backgroundColor: color, color: '#1c1917' }}
+            >
+              {label}
+            </span>
+          );
+        })}
+        {selectedLabels.length === 0 && (
+          <span className="text-xs text-stone-500">Tap to select flavors</span>
         )}
       </div>
       
-      <p className="text-xs text-stone-500 mt-2 text-center">
-        Tap segments to select desired flavors
+      <p className="text-[10px] text-stone-500 mt-2 text-center max-w-xs">
+        Inner ring = broad flavors • Outer ring = specific notes
       </p>
     </div>
   );
