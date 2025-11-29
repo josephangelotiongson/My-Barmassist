@@ -863,9 +863,8 @@ export default function App() {
                           </div>
                        )}
                        <button 
-                          onClick={async () => {
-                            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-                            queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                          onClick={() => {
+                            window.location.href = '/api/logout';
                           }}
                           className="p-2 rounded-full hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
                           title="Log out"
@@ -875,7 +874,9 @@ export default function App() {
                     </div>
                  ) : (
                     <button 
-                       onClick={() => setIsAuthModalOpen(true)}
+                       onClick={() => {
+                         window.location.href = '/api/login';
+                       }}
                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary hover:bg-primary/80 text-white text-sm font-medium transition-colors"
                     >
                        <LogIn className="w-4 h-4" />
