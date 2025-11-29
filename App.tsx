@@ -783,6 +783,8 @@ export default function App() {
   
   const [pantry, setPantry] = useState<Ingredient[]>(INITIAL_PANTRY);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
+  const [toConcoct, setToConcoct] = useState<Set<string>>(new Set()); // Recipe names marked for making
+  const [showToConcoctOnly, setShowToConcoctOnly] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
 
   const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
@@ -1029,6 +1031,7 @@ export default function App() {
     const map: Record<string, { displayName: string, drinks: Cocktail[] }> = {};
     const filteredHistory = history.filter(drink => {
         if (showFavoritesOnly && (drink.rating || 0) < 5) return false;
+        if (showToConcoctOnly && !toConcoct.has(drink.name)) return false;
         
         // ABV FILTER LOGIC
         const abv = drink.nutrition?.abv || 0;
@@ -1070,7 +1073,7 @@ export default function App() {
         }
     });
     return finalGroups;
-  }, [history, formularyView, searchQuery, showFavoritesOnly, abvFilter]);
+  }, [history, formularyView, searchQuery, showFavoritesOnly, showToConcoctOnly, toConcoct, abvFilter]);
 
   const handleAddCocktail = async (cocktail: Cocktail) => {
     if (isAuthenticated) {
@@ -1361,13 +1364,25 @@ export default function App() {
   const startEditingVolume = (item: Ingredient) => { setEditingIngredientId(item.id); setEditVolumeValue(item.volume || ''); };
   const saveEditingVolume = (id: string) => { setPantry(prev => prev.map(i => i.id === id ? { ...i, volume: editVolumeValue } : i)); setEditingIngredientId(null); };
 
-  const handleAddToShoppingList = (ingredients: string[]) => {
+  const handleAddToShoppingList = (ingredients: string[], recipeName?: string) => {
       setShoppingList(prev => {
           const currentNames = new Set(prev.map(i => i.name.toLowerCase()));
           const newItems = ingredients
               .filter(name => !currentNames.has(name.toLowerCase()))
               .map(name => ({ id: `shop-${Math.random().toString(36).substr(2, 9)}`, name: name, isChecked: false }));
           return [...prev, ...newItems];
+      });
+      // Mark recipe as "to concoct" if a recipe name is provided
+      if (recipeName) {
+          setToConcoct(prev => new Set([...prev, recipeName]));
+      }
+  };
+  
+  const removeFromToConcoct = (recipeName: string) => {
+      setToConcoct(prev => {
+          const next = new Set(prev);
+          next.delete(recipeName);
+          return next;
       });
   };
   const toggleShoppingItem = (id: string) => { setShoppingList(prev => prev.map(item => item.id === id ? { ...item, isChecked: !item.isChecked } : item)); };
@@ -1585,6 +1600,18 @@ export default function App() {
               <div className="flex items-center gap-3">
                  {activeTab === 'recipes' && (
                      <>
+                        {toConcoct.size > 0 && (
+                            <button 
+                                onClick={() => setShowToConcoctOnly(!showToConcoctOnly)}
+                                className={`p-2 rounded-full transition-colors border relative ${showToConcoctOnly ? 'bg-amber-900/50 text-amber-400 border-amber-700' : 'hover:bg-stone-800 text-stone-400 hover:text-white border-transparent'}`}
+                                title="To Concoct"
+                            >
+                                <Beaker className="w-5 h-5" />
+                                <span className="absolute -top-1 -right-1 bg-amber-500 text-stone-900 text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                                    {toConcoct.size}
+                                </span>
+                            </button>
+                        )}
                         <button 
                             onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
                             className={`p-2 rounded-full transition-colors border border-transparent ${showFavoritesOnly ? 'bg-stone-800 text-secondary' : 'hover:bg-stone-800 text-stone-400 hover:text-white'}`}
@@ -1675,6 +1702,8 @@ export default function App() {
         onRate={(rating) => selectedCocktail && handleRateCocktail(null, selectedCocktail.id, rating)}
         onDelete={(id) => { handleDeleteCocktail(null, id); setSelectedCocktail(null); }}
         onAddLink={handleAddReferenceLink}
+        isToConcoct={selectedCocktail ? toConcoct.has(selectedCocktail.name) : false}
+        onRemoveFromToConcoct={removeFromToConcoct}
       />
       
       <SettingsModal 
@@ -1856,11 +1885,12 @@ export default function App() {
                     </button>
                 </div>
 
-                {(searchQuery || showFavoritesOnly) && (
+                {(searchQuery || showFavoritesOnly || showToConcoctOnly) && (
                     <div className="flex items-center justify-center animate-in fade-in slide-in-from-top-2">
-                        <span className="text-[10px] text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 font-bold uppercase tracking-wide flex items-center gap-1">
+                        <span className={`text-[10px] px-3 py-1 rounded-full border font-bold uppercase tracking-wide flex items-center gap-1 ${showToConcoctOnly ? 'text-amber-400 bg-amber-900/30 border-amber-700' : 'text-primary bg-primary/10 border-primary/20'}`}>
+                            {showToConcoctOnly && <Beaker className="w-3 h-3" />}
                             {showFavoritesOnly && <Star className="w-3 h-3 fill-current" />}
-                            {showFavoritesOnly && searchQuery ? 'Favorites + Search' : showFavoritesOnly ? 'Favorites Only' : 'Filtered Results'}
+                            {showToConcoctOnly ? (showFavoritesOnly || searchQuery ? 'To Concoct + Filter' : 'To Concoct') : (showFavoritesOnly && searchQuery ? 'Favorites + Search' : showFavoritesOnly ? 'Favorites Only' : 'Filtered Results')}
                         </span>
                     </div>
                 )}
@@ -1916,7 +1946,14 @@ export default function App() {
                                                         <div className="flex-1 p-3 flex flex-col justify-between">
                                                             <div>
                                                                 <div className="flex justify-between items-start mb-1">
-                                                                    <h4 className="text-sm font-bold text-white leading-tight line-clamp-1">{drink.name}</h4>
+                                                                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                                                        <h4 className="text-sm font-bold text-white leading-tight line-clamp-1">{drink.name}</h4>
+                                                                        {toConcoct.has(drink.name) && (
+                                                                            <span className="text-[8px] bg-amber-900/50 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700 whitespace-nowrap flex items-center gap-0.5 flex-shrink-0">
+                                                                                <Beaker className="w-2.5 h-2.5" />
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                     {drink.nutrition?.abv === 0 && (
                                                                         <span className="text-[8px] bg-green-900/50 text-green-200 px-1 rounded border border-green-800 ml-1 whitespace-nowrap">NA</span>
                                                                     )}

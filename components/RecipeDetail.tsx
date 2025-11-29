@@ -12,13 +12,15 @@ interface Props {
   shoppingList?: ShoppingListItem[];
   onViewRecipe?: (cocktail: Cocktail) => void;
   onSave?: (cocktail: Cocktail) => void;
-  onAddToShoppingList?: (ingredients: string[]) => void;
+  onAddToShoppingList?: (ingredients: string[], recipeName?: string) => void;
   onRate?: (rating: number) => void;
   onDelete?: (id: string) => void;
   onAddLink?: (id: string, url: string) => void;
+  isToConcoct?: boolean;
+  onRemoveFromToConcoct?: (recipeName: string) => void;
 }
 
-const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink }) => {
+const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct }) => {
   const [newLink, setNewLink] = useState('');
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   
@@ -400,7 +402,7 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                     {missingIngredients.length > 0 ? (
                         itemsToBuy.length > 0 ? (
                             <button 
-                                onClick={() => onAddToShoppingList && onAddToShoppingList(itemsToBuy)}
+                                onClick={() => onAddToShoppingList && onAddToShoppingList(itemsToBuy, cocktail.name)}
                                 className="w-full bg-stone-800 text-white font-bold py-3 rounded-xl hover:bg-stone-700 transition-colors flex items-center justify-center gap-2 border border-stone-600 hover:border-white/20"
                             >
                                 <ShoppingCart className="w-5 h-5 text-secondary" />
@@ -412,6 +414,14 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                                 Missing Items in Cart
                             </div>
                         )
+                    ) : isToConcoct ? (
+                        <button 
+                            onClick={() => onRemoveFromToConcoct && onRemoveFromToConcoct(cocktail.name)}
+                            className="w-full bg-amber-950/30 text-amber-400 font-bold py-3 rounded-xl border border-amber-900/50 flex items-center justify-center gap-2 hover:bg-amber-900/40 transition-colors"
+                        >
+                             <Check className="w-5 h-5" />
+                             In Stock - Remove from To Concoct
+                        </button>
                     ) : (
                         <div className="w-full bg-green-950/30 text-green-400 font-bold py-3 rounded-xl border border-green-900/50 flex items-center justify-center gap-2 cursor-default">
                              <Check className="w-5 h-5" />
