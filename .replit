@@ -50,3 +50,4 @@ defaultBucketID = "replit-objstore-e1b2996f-9595-476e-aea6-3842aa94c3b2"
 
 [userenv.shared]
 PRIVATE_OBJECT_DIR = "/replit-objstore-e1b2996f-9595-476e-aea6-3842aa94c3b2"
+ADMIN_USER_ID = "50346831"

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle } from 'lucide-react';
 import { MasterIngredient, AppSettings } from '../types';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   onUpdateSettings: (settings: AppSettings) => void;
   onResetRatings?: () => void;
   onResetToDefaults?: () => void;
+  onRefreshRecipes?: () => void;
 }
 
 const SettingsModal: React.FC<Props> = ({ 
@@ -25,9 +26,135 @@ const SettingsModal: React.FC<Props> = ({
   settings,
   onUpdateSettings,
   onResetRatings,
-  onResetToDefaults
+  onResetToDefaults,
+  onRefreshRecipes
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'master'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'master' | 'admin'>('general');
+  
+  // Admin state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminStats, setAdminStats] = useState<any>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<any>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichResult, setEnrichResult] = useState<any>(null);
+  
+  // New recipe form state
+  const [newRecipeName, setNewRecipeName] = useState('');
+  const [newRecipeDesc, setNewRecipeDesc] = useState('');
+  const [newRecipeCategory, setNewRecipeCategory] = useState('Uncategorized');
+  const [newRecipeIngredients, setNewRecipeIngredients] = useState('');
+  const [newRecipeInstructions, setNewRecipeInstructions] = useState('');
+  const [newRecipeGlass, setNewRecipeGlass] = useState('Coupe');
+  const [newRecipeGarnish, setNewRecipeGarnish] = useState('');
+  const [newRecipeCreator, setNewRecipeCreator] = useState('');
+  const [isAddingRecipe, setIsAddingRecipe] = useState(false);
+  
+  // Check admin status on mount
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/admin/check', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : { isAdmin: false })
+        .then(data => setIsAdmin(data.isAdmin))
+        .catch(() => setIsAdmin(false));
+    }
+  }, [isOpen]);
+  
+  // Load admin stats when admin tab is active
+  useEffect(() => {
+    if (activeTab === 'admin' && isAdmin) {
+      fetch('/api/admin/global-recipes/stats', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => setAdminStats(data))
+        .catch(() => {});
+    }
+  }, [activeTab, isAdmin]);
+  
+  const handleSeedModernRecipes = async () => {
+    setIsSeeding(true);
+    setSeedResult(null);
+    try {
+      const res = await fetch('/api/admin/seed-modern-recipes', { 
+        method: 'POST',
+        credentials: 'include' 
+      });
+      const data = await res.json();
+      setSeedResult(data);
+      if (onRefreshRecipes) onRefreshRecipes();
+      // Reload stats
+      const statsRes = await fetch('/api/admin/global-recipes/stats', { credentials: 'include' });
+      if (statsRes.ok) setAdminStats(await statsRes.json());
+    } catch (error) {
+      setSeedResult({ error: 'Failed to seed recipes' });
+    }
+    setIsSeeding(false);
+  };
+  
+  const handleEnrichRecipes = async () => {
+    setIsEnriching(true);
+    setEnrichResult(null);
+    try {
+      const res = await fetch('/api/admin/enrich-recipes?batch=5', { 
+        method: 'POST',
+        credentials: 'include' 
+      });
+      const data = await res.json();
+      setEnrichResult(data);
+      // Reload stats
+      const statsRes = await fetch('/api/admin/global-recipes/stats', { credentials: 'include' });
+      if (statsRes.ok) setAdminStats(await statsRes.json());
+    } catch (error) {
+      setEnrichResult({ error: 'Failed to enrich recipes' });
+    }
+    setIsEnriching(false);
+  };
+  
+  const handleAddGlobalRecipe = async () => {
+    if (!newRecipeName.trim() || !newRecipeIngredients.trim() || !newRecipeInstructions.trim()) {
+      alert('Name, ingredients, and instructions are required');
+      return;
+    }
+    
+    setIsAddingRecipe(true);
+    try {
+      const res = await fetch('/api/admin/global-recipes', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newRecipeName,
+          description: newRecipeDesc,
+          category: newRecipeCategory,
+          ingredients: newRecipeIngredients.split('\n').filter(l => l.trim()),
+          instructions: newRecipeInstructions.split('\n').filter(l => l.trim()),
+          glassType: newRecipeGlass,
+          garnish: newRecipeGarnish,
+          creator: newRecipeCreator || 'Admin'
+        })
+      });
+      
+      if (res.ok) {
+        alert('Recipe added successfully!');
+        // Reset form
+        setNewRecipeName('');
+        setNewRecipeDesc('');
+        setNewRecipeIngredients('');
+        setNewRecipeInstructions('');
+        setNewRecipeGarnish('');
+        setNewRecipeCreator('');
+        if (onRefreshRecipes) onRefreshRecipes();
+        // Reload stats
+        const statsRes = await fetch('/api/admin/global-recipes/stats', { credentials: 'include' });
+        if (statsRes.ok) setAdminStats(await statsRes.json());
+      } else {
+        const error = await res.json();
+        alert(error.message || 'Failed to add recipe');
+      }
+    } catch {
+      alert('Failed to add recipe');
+    }
+    setIsAddingRecipe(false);
+  };
   
   // Master Data Input State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -204,6 +331,15 @@ const SettingsModal: React.FC<Props> = ({
             >
                 Master Data
             </button>
+            {isAdmin && (
+                <button 
+                    onClick={() => setActiveTab('admin')}
+                    className={`flex-1 py-3 text-sm font-bold transition-colors flex items-center justify-center gap-1 ${activeTab === 'admin' ? 'bg-amber-900/30 text-amber-400 border-b-2 border-amber-500' : 'text-amber-600 hover:text-amber-400'}`}
+                >
+                    <Shield className="w-3 h-3" />
+                    Admin
+                </button>
+            )}
         </div>
 
         {/* Content */}
@@ -506,6 +642,203 @@ const SettingsModal: React.FC<Props> = ({
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ADMIN PANEL */}
+            {activeTab === 'admin' && isAdmin && (
+                <div className="space-y-6">
+                    {/* Stats Overview */}
+                    <div className="bg-amber-950/20 border border-amber-900/30 p-4 rounded-xl">
+                        <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Shield className="w-4 h-4" />
+                            Database Overview
+                        </h3>
+                        {adminStats ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-stone-900 p-3 rounded-lg border border-stone-700">
+                                    <div className="text-2xl font-bold text-white">{adminStats.totalRecipes}</div>
+                                    <div className="text-xs text-stone-400">Total Recipes</div>
+                                </div>
+                                <div className="bg-stone-900 p-3 rounded-lg border border-stone-700">
+                                    <div className="text-2xl font-bold text-green-400">{adminStats.complete}</div>
+                                    <div className="text-xs text-stone-400">Enriched</div>
+                                </div>
+                                <div className="bg-stone-900 p-3 rounded-lg border border-stone-700">
+                                    <div className="text-2xl font-bold text-amber-400">{adminStats.pending}</div>
+                                    <div className="text-xs text-stone-400">Pending Enrichment</div>
+                                </div>
+                                <div className="bg-stone-900 p-3 rounded-lg border border-stone-700">
+                                    <div className="text-2xl font-bold text-stone-400">{adminStats.categories?.length || 0}</div>
+                                    <div className="text-xs text-stone-400">Categories</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-stone-500 text-sm">Loading stats...</div>
+                        )}
+                    </div>
+
+                    {/* Seed & Enrich Actions */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2">Bulk Actions</h3>
+                        
+                        <button 
+                            onClick={handleSeedModernRecipes}
+                            disabled={isSeeding}
+                            className="w-full bg-stone-800 hover:bg-stone-700 border border-stone-700 text-white p-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                        >
+                            {isSeeding ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Wine className="w-5 h-5" />
+                            )}
+                            <span className="font-bold">Seed Modern Recipes</span>
+                        </button>
+                        
+                        {seedResult && (
+                            <div className={`p-3 rounded-lg text-sm ${seedResult.error ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+                                {seedResult.error ? seedResult.error : (
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Added {seedResult.added} recipes, skipped {seedResult.skipped}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button 
+                            onClick={handleEnrichRecipes}
+                            disabled={isEnriching}
+                            className="w-full bg-stone-800 hover:bg-stone-700 border border-stone-700 text-white p-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                        >
+                            {isEnriching ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <RefreshCcw className="w-5 h-5" />
+                            )}
+                            <span className="font-bold">Enrich 5 Pending Recipes</span>
+                        </button>
+                        
+                        {enrichResult && (
+                            <div className={`p-3 rounded-lg text-sm ${enrichResult.error ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+                                {enrichResult.error ? enrichResult.error : (
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Enriched {enrichResult.processed} recipes
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Add New Global Recipe */}
+                    <div className="bg-stone-800 p-4 rounded-xl border border-stone-700">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <Plus className="w-4 h-4" />
+                            Add Global Recipe
+                        </h3>
+                        
+                        <div className="space-y-3">
+                            <input 
+                                type="text"
+                                value={newRecipeName}
+                                onChange={(e) => setNewRecipeName(e.target.value)}
+                                placeholder="Recipe Name *"
+                                className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                            />
+                            
+                            <input 
+                                type="text"
+                                value={newRecipeDesc}
+                                onChange={(e) => setNewRecipeDesc(e.target.value)}
+                                placeholder="Description"
+                                className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                            />
+                            
+                            <div className="flex gap-2">
+                                <select
+                                    value={newRecipeCategory}
+                                    onChange={(e) => setNewRecipeCategory(e.target.value)}
+                                    className="flex-1 bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                                >
+                                    <option value="Uncategorized">Category</option>
+                                    <option value="Spirit-Forward">Spirit-Forward</option>
+                                    <option value="Sour">Sour</option>
+                                    <option value="Tiki">Tiki</option>
+                                    <option value="Refreshing">Refreshing</option>
+                                    <option value="Fizz">Fizz</option>
+                                    <option value="Sparkling">Sparkling</option>
+                                    <option value="Fruity">Fruity</option>
+                                    <option value="Creamy">Creamy</option>
+                                </select>
+                                
+                                <select
+                                    value={newRecipeGlass}
+                                    onChange={(e) => setNewRecipeGlass(e.target.value)}
+                                    className="flex-1 bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                                >
+                                    <option value="Coupe">Coupe</option>
+                                    <option value="Old Fashioned">Old Fashioned</option>
+                                    <option value="Highball">Highball</option>
+                                    <option value="Collins">Collins</option>
+                                    <option value="Martini">Martini</option>
+                                    <option value="Tiki Mug">Tiki Mug</option>
+                                    <option value="Hurricane">Hurricane</option>
+                                    <option value="Wine Glass">Wine Glass</option>
+                                    <option value="Copper Mug">Copper Mug</option>
+                                    <option value="Julep Cup">Julep Cup</option>
+                                </select>
+                            </div>
+                            
+                            <textarea
+                                value={newRecipeIngredients}
+                                onChange={(e) => setNewRecipeIngredients(e.target.value)}
+                                placeholder="Ingredients (one per line) *"
+                                className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 h-24"
+                            />
+                            
+                            <textarea
+                                value={newRecipeInstructions}
+                                onChange={(e) => setNewRecipeInstructions(e.target.value)}
+                                placeholder="Instructions (one step per line) *"
+                                className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 h-24"
+                            />
+                            
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text"
+                                    value={newRecipeGarnish}
+                                    onChange={(e) => setNewRecipeGarnish(e.target.value)}
+                                    placeholder="Garnish"
+                                    className="flex-1 bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                                />
+                                <input 
+                                    type="text"
+                                    value={newRecipeCreator}
+                                    onChange={(e) => setNewRecipeCreator(e.target.value)}
+                                    placeholder="Creator"
+                                    className="flex-1 bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500"
+                                />
+                            </div>
+                            
+                            <button
+                                onClick={handleAddGlobalRecipe}
+                                disabled={isAddingRecipe || !newRecipeName.trim() || !newRecipeIngredients.trim() || !newRecipeInstructions.trim()}
+                                className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isAddingRecipe ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <Plus className="w-5 h-5" />
+                                )}
+                                Add to Global Database
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <p className="text-[10px] text-stone-500 text-center">
+                        Global recipes are shared with all users. User recipes with the same name take priority for that user.
+                    </p>
                 </div>
             )}
         </div>

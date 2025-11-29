@@ -1200,6 +1200,50 @@ export default function App() {
         onUpdateSettings={setSettings}
         onResetRatings={handleResetRatings}
         onResetToDefaults={handleResetToDefaults}
+        onRefreshRecipes={() => {
+          // Refresh global recipes from database, preserving user recipes
+          fetch('/api/global-recipes')
+            .then(res => res.ok ? res.json() : [])
+            .then((globalRecipes: any[]) => {
+              if (globalRecipes.length > 0) {
+                const newGlobalCocktails = globalRecipes.map((dbRecipe: any) => ({
+                  id: `global-${dbRecipe.id}`,
+                  name: dbRecipe.name,
+                  description: dbRecipe.description || '',
+                  ingredients: dbRecipe.ingredients || [],
+                  instructions: dbRecipe.instructions || [],
+                  flavorProfile: dbRecipe.flavorProfile || {},
+                  nutrition: dbRecipe.nutrition || { calories: 0, carbs: 0, abv: 0 },
+                  category: dbRecipe.category || 'Uncategorized',
+                  history: dbRecipe.history,
+                  glassType: dbRecipe.glassType,
+                  garnish: dbRecipe.garnish,
+                  creator: dbRecipe.creator,
+                  creatorType: dbRecipe.creatorType
+                }));
+                
+                // Merge: keep user recipes, add new globals, filter duplicates
+                setHistory(prev => {
+                  // Get all user-created recipes (ids start with 'user-')
+                  const userRecipes = prev.filter(r => r.id.startsWith('user-') || r.isUserCreated);
+                  
+                  // Create set of user recipe names for duplicate filtering
+                  const userRecipeNames = new Set(
+                    userRecipes.map(r => r.name.toLowerCase().trim())
+                  );
+                  
+                  // Filter out global recipes that duplicate user recipes
+                  const filteredGlobals = newGlobalCocktails.filter(
+                    r => !userRecipeNames.has(r.name.toLowerCase().trim())
+                  );
+                  
+                  // User recipes first, then filtered globals
+                  return [...userRecipes, ...filteredGlobals];
+                });
+              }
+            })
+            .catch(() => {});
+        }}
       />
 
       <ShoppingListAddModal 

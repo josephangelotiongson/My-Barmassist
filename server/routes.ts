@@ -11,6 +11,19 @@ import { enrichPendingIngredients } from "./ingredientEnrichment";
 import { seedModernRecipes } from "./seedModernRecipes";
 
 const objectStorageService = new ObjectStorageService();
+const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
+
+// Admin-only middleware - only allows the configured admin user
+function isAdmin(req: any, res: any, next: any) {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const userId = req.user.claims?.sub;
+  if (!userId || userId !== ADMIN_USER_ID) {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
+}
 
 async function resolveShortUrl(shortUrl: string): Promise<{ finalUrl: string; success: boolean }> {
   try {
@@ -106,8 +119,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin endpoints for seeding and enrichment (requires authentication)
-  app.post('/api/admin/seed-recipes', isAuthenticated, async (req: any, res) => {
+  // Admin endpoints for seeding and enrichment (requires admin access)
+  // Check if user is admin
+  app.get('/api/admin/check', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims?.sub;
+    const isAdminUser = userId === ADMIN_USER_ID;
+    res.json({ isAdmin: isAdminUser, userId });
+  });
+
+  app.post('/api/admin/seed-recipes', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const result = await seedGlobalRecipes();
       res.json(result);
@@ -117,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/seed-modern-recipes', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/seed-modern-recipes', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const result = await seedModernRecipes();
       res.json(result);
@@ -127,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/enrich-recipes', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/enrich-recipes', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const batchSize = parseInt(req.query.batch as string) || 5;
       const result = await enrichPendingRecipes(batchSize);
@@ -135,6 +155,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error enriching recipes:", error);
       res.status(500).json({ message: "Failed to enrich recipes" });
+    }
+  });
+
+  // Add a new global recipe (admin only)
+  app.post('/api/admin/global-recipes', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { name, description, category, ingredients, instructions, glassType, garnish, creator, creatorType, history } = req.body;
+      
+      if (!name || !ingredients || !instructions) {
+        return res.status(400).json({ message: "Name, ingredients, and instructions are required" });
+      }
+      
+      // Generate slug from name
+      const slug = name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      
+      const newRecipe = await storage.createGlobalRecipe({
+        slug,
+        name,
+        description: description || '',
+        category: category || 'Uncategorized',
+        ingredients: Array.isArray(ingredients) ? ingredients : [ingredients],
+        instructions: Array.isArray(instructions) ? instructions : [instructions],
+        glassType: glassType || 'Coupe',
+        garnish: garnish || '',
+        creator: creator || 'Admin',
+        creatorType: creatorType || 'Manual',
+        history: history || null,
+        flavorProfile: null,
+        nutrition: null,
+        enrichmentStatus: 'pending'
+      });
+      
+      res.json({ success: true, recipe: newRecipe });
+    } catch (error: any) {
+      console.error("Error adding global recipe:", error);
+      if (error.code === '23505') {
+        return res.status(409).json({ message: "Recipe with this name already exists" });
+      }
+      res.status(500).json({ message: "Failed to add global recipe" });
+    }
+  });
+
+  // Get global recipe count and stats (admin only)
+  app.get('/api/admin/global-recipes/stats', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const stats = await storage.getEnrichmentStats();
+      const allRecipes = await storage.getAllGlobalRecipes();
+      res.json({
+        ...stats,
+        totalRecipes: allRecipes.length,
+        categories: [...new Set(allRecipes.map(r => r.category))],
+        creators: [...new Set(allRecipes.map(r => r.creator).filter(Boolean))]
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
     }
   });
 

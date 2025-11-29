@@ -81,6 +81,7 @@ export interface IStorage {
   getAllGlobalRecipes(): Promise<GlobalRecipe[]>;
   getGlobalRecipeBySlug(slug: string): Promise<GlobalRecipe | undefined>;
   getEnrichmentStats(): Promise<{ pending: number; partial: number; complete: number; failed: number }>;
+  createGlobalRecipe(recipe: InsertGlobalRecipe): Promise<GlobalRecipe>;
   
   // Master ingredients (public read access - no auth required)
   getAllMasterIngredients(): Promise<MasterIngredient[]>;
@@ -347,6 +348,11 @@ export class DatabaseStorage implements IStorage {
       complete: recipes.filter(r => r.enrichmentStatus === 'complete').length,
       failed: recipes.filter(r => r.enrichmentStatus === 'failed').length,
     };
+  }
+
+  async createGlobalRecipe(recipe: InsertGlobalRecipe): Promise<GlobalRecipe> {
+    const [newRecipe] = await db.insert(globalRecipes).values(recipe).returning();
+    return newRecipe;
   }
 
   // Master ingredients operations (public read access)
