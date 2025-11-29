@@ -6,6 +6,14 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 
 **Current State**: Full-stack application running in the Replit environment on port 5000 with email/password authentication.
 
+## Recent Changes (November 29, 2025)
+
+- Implemented guest/authenticated user dual-mode system
+- Guests can use the app with all preloaded recipes (no login required)
+- Authenticated users get their personal data (ratings, custom recipes) merged with preloaded recipes
+- User data (ratings, recipes, settings) is loaded from database when logged in
+- User data resets to defaults when logged out
+
 ## Recent Changes (November 28, 2025)
 
 - Converted from frontend-only to full-stack architecture
@@ -78,7 +86,9 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - **user_settings**: User preferences (API keys, bar location, etc.)
 
 ### Key Features
+- **Guest Mode**: No login required - guests can use the app with all preloaded recipes
 - **User Authentication**: Signup/login with any email and password, persistent sessions
+- **User Data Merging**: When logged in, user's ratings and custom recipes merge with preloaded recipes
 - **AI-Powered Recommendations**: Get cocktail suggestions based on available ingredients and flavor preferences
 - **Ingredient Scanner**: Scan your bar inventory using AI image recognition
 - **Flavor Profiling**: Visualize flavor dimensions (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky)
@@ -86,6 +96,39 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - **Shopping List**: Track ingredients and manage inventory
 - **Nutrition Estimation**: Calculate calories, carbs, and ABV for cocktails
 - **Bar Order Suggestions**: Get AI recommendations when ordering at a bar
+
+## Updating Preloaded Recipes
+
+To manually update the preloaded recipes available to all users (guests and logged-in users), edit the `initialData.ts` file:
+
+### Recipe Structure
+Each recipe in `INITIAL_RECIPES_DATA` follows this structure:
+```typescript
+{
+  id: 'unique-recipe-id',
+  name: 'Recipe Name',
+  ingredients: ['Ingredient 1', 'Ingredient 2'],
+  instructions: 'Step-by-step preparation instructions.',
+  flavorProfile: { sweet: 5, sour: 3, bitter: 2, boozy: 4, herbal: 1, fruity: 2, spicy: 0, smoky: 0 },
+  category: 'Category Name',
+  glassType: 'Glass Type',
+  garnish: 'Garnish Description',
+  imageUrl: 'optional-image-url'
+}
+```
+
+### Adding a New Recipe
+1. Open `initialData.ts`
+2. Find the `INITIAL_RECIPES_DATA` array
+3. Add your new recipe object following the structure above
+4. Restart the application to see changes
+
+### Updating Master Ingredients
+The `INITIAL_MASTER_DATA` array contains ingredient information used for nutrition calculations. Each ingredient includes:
+- Name, category, subcategory
+- ABV (alcohol by volume)
+- Flavor notes
+- Nutrition estimates (calories/oz, carbs/oz)
 
 ## Configuration
 
