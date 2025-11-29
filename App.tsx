@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useRoute, useLocation } from 'wouter';
 import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow, LogIn, LogOut, FlaskConical } from 'lucide-react';
 import { useAuth } from './client/src/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import HowItWorksModal from './components/HowItWorksModal';
 import AuthModal from './components/AuthModal';
 import DrinkFamilyTree from './components/DrinkFamilyTree';
 import CocktailLab from './components/CocktailLab';
+import SharedRecipePage from './components/SharedRecipePage';
 import { Cocktail, Ingredient, FlavorProfile, FlavorDimension, Recommendation, ShoppingListItem, MasterIngredient, AppSettings, Nutrition } from './types';
 import { getRecommendations, generateCocktailImage, enrichIngredientDetails, recommendFromMenu, getBarOrderSuggestion, deduceRecipe } from './services/geminiService';
 import { INITIAL_MASTER_DATA, INITIAL_RECIPES_DATA } from './initialData';
@@ -557,7 +559,7 @@ const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1514362545857-3bc16549
 
 const TABS: Array<'palate' | 'recipes' | 'bar' | 'recommend'> = ['palate', 'recipes', 'bar', 'recommend'];
 
-export default function App() {
+function MainApp() {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   
@@ -2819,4 +2821,48 @@ export default function App() {
       </nav>
     </div>
   );
+}
+
+// Share page wrapper component
+function SharePageWrapper() {
+  const { user, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
+  const [match, params] = useRoute<{ type: string; id: string }>('/share/:type/:id');
+  
+  if (!match || !params) {
+    return null;
+  }
+  
+  const recipeType = params.type as 'global' | 'user' | 'riff';
+  const recipeId = params.id;
+  
+  return (
+    <SharedRecipePage
+      recipeType={recipeType}
+      recipeId={recipeId}
+      isLoggedIn={isAuthenticated}
+      currentUserId={user?.id}
+      onBack={() => setLocation('/')}
+      onAddToCollection={() => {
+        // Navigate to main app after adding
+        setLocation('/');
+      }}
+    />
+  );
+}
+
+// Router wrapper component that handles share routes
+function AppRouter() {
+  const [match] = useRoute('/share/:type/:id');
+  
+  if (match) {
+    return <SharePageWrapper />;
+  }
+  
+  return <MainApp />;
+}
+
+// Main App export with routing
+export default function App() {
+  return <AppRouter />;
 }

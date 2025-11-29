@@ -147,6 +147,20 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(userRecipes).where(eq(userRecipes.userId, userId));
   }
 
+  async getUserRecipeById(id: number): Promise<UserRecipe | undefined> {
+    const [recipe] = await db.select().from(userRecipes).where(eq(userRecipes.id, id));
+    return recipe;
+  }
+
+  async userHasRecipeByName(userId: string, recipeName: string): Promise<boolean> {
+    const [existing] = await db
+      .select({ id: userRecipes.id })
+      .from(userRecipes)
+      .where(and(eq(userRecipes.userId, userId), eq(userRecipes.name, recipeName)))
+      .limit(1);
+    return !!existing;
+  }
+
   async createRecipe(recipe: InsertUserRecipe): Promise<UserRecipe> {
     const [newRecipe] = await db.insert(userRecipes).values(recipe).returning();
     return newRecipe;

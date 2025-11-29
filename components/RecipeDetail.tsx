@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp, Network } from 'lucide-react';
+import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp, Network, Share2, Copy } from 'lucide-react';
 import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem } from '../types';
 import FlavorWheel from './FlavorWheel';
 import FlavorRadar from './RadarChart';
@@ -19,11 +19,47 @@ interface Props {
   isToConcoct?: boolean;
   onRemoveFromToConcoct?: (recipeName: string) => void;
   onViewFamilyTree?: (cocktail: Cocktail) => void;
+  recipeType?: 'global' | 'user' | 'riff';
+  recipeDbId?: number | string;
 }
 
-const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct, onViewFamilyTree }) => {
+const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct, onViewFamilyTree, recipeType, recipeDbId }) => {
   const [newLink, setNewLink] = useState('');
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [sharecopied, setShareCopied] = useState(false);
+
+  const getShareUrl = () => {
+    if (!cocktail) return '';
+    const type = recipeType || 'global';
+    const id = recipeDbId || cocktail.id;
+    return `${window.location.origin}/share/${type}/${encodeURIComponent(id)}`;
+  };
+
+  const handleShare = async () => {
+    const shareUrl = getShareUrl();
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: cocktail?.name || 'Cocktail Recipe',
+          text: `Check out this cocktail recipe: ${cocktail?.name}`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // Fall back to clipboard if share was cancelled or failed
+      }
+    }
+    
+    // Fallback to copying to clipboard
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
   
   // Calculate missing ingredients
   const missingIngredients = useMemo(() => {
@@ -101,12 +137,25 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/50 to-transparent pointer-events-none"></div>
           
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            <button 
+              onClick={handleShare}
+              className="bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-colors flex items-center gap-1"
+              title="Share recipe"
+            >
+              {sharecopied ? (
+                <Check className="w-5 h-5 text-green-400" />
+              ) : (
+                <Share2 className="w-5 h-5" />
+              )}
+            </button>
+            <button 
+              onClick={onClose}
+              className="bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
           <div className="absolute bottom-4 left-4 right-4">
             <div className="flex justify-between items-end">

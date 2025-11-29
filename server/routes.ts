@@ -642,6 +642,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ RECIPE SHARING ROUTES ============
+
+  // Get a shared recipe by type and id/slug (public - no auth required)
+  app.get('/api/share/:type/:id', async (req: any, res) => {
+    try {
+      const { type, id } = req.params;
+      const userId = req.user?.claims?.sub;
+      
+      let recipe: any = null;
+      let alreadyOwned = false;
+      
+      if (type === 'global') {
+        // Get global recipe by slug
+        recipe = await storage.getGlobalRecipeBySlug(id);
+        if (recipe) {
+          // Transform to match expected format
+          recipe = {
+            ...recipe,
+            instructions: Array.isArray(recipe.instructions) ? recipe.instructions : [recipe.instructions],
+          };
+        }
+      } else if (type === 'user') {
+        // Get user recipe by ID
+        const recipeId = parseInt(id, 10);
+        if (isNaN(recipeId)) {
+          return res.status(400).json({ message: "Invalid recipe ID" });
+        }
+        recipe = await storage.getUserRecipeById(recipeId);
+        if (recipe) {
+          // Check if current user already has this recipe
+          if (userId) {
+            alreadyOwned = await storage.userHasRecipeByName(userId, recipe.name);
+          }
+          // Transform to match expected format
+          recipe = {
+            ...recipe,
+            instructions: recipe.instructions ? 
+              (typeof recipe.instructions === 'string' ? recipe.instructions.split('\n') : [recipe.instructions]) : 
+              [],
+          };
+        }
+      } else if (type === 'riff') {
+        // Get lab riff by slug
+        recipe = await storage.getLabRiffBySlug(id);
+        if (recipe) {
+          // Check if current user already has this riff
+          if (userId && recipe.userId === userId) {
+            alreadyOwned = true;
+          }
+          // Transform to match expected format
+          recipe = {
+            ...recipe,
+            instructions: recipe.instructions || [`Prepare as a variation of ${recipe.parentRecipeName}`],
+          };
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid recipe type" });
+      }
+      
+      if (!recipe) {
+        return res.status(404).json({ message: "Recipe not found" });
+      }
+      
+      // Get image if available
+      const image = await storage.getRecipeImage(recipe.name);
+      if (image) {
+        recipe.imageUrl = image.imageUrl;
+      }
+      
+      res.json({ recipe, alreadyOwned });
+    } catch (error) {
+      console.error("Error fetching shared recipe:", error);
+      res.status(500).json({ message: "Failed to fetch shared recipe" });
+    }
+  });
+
+  // Add a shared recipe to user's collection
+  app.post('/api/share/add', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { recipeType, recipeId } = req.body;
+      
+      if (!recipeType || !recipeId) {
+        return res.status(400).json({ message: "Recipe type and ID are required" });
+      }
+      
+      let sourceRecipe: any = null;
+      
+      if (recipeType === 'user') {
+        const id = parseInt(recipeId, 10);
+        if (isNaN(id)) {
+          return res.status(400).json({ message: "Invalid recipe ID" });
+        }
+        sourceRecipe = await storage.getUserRecipeById(id);
+      } else if (recipeType === 'riff') {
+        sourceRecipe = await storage.getLabRiffBySlug(recipeId);
+      } else {
+        return res.status(400).json({ message: "Only user recipes and riffs can be added to collection" });
+      }
+      
+      if (!sourceRecipe) {
+        return res.status(404).json({ message: "Recipe not found" });
+      }
+      
+      // Check if user already has this recipe
+      const alreadyOwned = await storage.userHasRecipeByName(userId, sourceRecipe.name);
+      if (alreadyOwned) {
+        return res.status(409).json({ message: "Recipe already in your collection" });
+      }
+      
+      // Create new recipe for the user
+      const newRecipe = await storage.createRecipe({
+        userId,
+        name: sourceRecipe.name,
+        ingredients: sourceRecipe.ingredients,
+        instructions: Array.isArray(sourceRecipe.instructions) 
+          ? sourceRecipe.instructions.join('\n') 
+          : sourceRecipe.instructions || '',
+        flavorProfile: sourceRecipe.flavorProfile,
+        nutrition: sourceRecipe.nutrition,
+        category: sourceRecipe.category,
+        glassType: sourceRecipe.glassType,
+        garnish: sourceRecipe.garnish,
+        imageUrl: sourceRecipe.imageUrl,
+        isCustom: false, // Imported from share
+        enrichmentStatus: sourceRecipe.enrichmentStatus || 'pending',
+      });
+      
+      res.json({ success: true, recipe: newRecipe });
+    } catch (error) {
+      console.error("Error adding shared recipe:", error);
+      res.status(500).json({ message: "Failed to add recipe to collection" });
+    }
+  });
+
   // ============ COCKTAIL LINEAGE ROUTES ============
 
   // Get all cocktail families (the 6 root templates)
