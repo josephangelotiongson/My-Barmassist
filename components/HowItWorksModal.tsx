@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Info, Zap, BarChart3, ScanLine, Brain, Star, ShieldCheck } from 'lucide-react';
+import { X, Info, Zap, BarChart3, ScanLine, Brain, Star, ShieldCheck, FlaskConical, Disc, GitBranch, Camera, Beaker, ShoppingBag, Target, Volume2, Layers, Sparkles } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -13,7 +13,6 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/90 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-surface w-full max-w-lg rounded-2xl shadow-2xl border border-stone-700 flex flex-col max-h-[90dvh] animate-in zoom-in-95 duration-200">
         
-        {/* Header */}
         <div className="p-4 border-b border-stone-700 flex justify-between items-center bg-stone-900/50">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Info className="w-5 h-5 text-secondary" />
@@ -24,66 +23,123 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
             
-            {/* Intro */}
             <div className="space-y-2">
                 <p className="text-stone-300 text-sm leading-relaxed">
-                    My Barmassist is an AI-powered mixology companion that evolves with your taste. It doesn't just list recipes; it understands flavor at a molecular level to provide personalized <strong>recommendations</strong>.
+                    My Barmassist is an AI-powered mixology companion that evolves with your taste. It understands flavor at a molecular level to provide personalized recommendations, help you create riffs, and track your homemade ingredients.
                 </p>
             </div>
 
-            {/* 1. Flavor Profiling */}
             <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-primary" />
                     The Flavor Scale (0-10)
                 </h3>
-                <p className="text-xs text-stone-400 mb-4">
-                    Every drink is analyzed by our Mixologist Agent and scored on 8 dimensions.
+                <p className="text-xs text-stone-400 mb-3">
+                    Every drink is analyzed by AI and scored on 8 dimensions:
                 </p>
-                <ul className="space-y-2">
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Sweet:</span> 0 (Bone Dry) to 10 (Liqueur Heavy).
+                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Sweet:</span> 0 (Dry) → 10 (Liqueur)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Fruity:</span> 0 (None) → 10 (Tiki)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Floral:</span> 0 (None) → 10 (Violet)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Herbal:</span> 0 (None) → 10 (Amaro)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Spicy:</span> 0 (None) → 10 (Habanero)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Earthy:</span> 0 (None) → 10 (Mezcal)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Sour:</span> 0 (Manhattan) → 10 (Shrub)</div>
+                    <div className="text-stone-300"><span className="font-bold text-secondary">Boozy:</span> 0 (Mocktail) → 10 (Cask)</div>
+                </div>
+            </div>
+
+            <div className="bg-amber-950/30 rounded-xl p-4 border border-amber-800/50">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <FlaskConical className="w-4 h-4 text-amber-400" />
+                    Cocktail Laboratory
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-3">
+                    The <strong className="text-amber-400">Rx tab</strong> is your experimentation playground. Select any cocktail and modify its flavor profile to discover new variations.
+                </p>
+                <ul className="space-y-2 text-xs text-stone-400">
+                    <li className="flex items-start gap-2">
+                        <Disc className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">3-Tier Flavor Wheel:</strong> Click the outer ring for specific notes (Basil, Vanilla), middle ring for subcategories, or inner ring for broad categories.</span>
                     </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Fruity:</span> 0 (None) to 10 (Fruit Puree/Tiki).
+                    <li className="flex items-start gap-2">
+                        <Target className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">Precise Note Matching:</strong> Request "Basil" and AI suggests basil-specific ingredients, not just any floral.</span>
                     </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Floral:</span> 0 (None) to 10 (Violet/Lavender dominant).
+                    <li className="flex items-start gap-2">
+                        <Volume2 className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">Volume Lever:</strong> When modifications exceed target volume, use the interactive balancer to reduce ingredients in 0.25 oz increments.</span>
                     </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Herbal:</span> 0 (None) to 10 (Absinthe/Amaro).
-                    </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Spicy:</span> 0 (None) to 10 (Habanero).
-                    </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Earthy:</span> 0 (None) to 10 (Peated/Mezcal).
-                    </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Sour:</span> 0 (Manhattan) to 10 (Shrub).
-                    </li>
-                    <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Boozy:</span> 0 (Mocktail) to 10 (Cask Strength).
+                    <li className="flex items-start gap-2">
+                        <Sparkles className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
+                        <span><strong className="text-white">Save Riffs:</strong> Save your modified recipes with automatic lineage tracking and duplicate detection.</span>
                     </li>
                 </ul>
             </div>
 
-            {/* 2. Palate Learning */}
+            <div className="bg-purple-950/30 rounded-xl p-4 border border-purple-800/50">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-purple-400" />
+                    Cocktail Lineage
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-2">
+                    Discover any cocktail's family tree based on the <strong className="text-purple-400">Cocktail Codex</strong> philosophy.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li>Six root templates: Old Fashioned, Martini, Daiquiri, Sidecar, Highball, Flip</li>
+                    <li>See ancestors, siblings, and descendants of any drink</li>
+                    <li>Flavor bridges showing taste evolution through the family</li>
+                    <li>Clickable drinks navigate to recipes in your library</li>
+                </ul>
+            </div>
+
+            <div className="bg-cyan-950/30 rounded-xl p-4 border border-cyan-800/50">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Beaker className="w-4 h-4 text-cyan-400" />
+                    DIY Ingredients
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-2">
+                    Make your own syrups, shrubs, and infusions with built-in recipes.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li>15+ DIY recipes with scalable ingredient calculators</li>
+                    <li>"I Made This!" button tracks batches with expiration dates</li>
+                    <li>Freshness indicators show what's in stock vs. needs making</li>
+                    <li>Warnings for items expiring within 7 days</li>
+                </ul>
+            </div>
+
+            <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-blue-400" />
+                    AI Vision & Import
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-2">
+                    Multiple ways to add recipes and track your bar experience:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li><strong>Screenshot Import:</strong> Upload photos of recipes, AI extracts ingredients and instructions</li>
+                    <li><strong>URL Import:</strong> Paste links from recipe websites or social media</li>
+                    <li><strong>Menu Scanner:</strong> Photograph bar menus for personalized recommendations</li>
+                    <li><strong>Order History:</strong> Track drinks at bars with photos and notes</li>
+                    <li><strong>Bottle Recognition:</strong> Scan your cabinet to auto-fill inventory</li>
+                </ul>
+            </div>
+
             <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
                  <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Brain className="w-4 h-4 text-accent" />
-                    How It Learns
+                    Palate Learning
                 </h3>
                 <p className="text-xs text-stone-300 leading-relaxed mb-2">
-                    Your <strong>Palate Profile</strong> (the red shape on the chart) is a weighted average of your history.
+                    Your <strong>Palate Profile</strong> (the red shape on charts) evolves from your ratings.
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-[10px] text-stone-400">
                     <div className="bg-stone-800 p-2 rounded border border-stone-700">
                         <Star className="w-3 h-3 text-secondary mb-1 fill-secondary" />
-                        <span className="font-bold text-white">5 Stars</span> = Strong Influence (3x)
+                        <span className="font-bold text-white">5 Stars</span> = Strong (3x weight)
                     </div>
                     <div className="bg-stone-800 p-2 rounded border border-stone-700">
                         <Star className="w-3 h-3 text-stone-500 mb-1" />
@@ -92,52 +148,46 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 </div>
             </div>
 
-            {/* 3. Match Scoring */}
             <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
                  <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-yellow-500" />
-                    Match Score Logic
+                    Match Scoring
                 </h3>
                 <p className="text-xs text-stone-300 leading-relaxed">
-                    When recommending drinks or scanning a menu, the <span className="font-bold text-green-400">Match %</span> is calculated based on:
+                    The <span className="font-bold text-green-400">Match %</span> considers:
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-xs text-stone-400">
-                    <li>Overlap with your Flavor Profile.</li>
-                    <li>Availability of ingredients in your Pantry.</li>
-                    <li>Historical preferences (e.g. liking Agave spirits).</li>
+                    <li>Overlap with your Flavor Profile</li>
+                    <li>Ingredient availability in your Pantry</li>
+                    <li>Historical preferences (spirit types, styles)</li>
                 </ul>
             </div>
 
-             {/* 4. Vision */}
-             <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
+            <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
                  <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <ScanLine className="w-4 h-4 text-blue-400" />
-                    AI Vision
+                    <Layers className="w-4 h-4 text-orange-400" />
+                    Smart Features
                 </h3>
-                <p className="text-xs text-stone-300 leading-relaxed">
-                    The app uses computer vision to:
-                </p>
-                <ul className="list-disc list-inside mt-2 space-y-1 text-xs text-stone-400">
-                    <li>Digitize physical menus and cross-reference them with your palate.</li>
-                    <li>Recognize bottles in your cabinet to auto-fill your pantry.</li>
-                    <li>Generate visualizations for recipes that lack photos.</li>
+                <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li><strong>Duplicate Detection:</strong> Fuzzy matching prevents redundant recipes</li>
+                    <li><strong>Auto-Enrichment:</strong> New recipes get AI flavor profiles and nutrition</li>
+                    <li><strong>Shopping Lists:</strong> Track missing ingredients and inventory</li>
+                    <li><strong>Nutrition Estimates:</strong> Calories, carbs, and ABV for every drink</li>
                 </ul>
             </div>
 
-            {/* 5. Privacy */}
             <div className="bg-green-950/30 rounded-xl p-4 border border-green-800/50">
                  <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-green-400" />
-                    Your Privacy Matters
+                    Your Privacy
                 </h3>
-                <p className="text-xs text-stone-300 leading-relaxed mb-3">
-                    <strong className="text-green-400">We do not store your email address.</strong> Your email is used only for authentication and is never saved to our database.
+                <p className="text-xs text-stone-300 leading-relaxed mb-2">
+                    <strong className="text-green-400">We do not store your email.</strong> Only user ID and display name are saved.
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
-                    <li>No email addresses are collected or stored.</li>
-                    <li>Your data (recipes, ratings, preferences) is yours alone.</li>
-                    <li>We will never sell, share, or use your data without consent.</li>
-                    <li>You can delete your account and all data at any time.</li>
+                    <li>Your data (recipes, ratings, preferences) is yours alone</li>
+                    <li>We never sell, share, or use your data without consent</li>
+                    <li>Delete your account and all data at any time</li>
                 </ul>
             </div>
 
