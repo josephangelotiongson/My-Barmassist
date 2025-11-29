@@ -53,6 +53,10 @@ None set yet - will be documented as user expresses preferences during developme
   - Auto-assigns new recipes to cocktail families when created/imported
 - **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation feature in the Rx tab:
   - Select any cocktail as a starting point for experimentation
+  - **Target Volume Tracking**: Displays and uses total cocktail volume to guide riff modifications:
+    - Automatically calculates volume from ingredient measurements (supports mixed fractions like "1 1/2 oz")
+    - AI considers target volume when suggesting substitutions to maintain golden ratios
+    - Volume displayed in recipe selector for quick reference
   - **Interactive Editable Flavor Wheel**: Continuous color intensity system (0-10 scale):
     - All 8 flavor categories always visible with varying opacity/brightness
     - Color intensity maps directly to profile values (0 = 20% opacity/dim, 10 = 100% opacity/full)

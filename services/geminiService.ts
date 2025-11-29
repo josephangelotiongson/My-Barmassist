@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { FlavorProfile, FlavorDimension, Recommendation, Ingredient } from '../types';
 import { analyzeSocialMediaLink, generateSearchSystemPrompt, sanitizeSocialMediaUrl, SocialMediaLinkInfo } from './socialMediaUtils';
+import { calculateTotalVolume } from '../shared/volumeUtils';
 
 // Dynamically import server-side flavor data functions to prevent client bundling
 // These functions are only used in server-side contexts
@@ -1112,8 +1113,15 @@ export const simulateFlavorSubstitutions = async (
       ? `\nSPECIFIC FLAVOR NOTES REQUESTED: ${targetNotes.join(', ')}\nThese specific flavor notes are HIGH PRIORITY. Choose ingredients that specifically deliver these flavor characteristics.`
       : '';
     
-    const targetVolumeSection = baseRecipe.targetVolume 
-      ? `\nTARGET TOTAL VOLUME: ${baseRecipe.targetVolume}\nThis is the ideal total volume for this cocktail. When suggesting modifications, ensure the modified recipe maintains approximately this total volume to preserve the drink's balance and proportions (golden ratios).`
+    const effectiveVolume = baseRecipe.targetVolume || calculateTotalVolume(baseRecipe.ingredients);
+    const targetVolumeSection = effectiveVolume 
+      ? `\nTARGET TOTAL VOLUME: ${effectiveVolume}
+CRITICAL VOLUME GUIDANCE:
+- This cocktail's total volume should remain approximately ${effectiveVolume}
+- When substituting ingredients, MAINTAIN THE SAME MEASUREMENTS unless the substitution requires different proportions
+- When adding new ingredients, ensure the total volume doesn't exceed the target significantly
+- The golden ratio of a cocktail depends on maintaining proper proportions - larger volumes dilute flavors, smaller volumes concentrate them
+- For additions: prefer small amounts (dashes, barspoons, rinses) that enhance without significantly changing volume`
       : '';
 
     let flavorDataContext = '';
