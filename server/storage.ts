@@ -509,6 +509,67 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
+  // Get siblings by finding other recipes that share the same ancestor (parent)
+  async getSiblingsBySharedAncestor(recipeName: string): Promise<CocktailRelationship[]> {
+    // First, get all ancestors of this recipe
+    const ancestors = await this.getRelationshipsByType(recipeName, 'ancestor');
+    if (ancestors.length === 0) return [];
+
+    const siblings: CocktailRelationship[] = [];
+    const addedSiblings = new Set<string>();
+
+    // For each ancestor, find all other recipes that have the same ancestor
+    for (const ancestor of ancestors) {
+      const parentName = ancestor.targetRecipe;
+      
+      // Find all relationships where this parent is an ancestor to other recipes
+      const childrenOfSameParent = await db.select().from(cocktailRelationships)
+        .where(and(
+          eq(cocktailRelationships.targetRecipe, parentName),
+          eq(cocktailRelationships.relationshipType, 'ancestor')
+        ));
+      
+      // Add each child as a sibling (except the current recipe)
+      for (const child of childrenOfSameParent) {
+        if (child.sourceRecipe !== recipeName && !addedSiblings.has(child.sourceRecipe)) {
+          addedSiblings.add(child.sourceRecipe);
+          siblings.push({
+            id: 0, // Virtual relationship
+            sourceRecipe: recipeName,
+            targetRecipe: child.sourceRecipe,
+            relationshipType: 'sibling',
+            era: child.era,
+            description: `Shares parent: ${parentName}`,
+            createdAt: null,
+          });
+        }
+      }
+    }
+
+    return siblings;
+  }
+
+  // Get descendants by finding recipes that have this recipe as an ancestor
+  async getDescendantsByAncestor(recipeName: string): Promise<CocktailRelationship[]> {
+    // Find all relationships where this recipe is listed as an ancestor
+    const descendantRelationships = await db.select().from(cocktailRelationships)
+      .where(and(
+        eq(cocktailRelationships.targetRecipe, recipeName),
+        eq(cocktailRelationships.relationshipType, 'ancestor')
+      ));
+
+    // Convert to descendant format (swap source/target)
+    return descendantRelationships.map(rel => ({
+      id: rel.id,
+      sourceRecipe: recipeName,
+      targetRecipe: rel.sourceRecipe, // The recipe that has this as ancestor is a descendant
+      relationshipType: 'descendant' as const,
+      era: rel.era,
+      description: rel.description,
+      createdAt: rel.createdAt,
+    }));
+  }
+
   // Get full lineage data with relationships and family info
   async getFullLineageData(recipeName: string): Promise<{
     lineage: CocktailLineage | null;
@@ -522,9 +583,36 @@ export class DatabaseStorage implements IStorage {
     if (!lineage) return null;
 
     const family = lineage.familyId ? await this.getCocktailFamilyById(lineage.familyId) : null;
+    
+    // Get directly stored ancestors
     const ancestors = await this.getRelationshipsByType(recipeName, 'ancestor');
-    const siblings = await this.getRelationshipsByType(recipeName, 'sibling');
-    const descendants = await this.getRelationshipsByType(recipeName, 'descendant');
+    
+    // Compute siblings dynamically from shared ancestors (same parent = sibling)
+    const computedSiblings = await this.getSiblingsBySharedAncestor(recipeName);
+    // Also include any explicitly stored siblings
+    const storedSiblings = await this.getRelationshipsByType(recipeName, 'sibling');
+    // Merge and deduplicate
+    const siblingNames = new Set(computedSiblings.map(s => s.targetRecipe));
+    const siblings = [...computedSiblings];
+    for (const s of storedSiblings) {
+      if (!siblingNames.has(s.targetRecipe)) {
+        siblings.push(s);
+      }
+    }
+    
+    // Compute descendants bidirectionally (if A has B as ancestor, then B has A as descendant)
+    const computedDescendants = await this.getDescendantsByAncestor(recipeName);
+    // Also include any explicitly stored descendants
+    const storedDescendants = await this.getRelationshipsByType(recipeName, 'descendant');
+    // Merge and deduplicate
+    const descendantNames = new Set(computedDescendants.map(d => d.targetRecipe));
+    const descendants = [...computedDescendants];
+    for (const d of storedDescendants) {
+      if (!descendantNames.has(d.targetRecipe)) {
+        descendants.push(d);
+      }
+    }
+    
     const flavorBridges = await this.getRelationshipsByType(recipeName, 'flavor_bridge');
 
     return { lineage, family, ancestors, siblings, descendants, flavorBridges };
