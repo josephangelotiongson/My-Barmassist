@@ -327,10 +327,3 @@ export async function seedFlavorData(): Promise<{ success: boolean; message: str
     return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
-
-if (require.main === module) {
-  seedFlavorData().then((result) => {
-    console.log(result);
-    process.exit(result.success ? 0 : 1);
-  });
-}

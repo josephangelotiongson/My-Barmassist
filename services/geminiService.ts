@@ -1,7 +1,7 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { FlavorProfile, FlavorDimension, Recommendation, Ingredient } from '../types';
 import { analyzeSocialMediaLink, generateSearchSystemPrompt, sanitizeSocialMediaUrl, SocialMediaLinkInfo } from './socialMediaUtils';
+import { getFlavorDataForAI } from '../server/flavorDataService';
 
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -1074,6 +1074,27 @@ export const simulateFlavorSubstitutions = async (
       ? `\nSPECIFIC FLAVOR NOTES REQUESTED: ${targetNotes.join(', ')}\nThese specific flavor notes are HIGH PRIORITY. Choose ingredients that specifically deliver these flavor characteristics.`
       : '';
 
+    let flavorDataContext = '';
+    try {
+      flavorDataContext = await getFlavorDataForAI();
+    } catch (e) {
+      console.warn('Could not load flavor data from database, using defaults');
+      flavorDataContext = `
+INGREDIENT FLAVOR MAPPINGS:
+- Honey notes: Honey syrup, mead, aged rum
+- Caramel notes: Demerara syrup, aged spirits, butterscotch liqueur
+- Vanilla notes: Vanilla extract, Licor 43, aged bourbon
+- Citrus notes: Fresh citrus juice, citrus bitters, limoncello
+- Berry notes: Crème de cassis, raspberry liqueur, fresh berries
+- Tropical notes: Pineapple, coconut, passion fruit, falernum
+- Mint notes: Fresh mint, crème de menthe, Fernet Branca
+- Ginger notes: Fresh ginger, ginger syrup, ginger beer
+- Coffee notes: Coffee liqueur, cold brew, espresso
+- Chocolate notes: Crème de cacao, chocolate bitters
+- Peat/Smoke notes: Islay scotch, mezcal, smoked salt
+- Cinnamon notes: Cinnamon syrup, allspice dram`;
+    }
+
     const prompt = `
       You are a Master Mixologist and Flavor Expert.
       
@@ -1103,19 +1124,7 @@ export const simulateFlavorSubstitutions = async (
       5. Include BOTH substitutions array AND additions array in your response.
       6. The newIngredients list should include all original ingredients with substitutions applied PLUS any additions.
       
-      SPECIFIC FLAVOR NOTE INGREDIENTS:
-      - Honey notes: Honey syrup, mead, aged rum
-      - Caramel notes: Demerara syrup, aged spirits, butterscotch liqueur
-      - Vanilla notes: Vanilla extract, Licor 43, aged bourbon
-      - Citrus notes: Fresh citrus juice, citrus bitters, limoncello
-      - Berry notes: Crème de cassis, raspberry liqueur, fresh berries
-      - Tropical notes: Pineapple, coconut, passion fruit, falernum
-      - Mint notes: Fresh mint, crème de menthe, Fernet Branca
-      - Ginger notes: Fresh ginger, ginger syrup, ginger beer
-      - Coffee notes: Coffee liqueur, cold brew, espresso
-      - Chocolate notes: Crème de cacao, chocolate bitters
-      - Peat/Smoke notes: Islay scotch, mezcal, smoked salt
-      - Cinnamon notes: Cinnamon syrup, allspice dram
+      ${flavorDataContext}
       
       Return your analysis as JSON.
     `;
@@ -1184,6 +1193,13 @@ export const buildCocktailFromIngredients = async (
       `- ${i.name} (${i.category}${i.abv ? `, ${i.abv}% ABV` : ''}${i.flavorNotes ? `, notes: ${i.flavorNotes}` : ''})`
     ).join('\n');
 
+    let flavorDataContext = '';
+    try {
+      flavorDataContext = await getFlavorDataForAI();
+    } catch (e) {
+      console.warn('Could not load flavor data from database for buildCocktail, continuing without');
+    }
+
     const prompt = `
       You are a Master Mixologist and Cocktail Creator.
       
@@ -1194,6 +1210,8 @@ export const buildCocktailFromIngredients = async (
       ${JSON.stringify(targetProfile)}
       
       ${FLAVOR_RUBRIC}
+      
+      ${flavorDataContext}
       
       TASK:
       Create a complete, balanced cocktail recipe using the selected ingredients as the foundation.
