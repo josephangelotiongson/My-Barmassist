@@ -11,7 +11,6 @@ import FlavorWheel from './components/FlavorWheel';
 import SettingsModal from './components/SettingsModal';
 import ShoppingListAddModal from './components/ShoppingListAddModal';
 import HowItWorksModal from './components/HowItWorksModal';
-import AuthModal from './components/AuthModal';
 import { Cocktail, Ingredient, FlavorProfile, FlavorDimension, Recommendation, ShoppingListItem, MasterIngredient, AppSettings, Nutrition } from './types';
 import { getRecommendations, generateCocktailImage, enrichIngredientDetails, recommendFromMenu, getBarOrderSuggestion, deduceRecipe } from './services/geminiService';
 import { INITIAL_MASTER_DATA, INITIAL_RECIPES_DATA } from './initialData';
@@ -173,7 +172,6 @@ export default function App() {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'palate' | 'recipes' | 'bar' | 'recommend'>('palate');
   const [palateView, setPalateView] = useState<'diagnosis' | 'wheel'>('diagnosis');
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
@@ -863,9 +861,8 @@ export default function App() {
                           </div>
                        )}
                        <button 
-                          onClick={async () => {
-                            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-                            queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                          onClick={() => {
+                            window.location.href = '/api/logout';
                           }}
                           className="p-2 rounded-full hover:bg-stone-800 text-stone-400 hover:text-white transition-colors"
                           title="Log out"
@@ -875,7 +872,9 @@ export default function App() {
                     </div>
                  ) : (
                     <button 
-                       onClick={() => setIsAuthModalOpen(true)}
+                       onClick={() => {
+                         window.location.href = '/api/login';
+                       }}
                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary hover:bg-primary/80 text-white text-sm font-medium transition-colors"
                     >
                        <LogIn className="w-4 h-4" />
@@ -949,12 +948,6 @@ export default function App() {
        <HowItWorksModal 
           isOpen={isHowItWorksOpen}
           onClose={() => setIsHowItWorksOpen(false)}
-       />
-
-       <AuthModal 
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] })}
        />
 
        <main className="flex-1 bg-background relative overflow-hidden">
