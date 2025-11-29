@@ -202,6 +202,7 @@ export default function App() {
   const [globalImagesLoaded, setGlobalImagesLoaded] = useState(false);
 
   // Load global recipe images for everyone (guests and authenticated users)
+  // Always prefer App Storage images over any existing images
   useEffect(() => {
     if (!globalImagesLoaded) {
       setGlobalImagesLoaded(true);
@@ -213,8 +214,8 @@ export default function App() {
             images.forEach(img => imageMap.set(img.recipeName, img.imageUrl));
             
             setHistory(prev => prev.map(recipe => {
-              const savedImage = imageMap.get(recipe.name);
-              return savedImage ? { ...recipe, imageUrl: savedImage } : recipe;
+              const globalImage = imageMap.get(recipe.name);
+              return globalImage ? { ...recipe, imageUrl: globalImage } : recipe;
             }));
           }
         })
@@ -267,6 +268,7 @@ export default function App() {
           }));
           
           // Apply ratings and global images to preloaded recipes and merge with custom recipes
+          // Always prefer global App Storage images over any existing images
           setHistory(prev => {
             const updatedPreloaded = prev.map(recipe => {
               const rating = ratingMap.get(recipe.name);
@@ -274,7 +276,7 @@ export default function App() {
               return { 
                 ...recipe, 
                 ...(rating !== undefined && { rating }),
-                ...(globalImage && !recipe.imageUrl && { imageUrl: globalImage })
+                ...(globalImage && { imageUrl: globalImage })
               };
             });
             return [...customRecipes, ...updatedPreloaded];
