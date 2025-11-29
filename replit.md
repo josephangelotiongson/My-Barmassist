@@ -12,10 +12,18 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
   - Users can now log in via Google, GitHub, X, Apple, and email/password
   - Login: Navigate to `/api/login`
   - Logout: Navigate to `/api/logout`
+- **Persistent Cocktail Images**: AI-generated cocktail images are now saved to the database for logged-in users
+  - Images are generated once and saved, so they load instantly on future visits
+  - Guests still see images generate in real-time; logged-in users get cached images
+  - Images are stored in the userRatings table alongside ratings
+- **Improved Mobile Navigation**: Increased bottom navigation bar size for better phone usability
+  - Larger touch targets (28px icons)
+  - Larger text labels (12px)
+  - Taller navigation bar (80px height)
 - Implemented guest/authenticated user dual-mode system
 - Guests can use the app with all preloaded recipes (no login required)
-- Authenticated users get their personal data (ratings, custom recipes) merged with preloaded recipes
-- User data (ratings, recipes, settings) is loaded from database when logged in
+- Authenticated users get their personal data (ratings, custom recipes, images) merged with preloaded recipes
+- User data (ratings, recipes, settings, images) is loaded from database when logged in
 - User data resets to defaults when logged out
 - Fixed race condition in data loading by coordinating recipe and rating fetches with Promise.all
 - Added two reset options in Settings:
