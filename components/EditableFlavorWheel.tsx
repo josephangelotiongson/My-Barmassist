@@ -9,15 +9,15 @@ interface Props {
   size?: number;
 }
 
-const FLAVOR_COLORS: Record<FlavorDimension, { base: string; active: string }> = {
-  [FlavorDimension.SWEET]: { base: '#78350f', active: '#f59e0b' },
-  [FlavorDimension.SOUR]: { base: '#365314', active: '#84cc16' },
-  [FlavorDimension.BITTER]: { base: '#1e3a5f', active: '#3b82f6' },
-  [FlavorDimension.BOOZY]: { base: '#581c87', active: '#a855f7' },
-  [FlavorDimension.HERBAL]: { base: '#064e3b', active: '#10b981' },
-  [FlavorDimension.FRUITY]: { base: '#9d174d', active: '#ec4899' },
-  [FlavorDimension.SPICY]: { base: '#7c2d12', active: '#f97316' },
-  [FlavorDimension.SMOKY]: { base: '#1c1917', active: '#78716c' },
+const FLAVOR_COLORS: Record<FlavorDimension, { base: string; active: string; mid: string }> = {
+  [FlavorDimension.SWEET]: { base: '#1c1917', mid: '#57534e', active: '#d97706' },
+  [FlavorDimension.SOUR]: { base: '#1c1917', mid: '#57534e', active: '#65a30d' },
+  [FlavorDimension.BITTER]: { base: '#1c1917', mid: '#57534e', active: '#0d9488' },
+  [FlavorDimension.BOOZY]: { base: '#1c1917', mid: '#57534e', active: '#7c3aed' },
+  [FlavorDimension.HERBAL]: { base: '#1c1917', mid: '#57534e', active: '#059669' },
+  [FlavorDimension.FRUITY]: { base: '#1c1917', mid: '#57534e', active: '#db2777' },
+  [FlavorDimension.SPICY]: { base: '#1c1917', mid: '#57534e', active: '#ea580c' },
+  [FlavorDimension.SMOKY]: { base: '#1c1917', mid: '#57534e', active: '#78716c' },
 };
 
 const DIMENSION_ORDER = [
@@ -70,7 +70,9 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const interpolateColor = (dim: FlavorDimension, value: number) => {
     const colors = FLAVOR_COLORS[dim];
     const ratio = Math.min(Math.max(value / 10, 0), 1);
-    return ratio > 0.3 ? colors.active : colors.base;
+    if (ratio <= 0.2) return colors.base;
+    if (ratio <= 0.5) return colors.mid;
+    return colors.active;
   };
 
   const adjustValue = (dim: FlavorDimension, delta: number) => {
