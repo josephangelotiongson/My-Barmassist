@@ -5,6 +5,7 @@ import {
   userShoppingList,
   userSettings,
   recipeImages,
+  globalRecipes,
   type User,
   type UpsertUser,
   type UserRecipe,
@@ -15,9 +16,11 @@ import {
   type InsertUserShoppingItem,
   type UserSettings,
   type InsertUserSettings,
+  type GlobalRecipe,
+  type InsertGlobalRecipe,
 } from "../shared/schema";
 import { db } from "./db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, or } from "drizzle-orm";
 
 // Type for global recipe images
 export type RecipeImage = {
@@ -65,6 +68,11 @@ export interface IStorage {
   getAllRecipeImages(): Promise<RecipeImage[]>;
   getRecipeImage(recipeName: string, creatorId?: string | null): Promise<RecipeImage | undefined>;
   upsertRecipeImage(recipeName: string, imageUrl: string, creatorId?: string | null): Promise<RecipeImage>;
+  
+  // Global recipes (public read access - no auth required)
+  getAllGlobalRecipes(): Promise<GlobalRecipe[]>;
+  getGlobalRecipeBySlug(slug: string): Promise<GlobalRecipe | undefined>;
+  getEnrichmentStats(): Promise<{ pending: number; partial: number; complete: number; failed: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -289,6 +297,26 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(recipeImages.recipeName, recipeName), isNull(recipeImages.creatorId)));
       return result;
     }
+  }
+
+  // Global recipes operations (public read access)
+  async getAllGlobalRecipes(): Promise<GlobalRecipe[]> {
+    return await db.select().from(globalRecipes);
+  }
+
+  async getGlobalRecipeBySlug(slug: string): Promise<GlobalRecipe | undefined> {
+    const [recipe] = await db.select().from(globalRecipes).where(eq(globalRecipes.slug, slug));
+    return recipe;
+  }
+
+  async getEnrichmentStats(): Promise<{ pending: number; partial: number; complete: number; failed: number }> {
+    const recipes = await db.select().from(globalRecipes);
+    return {
+      pending: recipes.filter(r => r.enrichmentStatus === 'pending').length,
+      partial: recipes.filter(r => r.enrichmentStatus === 'partial').length,
+      complete: recipes.filter(r => r.enrichmentStatus === 'complete').length,
+      failed: recipes.filter(r => r.enrichmentStatus === 'failed').length,
+    };
   }
 }
 

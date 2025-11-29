@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { seedGlobalRecipes } from "./seedGlobalRecipes";
+import { enrichPendingRecipes } from "./enrichGlobalRecipes";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -36,6 +38,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Global recipes routes (public read access - no auth required)
+  app.get('/api/global-recipes', async (req, res) => {
+    try {
+      const recipes = await storage.getAllGlobalRecipes();
+      res.json(recipes);
+    } catch (error) {
+      console.error("Error fetching global recipes:", error);
+      res.status(500).json({ message: "Failed to fetch global recipes" });
+    }
+  });
+
+  app.get('/api/global-recipes/stats', async (req, res) => {
+    try {
+      const stats = await storage.getEnrichmentStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching enrichment stats:", error);
+      res.status(500).json({ message: "Failed to fetch enrichment stats" });
+    }
+  });
+
+  app.get('/api/global-recipes/:slug', async (req, res) => {
+    try {
+      const recipe = await storage.getGlobalRecipeBySlug(req.params.slug);
+      if (!recipe) {
+        return res.status(404).json({ message: "Recipe not found" });
+      }
+      res.json(recipe);
+    } catch (error) {
+      console.error("Error fetching global recipe:", error);
+      res.status(500).json({ message: "Failed to fetch global recipe" });
+    }
+  });
+
+  // Admin endpoints for seeding and enrichment (requires authentication)
+  app.post('/api/admin/seed-recipes', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await seedGlobalRecipes();
+      res.json(result);
+    } catch (error) {
+      console.error("Error seeding recipes:", error);
+      res.status(500).json({ message: "Failed to seed recipes" });
+    }
+  });
+
+  app.post('/api/admin/enrich-recipes', isAuthenticated, async (req: any, res) => {
+    try {
+      const batchSize = parseInt(req.query.batch as string) || 5;
+      const result = await enrichPendingRecipes(batchSize);
+      res.json(result);
+    } catch (error) {
+      console.error("Error enriching recipes:", error);
+      res.status(500).json({ message: "Failed to enrich recipes" });
     }
   });
 

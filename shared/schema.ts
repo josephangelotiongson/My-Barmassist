@@ -118,6 +118,44 @@ export const masterIngredients = pgTable("master_ingredients", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Global recipes - classic/standard cocktail recipes accessible to all users
+export const globalRecipes = pgTable("global_recipes", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  slug: varchar("slug").notNull().unique(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  history: text("history"),
+  category: varchar("category"),
+  ingredients: jsonb("ingredients").$type<string[]>().notNull(),
+  instructions: jsonb("instructions").$type<string[]>().notNull(),
+  glassType: varchar("glass_type"),
+  garnish: varchar("garnish"),
+  creator: varchar("creator"),
+  creatorType: varchar("creator_type"),
+  flavorProfile: jsonb("flavor_profile").$type<{
+    Sweet: number;
+    Sour: number;
+    Bitter: number;
+    Boozy: number;
+    Herbal: number;
+    Fruity: number;
+    Spicy: number;
+    Smoky: number;
+  }>(),
+  nutrition: jsonb("nutrition").$type<{
+    calories: number;
+    sugarGrams: number;
+    abvPercent: number;
+  }>(),
+  enrichmentStatus: varchar("enrichment_status").default("pending"),
+  enrichedAt: timestamp("enriched_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_global_recipes_category").on(table.category),
+  index("idx_global_recipes_enrichment").on(table.enrichmentStatus),
+]);
+
 // Global recipe images (shared across all users - no authentication required)
 // Supports both classic recipes (creatorId = null) and user variations (creatorId = user id)
 export const recipeImages = pgTable("recipe_images", {
@@ -140,3 +178,5 @@ export type UserShoppingItem = typeof userShoppingList.$inferSelect;
 export type InsertUserShoppingItem = typeof userShoppingList.$inferInsert;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertUserSettings = typeof userSettings.$inferInsert;
+export type GlobalRecipe = typeof globalRecipes.$inferSelect;
+export type InsertGlobalRecipe = typeof globalRecipes.$inferInsert;

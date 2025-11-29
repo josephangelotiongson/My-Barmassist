@@ -184,16 +184,44 @@ export default function App() {
   const [abvFilter, setAbvFilter] = useState<'all' | 'low' | 'zero'>('all');
   const [masterData, setMasterData] = useState<MasterIngredient[]>(INITIAL_MASTER_DATA);
 
-  // Get preloaded recipes with nutrition calculated
-  const getPreloadedRecipes = () => {
+  // Convert database global recipe to Cocktail type
+  const convertGlobalRecipeToCocktail = (dbRecipe: any): Cocktail => {
+    const flavorProfile = dbRecipe.flavorProfile || INITIAL_PROFILE;
+    const nutrition = dbRecipe.nutrition ? {
+      calories: dbRecipe.nutrition.calories || 0,
+      carbs: dbRecipe.nutrition.sugarGrams || 0,
+      abv: dbRecipe.nutrition.abvPercent || 0
+    } : estimateNutrition(dbRecipe.ingredients || [], INITIAL_MASTER_DATA);
+    
+    return {
+      id: dbRecipe.slug || dbRecipe.id.toString(),
+      name: dbRecipe.name,
+      description: dbRecipe.description || '',
+      history: dbRecipe.history,
+      category: dbRecipe.category,
+      ingredients: dbRecipe.ingredients || [],
+      instructions: dbRecipe.instructions || [],
+      flavorProfile,
+      nutrition,
+      creator: dbRecipe.creator,
+      creatorType: dbRecipe.creatorType,
+      dateAdded: dbRecipe.createdAt || new Date().toISOString()
+    };
+  };
+
+  // Get preloaded recipes from hardcoded data (fallback)
+  const getPreloadedRecipesFallback = () => {
     return INITIAL_RECIPES_DATA.map(drink => ({
         ...drink,
         nutrition: drink.nutrition || estimateNutrition(drink.ingredients, INITIAL_MASTER_DATA)
     }));
   };
 
-  // Initialize history with preloaded recipes (works for guests)
-  const [history, setHistory] = useState<Cocktail[]>(getPreloadedRecipes);
+  // Initialize history with fallback data - will be replaced with database data when loaded
+  const [history, setHistory] = useState<Cocktail[]>(() => getPreloadedRecipesFallback());
+  
+  // Track if global recipes have been loaded from database
+  const [globalRecipesLoaded, setGlobalRecipesLoaded] = useState(false);
 
   // Track if we've loaded user data
   const [userDataLoaded, setUserDataLoaded] = useState(false);
@@ -201,27 +229,52 @@ export default function App() {
   // Track if we've loaded global images
   const [globalImagesLoaded, setGlobalImagesLoaded] = useState(false);
 
-  // Load global recipe images for everyone (guests and authenticated users)
-  // Always prefer App Storage images over any existing images
+  // Load global recipes from database on mount
   useEffect(() => {
-    if (!globalImagesLoaded) {
-      setGlobalImagesLoaded(true);
-      fetch('/api/recipe-images')
-        .then(res => res.ok ? res.json() : [])
-        .then((images: { recipeName: string; imageUrl: string }[]) => {
-          if (images.length > 0) {
-            const imageMap = new Map<string, string>();
-            images.forEach(img => imageMap.set(img.recipeName, img.imageUrl));
-            
-            setHistory(prev => prev.map(recipe => {
-              const globalImage = imageMap.get(recipe.name);
-              return globalImage ? { ...recipe, imageUrl: globalImage } : recipe;
-            }));
+    if (!globalRecipesLoaded) {
+      setGlobalRecipesLoaded(true);
+      
+      Promise.all([
+        fetch('/api/global-recipes'),
+        fetch('/api/recipe-images')
+      ])
+        .then(async ([recipesRes, imagesRes]) => {
+          const globalRecipes = recipesRes.ok ? await recipesRes.json() : [];
+          const globalImages = imagesRes.ok ? await imagesRes.json() : [];
+          
+          // Create image lookup map
+          const imageMap = new Map<string, string>();
+          globalImages.forEach((img: any) => imageMap.set(img.recipeName, img.imageUrl));
+          
+          if (globalRecipes.length > 0) {
+            // Convert database recipes to Cocktail type and apply images
+            const cocktails = globalRecipes.map((dbRecipe: any) => {
+              const cocktail = convertGlobalRecipeToCocktail(dbRecipe);
+              const globalImage = imageMap.get(cocktail.name);
+              return globalImage ? { ...cocktail, imageUrl: globalImage } : cocktail;
+            });
+            setHistory(cocktails);
+            setGlobalImagesLoaded(true);
+          } else {
+            // Fallback to hardcoded data if database is empty
+            console.log('No global recipes in database, using fallback data');
+            const fallback = getPreloadedRecipesFallback();
+            const cocktailsWithImages = fallback.map(cocktail => {
+              const globalImage = imageMap.get(cocktail.name);
+              return globalImage ? { ...cocktail, imageUrl: globalImage } : cocktail;
+            });
+            setHistory(cocktailsWithImages);
+            setGlobalImagesLoaded(true);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          // Fallback to hardcoded data on error
+          console.log('Error loading global recipes, using fallback data');
+          setHistory(getPreloadedRecipesFallback());
+          setGlobalImagesLoaded(true);
+        });
     }
-  }, [globalImagesLoaded]);
+  }, [globalRecipesLoaded]);
 
   // Load user data when authenticated
   useEffect(() => {
@@ -321,10 +374,10 @@ export default function App() {
         })
         .catch(() => {});
     } else if (!isAuthenticated && !isAuthLoading && userDataLoaded) {
-      // User logged out - reset to preloaded recipes and reload global images
+      // User logged out - reset and reload global recipes from database
       setUserDataLoaded(false);
       setGlobalImagesLoaded(false);
-      setHistory(getPreloadedRecipes());
+      setGlobalRecipesLoaded(false);
       setShoppingList([]);
       setSettings(INITIAL_SETTINGS);
     }
@@ -609,12 +662,12 @@ export default function App() {
   };
 
   const handleResetToDefaults = () => {
-    setHistory(getPreloadedRecipes());
     setShoppingList([]);
     setPantry(INITIAL_PANTRY);
     setSettings(INITIAL_SETTINGS);
     setUserDataLoaded(false);
     setGlobalImagesLoaded(false);
+    setGlobalRecipesLoaded(false);
     
     if (isAuthenticated) {
       Promise.all([

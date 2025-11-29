@@ -8,6 +8,18 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 
 ## Recent Changes (November 29, 2025)
 
+- **Global Recipes Database Migration**: All cocktail recipes now loaded from PostgreSQL database
+  - Created `global_recipes` table with comprehensive fields for flavor profiles, nutrition, and enrichment tracking
+  - Migrated 73 hardcoded recipes from `initialData.ts` to database
+  - AI enrichment pipeline using Gemini to analyze and populate:
+    - Flavor profiles (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky - 0-10 scale)
+    - Nutrition data (calories, sugar in grams, ABV percentage)
+  - Frontend loads from `/api/global-recipes` with fallback to hardcoded data if database is empty
+  - Admin endpoints (protected by authentication):
+    - `POST /api/admin/seed-recipes` - Seed database from hardcoded data
+    - `POST /api/admin/enrich-recipes?batch=N` - Enrich N recipes with AI
+  - Enrichment status tracking: pending, partial, complete, failed
+
 - **Shared Image Storage System**: Smart image management using App Storage (Object Storage)
   - Images are stored globally and shared across ALL users (prevents storage flooding)
   - **Classic Recipes**: Shared globally by recipe name (e.g., `margarita.png`)
@@ -107,10 +119,14 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 ### Database Schema
 - **users**: User profiles with email/password authentication
 - **sessions**: PostgreSQL-backed session storage
-- **recipes**: User-created cocktail recipes
-- **ratings**: User ratings for cocktails
-- **shopping_list**: User shopping list items
+- **global_recipes**: Classic cocktail recipes accessible to all users
+  - Includes flavor profiles, nutrition data, enrichment status
+  - AI enrichment pipeline populates flavor and nutrition data
+- **user_recipes**: User-created cocktail recipes
+- **user_ratings**: User ratings for cocktails
+- **user_shopping_list**: User shopping list items
 - **user_settings**: User preferences (API keys, bar location, etc.)
+- **recipe_images**: Global image storage for recipe images (shared across users)
 
 ### Key Features
 - **Guest Mode**: No login required - guests can use the app with all preloaded recipes
