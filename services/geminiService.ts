@@ -1210,7 +1210,25 @@ export const simulateFlavorSubstitutions = async (
     }).filter(Boolean).join(', ');
 
     const notesSection = targetNotes && targetNotes.length > 0 
-      ? `\nSPECIFIC FLAVOR NOTES REQUESTED: ${targetNotes.join(', ')}\nThese specific flavor notes are HIGH PRIORITY. Choose ingredients that specifically deliver these flavor characteristics.`
+      ? `\nSPECIFIC FLAVOR NOTES REQUESTED: ${targetNotes.join(', ')}
+
+CRITICAL - SPECIFIC FLAVOR NOTE MATCHING:
+You MUST match the EXACT flavor notes requested, not just the general category. This is the difference:
+- If "Basil" is requested: Suggest fresh basil, basil-infused spirits, or Thai basil - NOT just any "floral" ingredient like elderflower
+- If "Honey" is requested: Suggest honey syrup, mead, or honey-forward spirits - NOT just any "sweet" ingredient like simple syrup
+- If "Coffee" is requested: Suggest coffee liqueur, cold brew, espresso - NOT just any "earthy/bitter" ingredient like amaro
+- If "Cinnamon" is requested: Suggest cinnamon syrup, allspice dram, cinnamon bark - NOT just any "spicy" ingredient like ginger
+
+Each flavor note has a UNIQUE character. Increasing "Floral" with lavender is DIFFERENT from increasing "Floral" with rose or jasmine.
+
+WHEN FLAVOR NOTES ARE OBSCURE OR DIFFICULT:
+If the requested specific flavor note is unusual, hard to source, or doesn't work well in cocktails:
+1. Acknowledge the challenge directly in your rationale
+2. Suggest the closest achievable alternative that captures similar essence
+3. Explain why the alternative works (e.g., "Saffron is difficult to work with in cocktails due to its subtle flavor that gets lost; consider turmeric syrup which provides similar golden color and earthy warmth")
+
+FLAVOR NOTE COMPATIBILITY CHECK:
+Before suggesting modifications, consider whether the requested specific notes complement the base cocktail's style. If they clash dramatically (e.g., adding fish sauce notes to a dessert cocktail), explain this in your rationale and suggest how to bridge the gap or recommend reconsidering.`
       : '';
     
     const effectiveVolume = baseRecipe.targetVolume || calculateTotalVolume(baseRecipe.ingredients);
@@ -1279,14 +1297,15 @@ INGREDIENT FLAVOR MAPPINGS:
       2. ADDITIONS: Add new ingredients to enhance or introduce flavors (e.g., add 2 dashes of bitters, add 0.25 oz of a liqueur)
       
       RULES:
-      1. Prioritize achieving the requested specific flavor notes if provided.
-      2. Keep the spirit/core of the original cocktail recognizable.
-      3. Each modification should explain HOW it affects the flavor.
-      4. Additions should use reasonable bar measurements (dashes, barspoons, rinses, small amounts).
-      5. Include BOTH substitutions array AND additions array in your response.
-      6. The newIngredients list should include all original ingredients with substitutions applied PLUS any additions.
-      7. If a target volume is provided, maintain approximately the same total volume (±0.5 oz tolerance) by REDUCING base ingredients proportionally when making additions.
-      8. When reducing ingredients to accommodate additions, prefer reducing modifiers (syrups, liqueurs, juices) over base spirits to maintain the drink's backbone.
+      1. Match the EXACT specific flavor notes requested - use ingredients that deliver those precise flavors, not just ingredients from the same category.
+      2. If specific flavor notes are obscure or impractical, include commentary in your rationale explaining the challenge and suggesting practical alternatives.
+      3. Keep the spirit/core of the original cocktail recognizable.
+      4. Each modification should explain HOW it affects the flavor AND which specific notes it delivers.
+      5. Additions should use reasonable bar measurements (dashes, barspoons, rinses, small amounts).
+      6. Include BOTH substitutions array AND additions array in your response.
+      7. The newIngredients list should include all original ingredients with substitutions applied PLUS any additions.
+      8. If a target volume is provided, maintain approximately the same total volume (±0.5 oz tolerance) by REDUCING base ingredients proportionally when making additions.
+      9. When reducing ingredients to accommodate additions, prefer reducing modifiers (syrups, liqueurs, juices) over base spirits to maintain the drink's backbone.
       
       ${flavorDataContext}
       

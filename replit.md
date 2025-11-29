@@ -85,6 +85,11 @@ None set yet - will be documented as user expresses preferences during developme
     - **Fully Responsive Design**: Uses ResizeObserver and proportional sizing (% of container width) to maximize screen space on mobile devices while keeping all elements readable and within bounds
   - Visual radar chart comparing Original, Target, and Predicted flavor profiles
   - AI suggests ingredient substitutions to achieve target flavor goals
+  - **Precise Flavor Note Matching**: AI understands specific flavor notes (not just categories):
+    - Requesting "Basil" suggests basil-specific ingredients, not just any floral ingredient
+    - Each modification explains which exact flavor notes it delivers
+    - Obscure/impractical notes trigger AI commentary with practical alternatives
+    - Compatibility checks warn when requested notes clash with the cocktail's style
   - Toggle individual substitutions to preview modified recipe
   - Handles recipes without flavor profiles gracefully with default profiles
   - Clear error messaging when AI analysis fails
