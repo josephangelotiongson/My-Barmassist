@@ -409,10 +409,17 @@ export function deriveFlavorFromIngredients(ingredients: Array<{name: string; am
 
 export function flavorProfileToSelection(profile: Record<string, number>): { categories: string[]; notes: string[] } {
   const categories: string[] = [];
-  const THRESHOLD = 4;
   
-  Object.entries(profile).forEach(([key, value]) => {
-    if (typeof value === 'number' && value >= THRESHOLD) {
+  const entries = Object.entries(profile)
+    .filter(([_, value]) => typeof value === 'number' && value > 0)
+    .sort((a, b) => (b[1] as number) - (a[1] as number));
+  
+  const topValues = entries.slice(0, 3).map(([_, v]) => v as number);
+  const minTopValue = Math.min(...topValues);
+  const STRONG_THRESHOLD = Math.max(5, minTopValue - 1);
+  
+  entries.forEach(([key, value]) => {
+    if (typeof value === 'number' && value >= STRONG_THRESHOLD) {
       const cat = FLAVOR_TAXONOMY.find(c => c.label.toLowerCase() === key.toLowerCase());
       if (cat) {
         categories.push(cat.id);

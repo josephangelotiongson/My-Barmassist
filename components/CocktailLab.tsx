@@ -16,7 +16,7 @@ import {
   Legend
 } from 'recharts';
 import EditableFlavorWheel from './EditableFlavorWheel';
-import { deriveFlavorFromIngredients, flavorProfileToSelection } from '../shared/flavorTaxonomy';
+import { flavorProfileToSelection } from '../shared/flavorTaxonomy';
 
 interface Props {
   allRecipes: Cocktail[];
@@ -137,13 +137,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
       setAppliedAdds(new Set());
       setTargetNotes([]);
       
-      const ingredients = initialRecipe.ingredients?.map(ing => ({ name: ing })) || [];
-      const derived = deriveFlavorFromIngredients(ingredients);
       const profileSelection = flavorProfileToSelection(profile as unknown as Record<string, number>);
-      const allCategories = [...new Set([...derived.categories, ...profileSelection.categories])];
       
-      setDerivedCategories(allCategories);
-      setDerivedNotes(derived.notes);
+      setDerivedCategories(profileSelection.categories);
+      setDerivedNotes([]);
       wheelKeyRef.current += 1;
       
       onClearInitialRecipe?.();
@@ -279,15 +276,11 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     setAppliedAdds(new Set());
     setTargetNotes([]);
     
-    const ingredients = recipe.ingredients?.map(ing => ({ name: ing })) || [];
-    const derived = deriveFlavorFromIngredients(ingredients);
-    
     const recipeProfile = getRecipeProfile(recipe);
     const profileSelection = flavorProfileToSelection(recipeProfile as unknown as Record<string, number>);
-    const allCategories = [...new Set([...derived.categories, ...profileSelection.categories])];
     
-    setDerivedCategories(allCategories);
-    setDerivedNotes(derived.notes);
+    setDerivedCategories(profileSelection.categories);
+    setDerivedNotes([]);
     wheelKeyRef.current += 1;
   };
 
