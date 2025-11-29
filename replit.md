@@ -68,6 +68,13 @@ None set yet - will be documented as user expresses preferences during developme
     - Predicted flavor profile preview with visual bars
     - Save button with loading state and success/error feedback
 - **Privacy-First Approach**: User email is never stored in the database; only user ID, display name, and profile picture are retained
+- **Recipe Duplicate Detection**: Prevents flooding of duplicate recipes through:
+  - Exact name matching (case-insensitive)
+  - Fuzzy name matching using Levenshtein distance (85% similarity threshold)
+  - Ingredient signature hashing to detect same-ingredient recipes with different names
+  - Checks both user recipes and global library
+  - Force-add option for similar (but not exact) duplicates
+  - Proactive check endpoint for frontend validation
 
 ### Database Schema
 - **users**: User profiles.
