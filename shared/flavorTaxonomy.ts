@@ -130,7 +130,8 @@ export function getSelectedLabels(selection: FlavorSelection): string[] {
 
 export function selectionToFlavorProfile(
   selection: FlavorSelection, 
-  baseProfile?: Record<string, number>
+  baseProfile?: Record<string, number>,
+  initialCategories?: Set<string>
 ): Record<string, number> {
   const defaultBase: Record<string, number> = {
     Sweet: 0, Sour: 0, Bitter: 0, Boozy: 0,
@@ -142,12 +143,21 @@ export function selectionToFlavorProfile(
   
   FLAVOR_TAXONOMY.forEach(cat => {
     const categorySelected = selection.categories.has(cat.id);
+    const wasInitiallySelected = initialCategories?.has(cat.id) ?? false;
     const selectedNotes = cat.notes.filter(n => selection.notes.has(n.id));
     
     if (selectedNotes.length > 0) {
-      profile[cat.label] = Math.min(10, 5 + selectedNotes.length * 2);
+      profile[cat.label] = Math.min(10, base[cat.label] + selectedNotes.length * 2);
     } else if (categorySelected) {
-      profile[cat.label] = 5;
+      if (wasInitiallySelected) {
+        profile[cat.label] = base[cat.label];
+      } else {
+        profile[cat.label] = Math.max(5, base[cat.label]);
+      }
+    } else {
+      if (wasInitiallySelected) {
+        profile[cat.label] = Math.max(0, base[cat.label] - 2);
+      }
     }
   });
   

@@ -65,17 +65,19 @@ const EditableFlavorWheel: React.FC<Props> = ({
   };
 
   const [selection, setSelection] = useState<FlavorSelection>(buildInitialSelection);
+  const [initialCategorySet, setInitialCategorySet] = useState<Set<string>>(() => new Set(initialCategories));
   const lastRecipeId = useRef(recipeId);
 
   useEffect(() => {
     if (recipeId !== lastRecipeId.current) {
       lastRecipeId.current = recipeId;
       setSelection(buildInitialSelection());
+      setInitialCategorySet(new Set(initialCategories));
     }
   }, [recipeId, initialCategories, initialNotes]);
 
   const notifyChange = (newSelection: FlavorSelection) => {
-    const profile = selectionToFlavorProfile(newSelection, baseProfile);
+    const profile = selectionToFlavorProfile(newSelection, baseProfile, initialCategorySet);
     const noteLabels: string[] = [];
     FLAVOR_TAXONOMY.forEach(cat => {
       cat.notes.forEach(note => {
