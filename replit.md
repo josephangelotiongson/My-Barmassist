@@ -38,6 +38,16 @@ None set yet - will be documented as user expresses preferences during developme
   - Expiration tracking with warnings for items expiring within 7 days
   - Freshness notifications for recently made batches (within 3 days)
   - Memoized status map for consistent status display across views
+- **Cocktail Lineage / Family Tree**: AI-powered drink genealogy feature inspired by Cocktail Codex:
+  - Analyzes any preloaded recipe and maps its evolutionary relationships
+  - Identifies the root template (Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip)
+  - Shows Ancestors (historical drinks that influenced the cocktail)
+  - Shows Siblings (drinks at the same evolutionary level)
+  - Shows Descendants/Riffs (modern variations inspired by the cocktail)
+  - Flavor Bridges showing how tastes evolved through the family
+  - Evolution Narrative telling the drink's story in cocktail history
+  - Clickable drinks navigate to recipes in your library
+- **Privacy-First Approach**: User email is never stored in the database; only user ID, display name, and profile picture are retained
 
 ### Database Schema
 - **users**: User profiles.
