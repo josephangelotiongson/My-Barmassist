@@ -118,7 +118,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
       if (containerRef.current) {
         const width = containerRef.current.offsetWidth;
         if (width > 0) {
-          setContainerWidth(Math.min(width, 420));
+          setContainerWidth(width);
         }
       }
     };
@@ -137,17 +137,17 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const center = size / 2;
   const scale = size / 320;
   
-  const innerRingInner = 0.13 * size;
-  const innerRingOuter = 0.21 * size;
-  const middleRingInner = 0.225 * size;
-  const middleRingOuter = 0.32 * size;
-  const outerRingInner = 0.335 * size;
-  const outerRingOuter = 0.42 * size;
-  const labelRadius = 0.47 * size;
+  const innerRingInner = 0.12 * size;
+  const innerRingOuter = 0.20 * size;
+  const middleRingInner = 0.215 * size;
+  const middleRingOuter = 0.30 * size;
+  const outerRingInner = 0.315 * size;
+  const outerRingOuter = 0.48 * size;
+  const noteLabelRadius = (outerRingInner + outerRingOuter) / 2;
   
-  const categoryFontSize = Math.max(7, Math.min(12, 9 * scale));
-  const subcategoryFontSize = Math.max(6.5, Math.min(10, 8 * scale));
-  const noteFontSize = Math.max(6, Math.min(9, 7 * scale));
+  const categoryFontSize = Math.max(7, Math.min(11, 8.5 * scale));
+  const subcategoryFontSize = Math.max(6, Math.min(9, 7.5 * scale));
+  const noteFontSize = Math.max(5.5, Math.min(8, 6.5 * scale));
   
   const categoryCount = FLAVOR_TAXONOMY.length;
   const categoryAngle = 360 / categoryCount;
@@ -385,7 +385,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
           const noteValue = getNoteValue(note.id);
           const noteIntensity = getIntensityColor(cat.color, noteValue);
           
-          const noteLabelPos = polarToCartesian(center, center, labelRadius, noteMidAngle);
+          const noteLabelPos = polarToCartesian(center, center, noteLabelRadius, noteMidAngle);
           
           return {
             ...note,
@@ -428,7 +428,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
         subcategories: subcategorySegments,
       };
     });
-  }, [noteProfile, center, categoryAngle, getCategoryValue, getSubcategoryValue, getNoteValue, labelRadius]);
+  }, [noteProfile, center, categoryAngle, getCategoryValue, getSubcategoryValue, getNoteValue, noteLabelRadius]);
 
   const activeCategories = segments
     .filter(s => s.value >= 3)
@@ -478,22 +478,22 @@ const EditableFlavorWheel: React.FC<Props> = ({
                       />
                       
                       {(() => {
-                        const isRightSide = note.midAngle < 90 || note.midAngle > 270;
                         const rotationAngle = note.midAngle - 90;
-                        const adjustedRotation = isRightSide ? rotationAngle : rotationAngle + 180;
+                        const isBottomHalf = note.midAngle > 90 && note.midAngle < 270;
+                        const adjustedRotation = isBottomHalf ? rotationAngle + 180 : rotationAngle;
                         
                         return (
                           <>
                             <text
                               x={note.labelPos.x}
                               y={note.labelPos.y}
-                              textAnchor={isRightSide ? "start" : "end"}
+                              textAnchor="middle"
                               dominantBaseline="middle"
-                              fill={note.value > 5 ? cat.color : '#78716c'}
+                              fill={note.value > 5 ? '#fafaf9' : '#a8a29e'}
                               fontSize={noteFontSize}
                               fontWeight={note.value > 5 ? '600' : '400'}
                               className="pointer-events-none select-none transition-all duration-300"
-                              style={{ opacity: Math.max(0.5, note.intensity.opacity) }}
+                              style={{ opacity: Math.max(0.6, note.intensity.opacity) }}
                               transform={`rotate(${adjustedRotation}, ${note.labelPos.x}, ${note.labelPos.y})`}
                             >
                               {note.label}
@@ -503,13 +503,13 @@ const EditableFlavorWheel: React.FC<Props> = ({
                               <text
                                 x={note.labelPos.x}
                                 y={note.labelPos.y}
-                                textAnchor={isRightSide ? "start" : "end"}
+                                textAnchor="middle"
                                 dominantBaseline="middle"
                                 fill="#fbbf24"
-                                fontSize="6"
+                                fontSize={noteFontSize + 1}
                                 fontWeight="700"
                                 className="pointer-events-none select-none"
-                                dx={isRightSide ? "40" : "-40"}
+                                dy={isBottomHalf ? -10 : 10}
                                 transform={`rotate(${adjustedRotation}, ${note.labelPos.x}, ${note.labelPos.y})`}
                               >
                                 {note.value.toFixed(1)}
