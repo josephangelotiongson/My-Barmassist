@@ -70,6 +70,7 @@ None set yet - will be documented as user expresses preferences during developme
     - Hover shows precise values for notes, subcategories, and categories
     - HSL interpolation for smooth color transitions
     - Backwards compatibility: Maps legacy Bitter values to Herbal, Smoky values to Earthy
+    - **Fully Responsive Design**: Uses ResizeObserver and proportional sizing (% of container width) to maximize screen space on mobile devices while keeping all elements readable and within bounds
   - Visual radar chart comparing Original, Target, and Predicted flavor profiles
   - AI suggests ingredient substitutions to achieve target flavor goals
   - Toggle individual substitutions to preview modified recipe
