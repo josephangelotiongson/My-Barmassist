@@ -27,6 +27,356 @@ const INITIAL_SETTINGS: AppSettings = {
     handedness: 'right'
 };
 
+// DIY Ingredients Database - recipes for homemade bar ingredients
+interface DiyRecipe {
+  id: string;
+  name: string;
+  category: 'Syrup' | 'Infusion' | 'Shrub' | 'Bitters' | 'Cordial' | 'Other';
+  description: string;
+  baseYield: number; // oz
+  baseIngredients: { name: string; amount: number; unit: string }[];
+  instructions: string[];
+  shelfLife: string;
+  tips?: string;
+  usedIn?: string[];
+}
+
+const DIY_RECIPES: DiyRecipe[] = [
+  {
+    id: 'simple-syrup',
+    name: 'Simple Syrup',
+    category: 'Syrup',
+    description: 'The foundation of most cocktails. A 1:1 ratio of sugar to water.',
+    baseYield: 16,
+    baseIngredients: [
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Combine sugar and water in a saucepan.',
+      'Heat over medium, stirring until sugar dissolves.',
+      'Remove from heat and let cool completely.',
+      'Transfer to a clean bottle.'
+    ],
+    shelfLife: '2-4 weeks refrigerated',
+    tips: 'Add 1 oz vodka to extend shelf life.',
+    usedIn: ['Daiquiri', 'Mojito', 'Tom Collins', 'Whiskey Sour']
+  },
+  {
+    id: 'rich-simple-syrup',
+    name: 'Rich Simple Syrup',
+    category: 'Syrup',
+    description: 'A 2:1 sugar to water ratio for a thicker, sweeter syrup.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'White Sugar', amount: 2, unit: 'cups' },
+      { name: 'Water', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Combine sugar and water in a saucepan.',
+      'Heat over medium-low, stirring constantly.',
+      'Do not let it boil - remove once fully dissolved.',
+      'Cool and bottle.'
+    ],
+    shelfLife: '4-6 weeks refrigerated',
+    tips: 'Preferred for stirred drinks - adds body without dilution.'
+  },
+  {
+    id: 'demerara-syrup',
+    name: 'Demerara Syrup',
+    category: 'Syrup',
+    description: 'Made with raw demerara sugar for caramel and molasses notes.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Demerara Sugar', amount: 2, unit: 'cups' },
+      { name: 'Water', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Combine demerara sugar and water in a saucepan.',
+      'Heat over medium-low, stirring until dissolved.',
+      'The sugar takes longer to dissolve than white sugar.',
+      'Cool completely before bottling.'
+    ],
+    shelfLife: '4-6 weeks refrigerated',
+    tips: 'Essential for proper Old Fashioneds and Tiki drinks.',
+    usedIn: ['Old Fashioned', 'Jungle Bird', 'Zombie']
+  },
+  {
+    id: 'honey-syrup',
+    name: 'Honey Syrup',
+    category: 'Syrup',
+    description: 'Diluted honey for easier mixing in cold cocktails.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Honey', amount: 1, unit: 'cup' },
+      { name: 'Hot Water', amount: 0.5, unit: 'cup' }
+    ],
+    instructions: [
+      'Heat water until very hot but not boiling.',
+      'Add honey and stir until fully combined.',
+      'Let cool and bottle.',
+      'Shake before each use as it may separate.'
+    ],
+    shelfLife: '2-3 weeks refrigerated',
+    tips: 'Use quality local honey for best flavor.',
+    usedIn: ['Bees Knees', 'Gold Rush', 'Penicillin']
+  },
+  {
+    id: 'honey-ginger-syrup',
+    name: 'Honey-Ginger Syrup',
+    category: 'Syrup',
+    description: 'Spicy ginger combined with honey - essential for the Penicillin.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Fresh Ginger', amount: 4, unit: 'oz' },
+      { name: 'Honey', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 0.5, unit: 'cup' }
+    ],
+    instructions: [
+      'Peel and roughly chop the ginger.',
+      'Blend ginger with water until smooth.',
+      'Strain through fine mesh, pressing to extract juice.',
+      'Combine ginger juice with honey, stir until mixed.',
+      'Bottle and refrigerate.'
+    ],
+    shelfLife: '2 weeks refrigerated',
+    tips: 'More ginger = more heat. Adjust to taste.',
+    usedIn: ['Penicillin', 'Gold Rush variation']
+  },
+  {
+    id: 'cinnamon-syrup',
+    name: 'Cinnamon Syrup',
+    category: 'Syrup',
+    description: 'Warm spiced syrup perfect for tiki and fall cocktails.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Cinnamon Sticks', amount: 6, unit: 'sticks' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Break cinnamon sticks into pieces.',
+      'Toast in dry pan for 1-2 minutes until fragrant.',
+      'Add water and sugar, bring to simmer.',
+      'Remove from heat, let steep 2 hours.',
+      'Strain and bottle.'
+    ],
+    shelfLife: '3-4 weeks refrigerated',
+    tips: 'Use Ceylon cinnamon for a more delicate flavor.',
+    usedIn: ['Zombie', 'Jet Pilot', 'Hot Toddy']
+  },
+  {
+    id: 'grenadine',
+    name: 'Grenadine',
+    category: 'Syrup',
+    description: 'Real pomegranate syrup - nothing like the artificial stuff.',
+    baseYield: 16,
+    baseIngredients: [
+      { name: 'Pomegranate Juice', amount: 2, unit: 'cups' },
+      { name: 'White Sugar', amount: 2, unit: 'cups' },
+      { name: 'Pomegranate Molasses', amount: 1, unit: 'tbsp' },
+      { name: 'Orange Flower Water', amount: 0.5, unit: 'tsp' }
+    ],
+    instructions: [
+      'Combine pomegranate juice and sugar in a saucepan.',
+      'Heat over low, stirring until sugar dissolves.',
+      'Do not boil - this preserves the fresh flavor.',
+      'Remove from heat, stir in molasses and orange flower water.',
+      'Cool and bottle.'
+    ],
+    shelfLife: '4-6 weeks refrigerated',
+    tips: 'Use 100% pomegranate juice, not from concentrate.',
+    usedIn: ['Jack Rose', 'Ward Eight', 'Zombie', 'Tequila Sunrise']
+  },
+  {
+    id: 'orgeat',
+    name: 'Orgeat',
+    category: 'Syrup',
+    description: 'Almond syrup with orange flower water - essential for tiki.',
+    baseYield: 16,
+    baseIngredients: [
+      { name: 'Raw Almonds', amount: 2, unit: 'cups' },
+      { name: 'White Sugar', amount: 1.5, unit: 'cups' },
+      { name: 'Water', amount: 2, unit: 'cups' },
+      { name: 'Orange Flower Water', amount: 1, unit: 'tsp' },
+      { name: 'Brandy or Cognac', amount: 1, unit: 'oz' }
+    ],
+    instructions: [
+      'Toast almonds lightly in a dry pan.',
+      'Blend almonds with water until smooth.',
+      'Let steep for 3-4 hours or overnight.',
+      'Strain through cheesecloth, squeezing well.',
+      'Add sugar to almond milk, heat until dissolved.',
+      'Cool, add orange flower water and brandy.',
+      'Bottle and refrigerate.'
+    ],
+    shelfLife: '2-3 weeks refrigerated',
+    tips: 'Adding the brandy extends shelf life and adds depth.',
+    usedIn: ['Mai Tai', 'Japanese Cocktail', 'Army & Navy', 'Trinidad Sour']
+  },
+  {
+    id: 'passion-fruit-syrup',
+    name: 'Passion Fruit Syrup',
+    category: 'Syrup',
+    description: 'Tropical syrup essential for tiki and modern sours.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Passion Fruit Puree', amount: 1, unit: 'cup' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 0.5, unit: 'cup' }
+    ],
+    instructions: [
+      'Combine water and sugar, heat until dissolved.',
+      'Remove from heat and let cool to room temperature.',
+      'Stir in passion fruit puree until well combined.',
+      'Strain if desired for smoother texture.',
+      'Bottle and refrigerate.'
+    ],
+    shelfLife: '2 weeks refrigerated',
+    tips: 'Frozen passion fruit puree works perfectly.',
+    usedIn: ['Hurricane', 'Porn Star Martini', 'Passion Fruit Sour']
+  },
+  {
+    id: 'raspberry-syrup',
+    name: 'Raspberry Syrup',
+    category: 'Syrup',
+    description: 'Fresh berry syrup for Clover Club and berry cocktails.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Fresh Raspberries', amount: 2, unit: 'cups' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 0.5, unit: 'cup' }
+    ],
+    instructions: [
+      'Muddle raspberries in a bowl.',
+      'Add sugar, stir well, cover and refrigerate overnight.',
+      'Add water and strain through fine mesh.',
+      'Press berries to extract all liquid.',
+      'Bottle and refrigerate.'
+    ],
+    shelfLife: '1-2 weeks refrigerated',
+    tips: 'The overnight maceration extracts more flavor.',
+    usedIn: ['Clover Club', 'Raspberry Collins', 'Bramble']
+  },
+  {
+    id: 'ginger-syrup',
+    name: 'Ginger Syrup',
+    category: 'Syrup',
+    description: 'Spicy ginger syrup for Moscow Mules and modern cocktails.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Fresh Ginger', amount: 6, unit: 'oz' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Peel and slice ginger thinly.',
+      'Combine with water and sugar in a saucepan.',
+      'Bring to a boil, then reduce to simmer for 30 minutes.',
+      'Remove from heat, let cool in the liquid.',
+      'Strain and bottle.'
+    ],
+    shelfLife: '3-4 weeks refrigerated',
+    tips: 'Leave skin on for more intensity.',
+    usedIn: ['Homemade Ginger Beer', 'Dark n Stormy', 'Penicillin variation']
+  },
+  {
+    id: 'falernum',
+    name: 'Falernum',
+    category: 'Cordial',
+    description: 'Caribbean spiced syrup with lime, almond, and clove.',
+    baseYield: 16,
+    baseIngredients: [
+      { name: 'White Rum', amount: 8, unit: 'oz' },
+      { name: 'Lime Zest', amount: 6, unit: 'limes' },
+      { name: 'Blanched Almonds', amount: 0.5, unit: 'cup' },
+      { name: 'Whole Cloves', amount: 15, unit: 'cloves' },
+      { name: 'Fresh Ginger', amount: 1, unit: 'oz' },
+      { name: 'White Sugar', amount: 1.5, unit: 'cups' },
+      { name: 'Water', amount: 1, unit: 'cup' },
+      { name: 'Almond Extract', amount: 0.25, unit: 'tsp' }
+    ],
+    instructions: [
+      'Toast almonds lightly, then crush.',
+      'Combine rum, lime zest, almonds, cloves, and sliced ginger.',
+      'Let infuse 24 hours at room temperature.',
+      'Make syrup: heat water and sugar until dissolved.',
+      'Strain rum mixture, combine with cooled syrup.',
+      'Add almond extract, bottle.',
+      'Let rest 1 week before using.'
+    ],
+    shelfLife: '6+ months refrigerated',
+    tips: 'The resting period mellows the flavors significantly.',
+    usedIn: ['Corn n Oil', 'Saturn', 'Royal Bermuda Yacht Club']
+  },
+  {
+    id: 'hibiscus-syrup',
+    name: 'Hibiscus Syrup',
+    category: 'Syrup',
+    description: 'Floral, tart syrup with a stunning magenta color.',
+    baseYield: 12,
+    baseIngredients: [
+      { name: 'Dried Hibiscus Flowers', amount: 0.5, unit: 'cup' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Water', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Bring water to a boil.',
+      'Add hibiscus flowers, remove from heat.',
+      'Steep for 20 minutes.',
+      'Strain, add sugar while still warm.',
+      'Stir until dissolved, cool and bottle.'
+    ],
+    shelfLife: '3-4 weeks refrigerated',
+    tips: 'The longer you steep, the more tart it becomes.',
+    usedIn: ['Hibiscus Margarita', 'Floradora']
+  },
+  {
+    id: 'oleo-saccharum',
+    name: 'Oleo Saccharum',
+    category: 'Syrup',
+    description: 'Citrus oil-sugar extraction for punch and complex citrus notes.',
+    baseYield: 8,
+    baseIngredients: [
+      { name: 'Lemon Peels', amount: 6, unit: 'lemons' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Peel lemons using a vegetable peeler (no pith).',
+      'Combine peels and sugar in a bowl, muddle gently.',
+      'Cover and let sit 2-4 hours, or overnight.',
+      'The sugar will become a fragrant, oily syrup.',
+      'Add 2oz warm water to dissolve remaining sugar.',
+      'Strain out peels.'
+    ],
+    shelfLife: '1-2 weeks refrigerated',
+    tips: 'Essential for authentic punch recipes.',
+    usedIn: ['Classic Punch', 'Philadelphia Fish House Punch']
+  },
+  {
+    id: 'shrub-raspberry',
+    name: 'Raspberry Shrub',
+    category: 'Shrub',
+    description: 'Vinegar-based drinking syrup for complex, tangy cocktails.',
+    baseYield: 16,
+    baseIngredients: [
+      { name: 'Fresh Raspberries', amount: 2, unit: 'cups' },
+      { name: 'White Sugar', amount: 1, unit: 'cup' },
+      { name: 'Apple Cider Vinegar', amount: 1, unit: 'cup' }
+    ],
+    instructions: [
+      'Muddle raspberries with sugar in a jar.',
+      'Cover and refrigerate 1-2 days, stirring occasionally.',
+      'Strain through fine mesh, pressing berries.',
+      'Add vinegar to the strained juice, stir well.',
+      'Bottle and refrigerate. Best after 1 week.'
+    ],
+    shelfLife: '6+ months refrigerated',
+    tips: 'The vinegar acts as a preservative and adds complexity.',
+    usedIn: ['Shrub Spritz', 'Shrub Sour']
+  }
+];
+
 // --- IMPROVED NUTRITION ESTIMATOR ---
 // Uses Master Data for lookup, calculating weighted estimates based on volume.
 // NOTE: Now accessible within component scope via MasterData state, but we define helper here for initialization
@@ -178,7 +528,7 @@ export default function App() {
   const [palateView, setPalateView] = useState<'diagnosis' | 'wheel'>('diagnosis');
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
   const [rxView, setRxView] = useState<'recommend' | 'history'>('recommend');
-  const [barView, setBarView] = useState<'shopping' | 'pantry'>('shopping');
+  const [barView, setBarView] = useState<'shopping' | 'pantry' | 'makeIt'>('shopping');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   
   const [abvFilter, setAbvFilter] = useState<'all' | 'low' | 'zero'>('all');
@@ -404,6 +754,10 @@ export default function App() {
 
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isGeneratingRecs, setIsGeneratingRecs] = useState(false);
+  
+  // Make It tab state
+  const [selectedDiyItem, setSelectedDiyItem] = useState<string | null>(null);
+  const [diyOutputVolume, setDiyOutputVolume] = useState<number>(8); // oz
   const [isScanningMenu, setIsScanningMenu] = useState(false);
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
   
@@ -523,6 +877,8 @@ export default function App() {
               if (isSwipeRight && formularyView === 'creators') setFormularyView('drinks');
           } else if (activeTab === 'bar') {
               if (isSwipeLeft && barView === 'shopping') setBarView('pantry');
+              if (isSwipeLeft && barView === 'pantry') setBarView('makeIt');
+              if (isSwipeRight && barView === 'makeIt') setBarView('pantry');
               if (isSwipeRight && barView === 'pantry') setBarView('shopping');
           } else if (activeTab === 'recommend') {
               if (isSwipeLeft && rxView === 'recommend') setRxView('history');
@@ -1522,17 +1878,24 @@ export default function App() {
                   <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setBarView('shopping')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${barView === 'shopping' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${barView === 'shopping' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      Shopping List
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      Shopping
                    </button>
                    <button 
                       onClick={() => setBarView('pantry')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${barView === 'pantry' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${barView === 'pantry' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
                    >
-                      <Wine className="w-4 h-4" />
-                      Pantry Inventory
+                      <Wine className="w-3.5 h-3.5" />
+                      Pantry
+                   </button>
+                   <button 
+                      onClick={() => setBarView('makeIt')}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${barView === 'makeIt' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                   >
+                      <Beaker className="w-3.5 h-3.5" />
+                      Make It
                    </button>
                 </div>
                 
@@ -1676,6 +2039,199 @@ export default function App() {
                             )}
                         </div>
                      </div>
+                )}
+
+                {barView === 'makeIt' && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                        {/* Header */}
+                        <div className="bg-surface rounded-2xl p-4 border border-stone-700">
+                            <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                                <Beaker className="w-5 h-5 text-secondary" />
+                                DIY Bar Ingredients
+                            </h2>
+                            <p className="text-xs text-stone-400">
+                                Make your own syrups, cordials, and bar essentials. Tap any item to see the recipe with a scaling calculator.
+                            </p>
+                        </div>
+
+                        {/* Selected DIY Recipe Detail */}
+                        {selectedDiyItem && (() => {
+                            const recipe = DIY_RECIPES.find(r => r.id === selectedDiyItem);
+                            if (!recipe) return null;
+                            const scaleFactor = diyOutputVolume / recipe.baseYield;
+                            
+                            return (
+                                <div className="bg-surface rounded-2xl border border-secondary/30 overflow-hidden shadow-lg">
+                                    <div className="bg-gradient-to-r from-secondary/20 to-primary/10 p-4 border-b border-stone-700">
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded uppercase font-bold">{recipe.category}</span>
+                                                <h3 className="text-xl font-bold text-white mt-1">{recipe.name}</h3>
+                                                <p className="text-xs text-stone-400 mt-1">{recipe.description}</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => setSelectedDiyItem(null)}
+                                                className="text-stone-500 hover:text-white p-1"
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Ratio Calculator */}
+                                    <div className="p-4 bg-stone-900/50 border-b border-stone-700">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className="text-sm font-bold text-white flex items-center gap-2">
+                                                <Activity className="w-4 h-4 text-secondary" />
+                                                Output Calculator
+                                            </span>
+                                            <span className="text-[10px] text-stone-500">Base: {recipe.baseYield} oz</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-stone-400">I want to make:</span>
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <button 
+                                                    onClick={() => setDiyOutputVolume(prev => Math.max(2, prev - 2))}
+                                                    className="w-8 h-8 bg-stone-800 rounded-lg flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-700 border border-stone-700"
+                                                >
+                                                    <Minus className="w-4 h-4" />
+                                                </button>
+                                                <input 
+                                                    type="number"
+                                                    value={diyOutputVolume}
+                                                    onChange={(e) => setDiyOutputVolume(Math.max(1, parseInt(e.target.value) || 1))}
+                                                    className="w-16 bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-center text-white font-bold outline-none focus:border-secondary"
+                                                />
+                                                <button 
+                                                    onClick={() => setDiyOutputVolume(prev => prev + 2)}
+                                                    className="w-8 h-8 bg-stone-800 rounded-lg flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-700 border border-stone-700"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </button>
+                                                <span className="text-sm text-stone-400">oz</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 mt-3">
+                                            {[8, 16, 24, 32].map(vol => (
+                                                <button 
+                                                    key={vol}
+                                                    onClick={() => setDiyOutputVolume(vol)}
+                                                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${diyOutputVolume === vol ? 'bg-secondary text-stone-900' : 'bg-stone-800 text-stone-400 hover:text-white border border-stone-700'}`}
+                                                >
+                                                    {vol}oz
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Scaled Ingredients */}
+                                    <div className="p-4 border-b border-stone-700">
+                                        <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                            <ListOrdered className="w-4 h-4 text-secondary" />
+                                            Ingredients 
+                                            <span className="text-[10px] text-stone-500 font-normal">({scaleFactor.toFixed(1)}x base recipe)</span>
+                                        </h4>
+                                        <ul className="space-y-2">
+                                            {recipe.baseIngredients.map((ing, idx) => {
+                                                const scaledAmount = ing.amount * scaleFactor;
+                                                const displayAmount = scaledAmount >= 1 
+                                                    ? (scaledAmount % 1 === 0 ? scaledAmount.toString() : scaledAmount.toFixed(2))
+                                                    : scaledAmount.toFixed(2);
+                                                
+                                                return (
+                                                    <li key={idx} className="flex items-center justify-between bg-stone-900 p-2.5 rounded-lg border border-stone-800">
+                                                        <span className="text-sm text-stone-300">{ing.name}</span>
+                                                        <span className="text-sm font-bold text-white">
+                                                            {displayAmount} {ing.unit}
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+
+                                    {/* Instructions */}
+                                    <div className="p-4 border-b border-stone-700">
+                                        <h4 className="text-sm font-bold text-white mb-3">Instructions</h4>
+                                        <ol className="space-y-2">
+                                            {recipe.instructions.map((step, idx) => (
+                                                <li key={idx} className="flex gap-3 text-xs text-stone-400">
+                                                    <span className="w-5 h-5 bg-stone-800 rounded-full flex items-center justify-center text-secondary font-bold flex-shrink-0">{idx + 1}</span>
+                                                    <span className="pt-0.5">{step}</span>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </div>
+
+                                    {/* Tips & Info */}
+                                    <div className="p-4 space-y-3">
+                                        {recipe.tips && (
+                                            <div className="flex items-start gap-2 bg-amber-950/30 p-3 rounded-lg border border-amber-900/30">
+                                                <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                                <p className="text-xs text-amber-200">{recipe.tips}</p>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-stone-500">Shelf Life:</span>
+                                            <span className="text-stone-300">{recipe.shelfLife}</span>
+                                        </div>
+                                        {recipe.usedIn && recipe.usedIn.length > 0 && (
+                                            <div className="pt-2 border-t border-stone-800">
+                                                <span className="text-xs text-stone-500 block mb-2">Used in:</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {recipe.usedIn.map((drink, idx) => (
+                                                        <span key={idx} className="text-[10px] bg-stone-800 text-stone-400 px-2 py-1 rounded border border-stone-700">{drink}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Recipe Categories */}
+                        {!selectedDiyItem && (
+                            <div className="space-y-4">
+                                {(['Syrup', 'Cordial', 'Shrub'] as const).map(category => {
+                                    const categoryRecipes = DIY_RECIPES.filter(r => r.category === category);
+                                    if (categoryRecipes.length === 0) return null;
+                                    
+                                    return (
+                                        <div key={category} className="bg-surface rounded-2xl border border-stone-700 overflow-hidden">
+                                            <div className="p-3 border-b border-stone-700 bg-stone-800/50">
+                                                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                                    {category === 'Syrup' && <Beaker className="w-4 h-4 text-secondary" />}
+                                                    {category === 'Cordial' && <Wine className="w-4 h-4 text-secondary" />}
+                                                    {category === 'Shrub' && <Sparkles className="w-4 h-4 text-secondary" />}
+                                                    {category}s
+                                                    <span className="text-[10px] text-stone-500 font-normal">({categoryRecipes.length})</span>
+                                                </h3>
+                                            </div>
+                                            <div className="divide-y divide-stone-800">
+                                                {categoryRecipes.map(recipe => (
+                                                    <button 
+                                                        key={recipe.id}
+                                                        onClick={() => { setSelectedDiyItem(recipe.id); setDiyOutputVolume(recipe.baseYield); }}
+                                                        className="w-full p-3 flex items-center justify-between hover:bg-stone-800/50 transition-colors text-left group"
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-medium text-white group-hover:text-secondary transition-colors truncate">{recipe.name}</div>
+                                                            <div className="text-[10px] text-stone-500 truncate">{recipe.description}</div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                                                            <span className="text-[10px] text-stone-600">{recipe.baseYield}oz</span>
+                                                            <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-secondary transition-colors -rotate-90" />
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
             
