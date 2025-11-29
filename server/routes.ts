@@ -8,6 +8,7 @@ import { enrichPendingRecipes } from "./enrichGlobalRecipes";
 import { enrichRecipeData } from "./recipeEnrichment";
 import { seedMasterIngredients } from "./seedIngredients";
 import { enrichPendingIngredients } from "./ingredientEnrichment";
+import { seedModernRecipes } from "./seedModernRecipes";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -113,6 +114,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error seeding recipes:", error);
       res.status(500).json({ message: "Failed to seed recipes" });
+    }
+  });
+
+  app.post('/api/admin/seed-modern-recipes', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await seedModernRecipes();
+      res.json(result);
+    } catch (error) {
+      console.error("Error seeding modern recipes:", error);
+      res.status(500).json({ message: "Failed to seed modern recipes" });
     }
   });
 
