@@ -28,6 +28,7 @@ export interface DerivedFlavorResult {
   categoryIntensities: Record<string, number>;
   derivedCategories: string[];
   unmatchedIngredients: string[];
+  noteDetails: Array<{ id: string; label: string; categoryId: string; categoryLabel: string }>;
 }
 
 async function fetchFlavorTaxonomy(): Promise<FlavorTaxonomy> {

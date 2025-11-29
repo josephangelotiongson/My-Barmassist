@@ -102,20 +102,31 @@ export async function getCurrentVersion(): Promise<string> {
   return result.length > 0 ? result[0].version : '1.0.0';
 }
 
-export async function deriveFlavorNotesFromIngredients(ingredients: string[]): Promise<{ categories: string[]; notes: string[] }> {
+export interface DerivedFlavorResult {
+  matchedNotes: string[];
+  categoryIntensities: Record<string, number>;
+  derivedCategories: string[];
+  unmatchedIngredients: string[];
+  noteDetails: Array<{ id: string; label: string; categoryId: string; categoryLabel: string }>;
+}
+
+export async function deriveFlavorNotesFromIngredients(ingredients: string[]): Promise<DerivedFlavorResult> {
   const taxonomy = await getFlavorTaxonomy();
-  const categorySet = new Set<string>();
+  const categoryIntensities: Record<string, number> = {};
   const noteSet = new Set<string>();
+  const matchedIngredients = new Set<string>();
   
   for (const ingredient of ingredients) {
     const name = ingredient.toLowerCase().trim();
+    let matched = false;
     
     for (const [keyword, noteIds] of Object.entries(taxonomy.ingredientMappings)) {
       if (name.includes(keyword) || keyword.includes(name)) {
+        matched = true;
         for (const noteId of noteIds) {
           noteSet.add(noteId);
           const catId = noteId.split('.')[0];
-          categorySet.add(catId);
+          categoryIntensities[catId] = (categoryIntensities[catId] || 0) + 1;
         }
       }
     }
@@ -125,19 +136,46 @@ export async function deriveFlavorNotesFromIngredients(ingredients: string[]): P
       if (word.length < 3) continue;
       for (const [keyword, noteIds] of Object.entries(taxonomy.ingredientMappings)) {
         if (keyword === word) {
+          matched = true;
           for (const noteId of noteIds) {
             noteSet.add(noteId);
             const catId = noteId.split('.')[0];
-            categorySet.add(catId);
+            categoryIntensities[catId] = (categoryIntensities[catId] || 0) + 1;
           }
         }
       }
     }
+    
+    if (matched) {
+      matchedIngredients.add(name);
+    }
   }
   
+  const noteDetails: Array<{ id: string; label: string; categoryId: string; categoryLabel: string }> = [];
+  for (const noteId of noteSet) {
+    const [catId] = noteId.split('.');
+    const category = taxonomy.categories.find(c => c.id === catId);
+    const note = category?.notes.find(n => n.id === noteId);
+    if (category && note) {
+      noteDetails.push({
+        id: noteId,
+        label: note.label,
+        categoryId: catId,
+        categoryLabel: category.label
+      });
+    }
+  }
+  
+  const unmatchedIngredients = ingredients
+    .map(i => i.toLowerCase().trim())
+    .filter(i => !matchedIngredients.has(i));
+  
   return {
-    categories: Array.from(categorySet),
-    notes: Array.from(noteSet)
+    matchedNotes: Array.from(noteSet),
+    categoryIntensities,
+    derivedCategories: Object.keys(categoryIntensities),
+    unmatchedIngredients,
+    noteDetails
   };
 }
 
