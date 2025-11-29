@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle } from 'lucide-react';
+import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle, Network } from 'lucide-react';
 import { MasterIngredient, AppSettings } from '../types';
 
 interface Props {
@@ -38,6 +38,8 @@ const SettingsModal: React.FC<Props> = ({
   const [seedResult, setSeedResult] = useState<any>(null);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichResult, setEnrichResult] = useState<any>(null);
+  const [isAnalyzingLineage, setIsAnalyzingLineage] = useState(false);
+  const [lineageResult, setLineageResult] = useState<any>(null);
   
   // New recipe form state
   const [newRecipeName, setNewRecipeName] = useState('');
@@ -107,6 +109,22 @@ const SettingsModal: React.FC<Props> = ({
       setEnrichResult({ error: 'Failed to enrich recipes' });
     }
     setIsEnriching(false);
+  };
+  
+  const handleAnalyzeLineage = async () => {
+    setIsAnalyzingLineage(true);
+    setLineageResult(null);
+    try {
+      const res = await fetch('/api/generate-lineage', { 
+        method: 'POST',
+        credentials: 'include' 
+      });
+      const data = await res.json();
+      setLineageResult(data);
+    } catch (error) {
+      setLineageResult({ error: 'Failed to analyze lineage' });
+    }
+    setIsAnalyzingLineage(false);
   };
   
   const handleAddGlobalRecipe = async () => {
@@ -725,6 +743,33 @@ const SettingsModal: React.FC<Props> = ({
                                     <div className="flex items-center gap-2">
                                         <CheckCircle className="w-4 h-4" />
                                         Enriched {enrichResult.processed} recipes
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button 
+                            onClick={handleAnalyzeLineage}
+                            disabled={isAnalyzingLineage}
+                            className="w-full bg-purple-950/50 hover:bg-purple-900/50 border border-purple-800/50 text-purple-300 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                        >
+                            {isAnalyzingLineage ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Network className="w-5 h-5" />
+                            )}
+                            <span className="font-bold">Re-analyze All Lineages</span>
+                        </button>
+                        <p className="text-[10px] text-stone-500 text-center">
+                            Uses AI to holistically analyze all cocktails and rebuild family tree relationships. Takes ~2 minutes.
+                        </p>
+                        
+                        {lineageResult && (
+                            <div className={`p-3 rounded-lg text-sm ${lineageResult.error ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+                                {lineageResult.error ? lineageResult.error : (
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        {lineageResult.message || `Created ${lineageResult.lineages} lineages, ${lineageResult.relationships} relationships`}
                                     </div>
                                 )}
                             </div>

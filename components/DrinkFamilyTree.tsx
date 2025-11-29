@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, GitBranch, Sparkles, ChevronRight, Clock, Beaker, ArrowRight, Loader2, Network, Zap, Database, Search } from 'lucide-react';
+import { X, GitBranch, Sparkles, ChevronRight, Clock, Beaker, ArrowRight, Loader2, Network, Zap, Database } from 'lucide-react';
 import { Cocktail } from '../types';
 import { analyzeDrinkFamilyTree, DrinkFamilyTree as FamilyTreeData } from '../services/geminiService';
 
@@ -171,40 +171,6 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
     fetchFamilyTree();
   }, [cocktail, recipeNames]);
 
-  const handleRefresh = async () => {
-    setIsLoading(true);
-    setError(null);
-    setIsFromDatabase(false);
-    setFamilyTree(null); // Clear previous data before refreshing
-    setLoadingStatus('generating');
-    
-    try {
-      const result = await analyzeDrinkFamilyTree(
-        cocktail.name,
-        cocktail.category || 'Classic',
-        cocktail.ingredients,
-        recipeNames
-      );
-
-      setLoadingStatus('saving');
-      const validatedData = await saveLineageToDatabase(result);
-      
-      if (validatedData) {
-        // Only show validated data from server (filtered to only DB-verified cocktails)
-        setFamilyTree(validatedData);
-        setIsFromDatabase(true);
-      } else {
-        // Save failed - show error instead of unvalidated data
-        setError('Failed to validate lineage data. Please try again.');
-      }
-    } catch (err) {
-      console.error('Family tree refresh failed:', err);
-      setError('Failed to refresh cocktail lineage. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleDrinkClick = (drinkName: string) => {
     if (isInDatabase(drinkName)) {
       onSelectDrink(drinkName);
@@ -268,16 +234,6 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!isLoading && familyTree && (
-                <button 
-                  onClick={handleRefresh}
-                  className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-stone-800 rounded-full text-stone-400 hover:text-secondary transition-colors text-xs font-medium"
-                  title="Reinvestigate lineage with AI"
-                >
-                  <Search className="w-4 h-4" />
-                  <span className="hidden sm:inline">Reinvestigate</span>
-                </button>
-              )}
               <button 
                 onClick={onClose}
                 className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-white transition-colors"
@@ -311,11 +267,12 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
           ) : error ? (
             <div className="text-center py-20">
               <p className="text-red-400">{error}</p>
+              <p className="text-xs text-stone-500 mt-2">Lineage can be re-analyzed from Settings (Admin)</p>
               <button 
-                onClick={handleRefresh}
+                onClick={onClose}
                 className="mt-4 px-4 py-2 bg-stone-800 rounded-lg text-white text-sm hover:bg-stone-700 transition-colors"
               >
-                Try Again
+                Close
               </button>
             </div>
           ) : familyTree && (
