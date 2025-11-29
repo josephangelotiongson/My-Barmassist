@@ -6,6 +6,7 @@ interface Props {
   recipeId?: number | string;
   initialCategories?: string[];
   initialNotes?: string[];
+  baseProfile?: Record<string, number>;
   onSelectionChange: (selection: { categories: string[]; notes: string[]; profile: FlavorProfile }) => void;
   size?: number;
 }
@@ -38,6 +39,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
   recipeId,
   initialCategories = [],
   initialNotes = [],
+  baseProfile,
   onSelectionChange,
   size = 320 
 }) => {
@@ -73,7 +75,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
   }, [recipeId, initialCategories, initialNotes]);
 
   const notifyChange = (newSelection: FlavorSelection) => {
-    const profile = selectionToFlavorProfile(newSelection);
+    const profile = selectionToFlavorProfile(newSelection, baseProfile);
     const noteLabels: string[] = [];
     FLAVOR_TAXONOMY.forEach(cat => {
       cat.notes.forEach(note => {

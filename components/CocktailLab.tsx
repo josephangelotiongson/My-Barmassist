@@ -694,6 +694,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     recipeId={selectedRecipe?.id}
                     initialCategories={derivedCategories}
                     initialNotes={derivedNotes}
+                    baseProfile={originalProfile as unknown as Record<string, number>}
                     onSelectionChange={({ notes, profile }) => {
                       setTargetProfile(profile);
                       setTargetNotes(notes);
@@ -1246,9 +1247,13 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
                 {editorMode === 'wheel' ? (
                   <EditableFlavorWheel
-                    profile={targetProfile}
-                    onProfileChange={setTargetProfile}
-                    onNotesChange={setTargetNotes}
+                    key={`build-wheel-${selectedIngredients.length}`}
+                    baseProfile={DEFAULT_PROFILE as unknown as Record<string, number>}
+                    onSelectionChange={({ notes, profile }) => {
+                      setTargetProfile(profile);
+                      setTargetNotes(notes);
+                    }}
+                    size={280}
                   />
                 ) : (
                   <div className="space-y-3">

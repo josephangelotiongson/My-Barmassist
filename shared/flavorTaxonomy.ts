@@ -128,11 +128,17 @@ export function getSelectedLabels(selection: FlavorSelection): string[] {
   return labels;
 }
 
-export function selectionToFlavorProfile(selection: FlavorSelection): Record<string, number> {
-  const profile: Record<string, number> = {
+export function selectionToFlavorProfile(
+  selection: FlavorSelection, 
+  baseProfile?: Record<string, number>
+): Record<string, number> {
+  const defaultBase: Record<string, number> = {
     Sweet: 0, Sour: 0, Bitter: 0, Boozy: 0,
     Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0
   };
+  const base = baseProfile || defaultBase;
+  
+  const profile: Record<string, number> = { ...base };
   
   FLAVOR_TAXONOMY.forEach(cat => {
     const categorySelected = selection.categories.has(cat.id);
