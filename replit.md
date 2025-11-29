@@ -132,6 +132,13 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - **global_recipes**: Classic cocktail recipes accessible to all users
   - Includes flavor profiles, nutrition data, enrichment status
   - AI enrichment pipeline populates flavor and nutrition data
+- **master_ingredients**: Comprehensive ingredient database with AI enrichment
+  - Includes nutrition (calories, carbs, sugar, protein per oz)
+  - ABV, flavor notes, aroma profiles, production methods
+  - Common uses, substitutes, pairings, allergens
+  - History and origin information
+  - Verification sources and confidence scores
+  - AI enrichment from reliable web sources
 - **user_recipes**: User-created cocktail recipes
 - **user_ratings**: User ratings for cocktails
 - **user_shopping_list**: User shopping list items

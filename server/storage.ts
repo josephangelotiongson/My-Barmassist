@@ -6,6 +6,7 @@ import {
   userSettings,
   recipeImages,
   globalRecipes,
+  masterIngredients,
   type User,
   type UpsertUser,
   type UserRecipe,
@@ -18,6 +19,7 @@ import {
   type InsertUserSettings,
   type GlobalRecipe,
   type InsertGlobalRecipe,
+  type MasterIngredient,
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, and, isNull, or } from "drizzle-orm";
@@ -79,6 +81,11 @@ export interface IStorage {
   getAllGlobalRecipes(): Promise<GlobalRecipe[]>;
   getGlobalRecipeBySlug(slug: string): Promise<GlobalRecipe | undefined>;
   getEnrichmentStats(): Promise<{ pending: number; partial: number; complete: number; failed: number }>;
+  
+  // Master ingredients (public read access - no auth required)
+  getAllMasterIngredients(): Promise<MasterIngredient[]>;
+  getMasterIngredientBySlug(slug: string): Promise<MasterIngredient | undefined>;
+  getIngredientEnrichmentStats(): Promise<{ total: number; pending: number; complete: number; failed: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -339,6 +346,26 @@ export class DatabaseStorage implements IStorage {
       partial: recipes.filter(r => r.enrichmentStatus === 'partial').length,
       complete: recipes.filter(r => r.enrichmentStatus === 'complete').length,
       failed: recipes.filter(r => r.enrichmentStatus === 'failed').length,
+    };
+  }
+
+  // Master ingredients operations (public read access)
+  async getAllMasterIngredients(): Promise<MasterIngredient[]> {
+    return await db.select().from(masterIngredients);
+  }
+
+  async getMasterIngredientBySlug(slug: string): Promise<MasterIngredient | undefined> {
+    const [ingredient] = await db.select().from(masterIngredients).where(eq(masterIngredients.slug, slug));
+    return ingredient;
+  }
+
+  async getIngredientEnrichmentStats(): Promise<{ total: number; pending: number; complete: number; failed: number }> {
+    const ingredients = await db.select().from(masterIngredients);
+    return {
+      total: ingredients.length,
+      pending: ingredients.filter(i => i.enrichmentStatus === 'pending').length,
+      complete: ingredients.filter(i => i.enrichmentStatus === 'complete').length,
+      failed: ingredients.filter(i => i.enrichmentStatus === 'failed').length,
     };
   }
 }

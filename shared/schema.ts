@@ -115,15 +115,40 @@ export const userSettings = pgTable("user_settings", {
 // Master ingredient data (shared across all users)
 export const masterIngredients = pgTable("master_ingredients", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  name: varchar("name").notNull().unique(),
+  slug: varchar("slug").notNull().unique(),
+  name: varchar("name").notNull(),
   category: varchar("category").notNull(),
+  subCategory: varchar("sub_category"),
+  ingredientType: varchar("ingredient_type"),
+  isGeneric: boolean("is_generic").default(true),
+  vendorBrand: varchar("vendor_brand"),
+  originRegion: varchar("origin_region"),
   abv: integer("abv"),
-  nutritionEstimate: jsonb("nutrition_estimate").$type<{
+  nutrition: jsonb("nutrition").$type<{
     caloriesPerOz: number;
     carbsPerOz: number;
+    sugarPerOz: number;
+    proteinPerOz: number;
   }>(),
+  flavorNotes: text("flavor_notes"),
+  aromaProfile: jsonb("aroma_profile").$type<string[]>(),
+  commonUses: jsonb("common_uses").$type<string[]>(),
+  substitutes: jsonb("substitutes").$type<string[]>(),
+  pairings: jsonb("pairings").$type<string[]>(),
+  productionMethod: text("production_method"),
+  history: text("history"),
+  allergens: jsonb("allergens").$type<string[]>(),
+  verificationSources: jsonb("verification_sources").$type<string[]>(),
+  dataConfidenceScore: integer("data_confidence_score"),
+  enrichmentStatus: varchar("enrichment_status").default("pending"),
+  enrichedAt: timestamp("enriched_at"),
+  lastVerifiedAt: timestamp("last_verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_master_ingredients_category").on(table.category),
+  index("idx_master_ingredients_enrichment").on(table.enrichmentStatus),
+]);
 
 // Global recipes - classic/standard cocktail recipes accessible to all users
 export const globalRecipes = pgTable("global_recipes", {
@@ -187,3 +212,5 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type GlobalRecipe = typeof globalRecipes.$inferSelect;
 export type InsertGlobalRecipe = typeof globalRecipes.$inferInsert;
+export type MasterIngredient = typeof masterIngredients.$inferSelect;
+export type InsertMasterIngredient = typeof masterIngredients.$inferInsert;

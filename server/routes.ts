@@ -6,6 +6,8 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { seedGlobalRecipes } from "./seedGlobalRecipes";
 import { enrichPendingRecipes } from "./enrichGlobalRecipes";
 import { enrichRecipeData } from "./recipeEnrichment";
+import { seedMasterIngredients } from "./seedIngredients";
+import { enrichPendingIngredients } from "./ingredientEnrichment";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -95,6 +97,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error enriching recipes:", error);
       res.status(500).json({ message: "Failed to enrich recipes" });
+    }
+  });
+
+  // Master ingredients routes (public read access)
+  app.get('/api/ingredients', async (req, res) => {
+    try {
+      const ingredients = await storage.getAllMasterIngredients();
+      res.json(ingredients);
+    } catch (error) {
+      console.error("Error fetching ingredients:", error);
+      res.status(500).json({ message: "Failed to fetch ingredients" });
+    }
+  });
+
+  app.get('/api/ingredients/stats', async (req, res) => {
+    try {
+      const stats = await storage.getIngredientEnrichmentStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching ingredient stats:", error);
+      res.status(500).json({ message: "Failed to fetch ingredient stats" });
+    }
+  });
+
+  app.get('/api/ingredients/:slug', async (req, res) => {
+    try {
+      const ingredient = await storage.getMasterIngredientBySlug(req.params.slug);
+      if (!ingredient) {
+        return res.status(404).json({ message: "Ingredient not found" });
+      }
+      res.json(ingredient);
+    } catch (error) {
+      console.error("Error fetching ingredient:", error);
+      res.status(500).json({ message: "Failed to fetch ingredient" });
+    }
+  });
+
+  // Admin endpoints for ingredient seeding and enrichment (requires authentication)
+  app.post('/api/admin/seed-ingredients', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await seedMasterIngredients();
+      res.json(result);
+    } catch (error) {
+      console.error("Error seeding ingredients:", error);
+      res.status(500).json({ message: "Failed to seed ingredients" });
+    }
+  });
+
+  app.post('/api/admin/enrich-ingredients', isAuthenticated, async (req: any, res) => {
+    try {
+      const batchSize = parseInt(req.query.batch as string) || 5;
+      const result = await enrichPendingIngredients(batchSize);
+      res.json(result);
+    } catch (error) {
+      console.error("Error enriching ingredients:", error);
+      res.status(500).json({ message: "Failed to enrich ingredients" });
     }
   });
 
