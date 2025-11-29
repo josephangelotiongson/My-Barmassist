@@ -107,8 +107,10 @@ export class ObjectStorageService {
       throw new Error("PRIVATE_OBJECT_DIR not set");
     }
 
-    const sanitizedName = recipeName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const objectId = `${sanitizedName}-${randomUUID().slice(0, 8)}`;
+    // Use consistent naming based only on recipe name (no UUID)
+    // This ensures one image per recipe and allows easy lookup/overwrite
+    const sanitizedName = recipeName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const objectId = sanitizedName;
     const fullPath = `${privateObjectDir}/cocktail-images/${objectId}.png`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
     
@@ -118,6 +120,7 @@ export class ObjectStorageService {
     const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Content, 'base64');
     
+    // This will overwrite any existing file with the same name
     await file.save(buffer, {
       contentType: 'image/png',
       metadata: {
