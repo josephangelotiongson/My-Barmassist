@@ -16,7 +16,6 @@ import {
   Legend
 } from 'recharts';
 import EditableFlavorWheel from './EditableFlavorWheel';
-import { flavorProfileToSelection } from '../shared/flavorTaxonomy';
 
 interface Props {
   allRecipes: Cocktail[];
@@ -90,7 +89,6 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
-  const [targetNotes, setTargetNotes] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [labResult, setLabResult] = useState<LabResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -98,9 +96,6 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [appliedSubs, setAppliedSubs] = useState<Set<number>>(new Set());
   const [appliedAdds, setAppliedAdds] = useState<Set<number>>(new Set());
   const [editorMode, setEditorMode] = useState<'wheel' | 'sliders'>('wheel');
-  
-  const [derivedCategories, setDerivedCategories] = useState<string[]>([]);
-  const [derivedNotes, setDerivedNotes] = useState<string[]>([]);
   const wheelKeyRef = useRef<number>(0);
   
   // Build mode states
@@ -135,12 +130,6 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
       setErrorMessage(null);
       setAppliedSubs(new Set());
       setAppliedAdds(new Set());
-      setTargetNotes([]);
-      
-      const profileSelection = flavorProfileToSelection(profile as unknown as Record<string, number>);
-      
-      setDerivedCategories(profileSelection.categories);
-      setDerivedNotes([]);
       wheelKeyRef.current += 1;
       
       onClearInitialRecipe?.();
@@ -274,13 +263,6 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     setErrorMessage(null);
     setAppliedSubs(new Set());
     setAppliedAdds(new Set());
-    setTargetNotes([]);
-    
-    const recipeProfile = getRecipeProfile(recipe);
-    const profileSelection = flavorProfileToSelection(recipeProfile as unknown as Record<string, number>);
-    
-    setDerivedCategories(profileSelection.categories);
-    setDerivedNotes([]);
     wheelKeyRef.current += 1;
   };
 
@@ -309,8 +291,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
             ingredients: selectedRecipe.ingredients,
             flavorProfile: getRecipeProfile(selectedRecipe)
           },
-          targetProfile,
-          targetNotes: targetNotes.length > 0 ? targetNotes : undefined
+          targetProfile
         })
       });
       
@@ -685,14 +666,9 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   <EditableFlavorWheel
                     key={`wheel-${selectedRecipe?.id || 'none'}-${wheelKeyRef.current}`}
                     recipeId={selectedRecipe?.id}
-                    initialCategories={derivedCategories}
-                    initialNotes={derivedNotes}
                     baseProfile={originalProfile as unknown as Record<string, number>}
                     currentProfile={targetProfile as unknown as Record<string, number>}
-                    onSelectionChange={({ notes, profile }) => {
-                      setTargetProfile(profile);
-                      setTargetNotes(notes);
-                    }}
+                    onProfileChange={(profile) => setTargetProfile(profile)}
                     size={280}
                   />
                 </div>
@@ -812,7 +788,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
               <button
                 onClick={analyzeSubstitutions}
-                disabled={isAnalyzing || (!hasChanges && targetNotes.length === 0)}
+                disabled={isAnalyzing || !hasChanges}
                 className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
                 {isAnalyzing ? (
@@ -823,7 +799,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                 ) : (
                   <>
                     <Shuffle className="w-5 h-5" />
-                    {hasChanges || targetNotes.length > 0 ? 'Get AI Recommendations' : 'Adjust Target Profile First'}
+                    {hasChanges ? 'Get AI Recommendations' : 'Adjust Target Profile First'}
                   </>
                 )}
               </button>
@@ -1242,10 +1218,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   <EditableFlavorWheel
                     key={`build-wheel-${selectedIngredients.length}`}
                     baseProfile={DEFAULT_PROFILE as unknown as Record<string, number>}
-                    onSelectionChange={({ notes, profile }) => {
-                      setTargetProfile(profile);
-                      setTargetNotes(notes);
-                    }}
+                    currentProfile={targetProfile as unknown as Record<string, number>}
+                    onProfileChange={(profile) => setTargetProfile(profile)}
                     size={280}
                   />
                 ) : (

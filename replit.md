@@ -53,7 +53,13 @@ None set yet - will be documented as user expresses preferences during developme
   - Auto-assigns new recipes to cocktail families when created/imported
 - **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation feature in the Rx tab:
   - Select any cocktail as a starting point for experimentation
-  - Interactive editable flavor profile with 8 dimensions (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky)
+  - **Interactive Editable Flavor Wheel**: Continuous color intensity system (0-10 scale):
+    - All 8 flavor categories always visible with varying opacity/brightness
+    - Color intensity maps directly to profile values (0 = 20% opacity/dim, 10 = 100% opacity/full)
+    - Bidirectional sync between wheel and slider views (changes in either reflect instantly)
+    - HSL interpolation for smooth color transitions
+    - Click categories to increment values, shift+click to decrement
+    - Top 3 flavors automatically highlighted based on profile values
   - Visual radar chart comparing Original, Target, and Predicted flavor profiles
   - AI suggests ingredient substitutions to achieve target flavor goals
   - Toggle individual substitutions to preview modified recipe

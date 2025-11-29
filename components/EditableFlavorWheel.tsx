@@ -1,15 +1,14 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlavorProfile, FlavorDimension } from '../types';
-import { FLAVOR_TAXONOMY, FlavorSelection, createEmptySelection, selectionToFlavorProfile, getSelectedLabels } from '../shared/flavorTaxonomy';
+import { FLAVOR_TAXONOMY } from '../shared/flavorTaxonomy';
 
 interface Props {
   recipeId?: number | string;
-  initialCategories?: string[];
-  initialNotes?: string[];
   baseProfile?: Record<string, number>;
   currentProfile?: Record<string, number>;
-  onSelectionChange: (selection: { categories: string[]; notes: string[]; profile: FlavorProfile }) => void;
+  onProfileChange: (profile: FlavorProfile) => void;
   size?: number;
+  readOnly?: boolean;
 }
 
 function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
@@ -36,14 +35,57 @@ function describeArc(x: number, y: number, innerRadius: number, outerRadius: num
   ].join(" ");
 }
 
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function getIntensityColor(baseColor: string, value: number, maxValue: number = 10): { fill: string; opacity: number } {
+  const intensity = Math.max(0, Math.min(1, value / maxValue));
+  const hsl = hexToHsl(baseColor);
+  
+  const minLightness = 15;
+  const maxLightness = hsl.l;
+  const lightness = minLightness + (maxLightness - minLightness) * intensity;
+  
+  const minSaturation = 20;
+  const saturation = minSaturation + (hsl.s - minSaturation) * intensity;
+  
+  const minOpacity = 0.3;
+  const opacity = minOpacity + (1 - minOpacity) * intensity;
+  
+  return {
+    fill: `hsl(${hsl.h}, ${saturation}%, ${lightness}%)`,
+    opacity
+  };
+}
+
 const EditableFlavorWheel: React.FC<Props> = ({ 
   recipeId,
-  initialCategories = [],
-  initialNotes = [],
   baseProfile,
   currentProfile,
-  onSelectionChange,
-  size = 320 
+  onProfileChange,
+  size = 320,
+  readOnly = false
 }) => {
   const center = size / 2;
   const innerRingInner = 55;
@@ -55,114 +97,55 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const categoryAngle = 360 / categoryCount;
   const gap = 1.5;
 
-  const buildInitialSelection = (): FlavorSelection => {
-    const sel = createEmptySelection();
-    initialCategories.forEach(catId => sel.categories.add(catId));
-    initialNotes.forEach(noteId => sel.notes.add(noteId));
-    initialNotes.forEach(noteId => {
-      const cat = FLAVOR_TAXONOMY.find(c => c.notes.some(n => n.id === noteId));
-      if (cat) sel.categories.add(cat.id);
-    });
-    return sel;
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [hoveredNote, setHoveredNote] = useState<string | null>(null);
+
+  const profile = currentProfile || baseProfile || {};
+
+  const getCategoryValue = (categoryLabel: string): number => {
+    return profile[categoryLabel] || 0;
   };
 
-  const [selection, setSelection] = useState<FlavorSelection>(buildInitialSelection);
-  const [initialCategorySet, setInitialCategorySet] = useState<Set<string>>(() => new Set(initialCategories));
-  const lastRecipeId = useRef(recipeId);
-  const skipNextSync = useRef(false);
-
-  useEffect(() => {
-    if (recipeId !== lastRecipeId.current) {
-      lastRecipeId.current = recipeId;
-      setSelection(buildInitialSelection());
-      setInitialCategorySet(new Set(initialCategories));
-    }
-  }, [recipeId, initialCategories, initialNotes]);
-
-  useEffect(() => {
-    if (!currentProfile || !baseProfile) return;
-    if (skipNextSync.current) {
-      skipNextSync.current = false;
-      return;
-    }
+  const adjustCategoryValue = (categoryLabel: string, delta: number) => {
+    if (readOnly) return;
+    const currentValue = getCategoryValue(categoryLabel);
+    const newValue = Math.max(0, Math.min(10, currentValue + delta));
     
-    const newSelection = createEmptySelection();
-    FLAVOR_TAXONOMY.forEach(cat => {
-      const currentValue = currentProfile[cat.label] || 0;
-      const baseValue = baseProfile[cat.label] || 0;
-      const wasInitial = initialCategorySet.has(cat.id);
-      
-      if (currentValue > baseValue + 1) {
-        newSelection.categories.add(cat.id);
-        const notesNeeded = Math.floor((currentValue - baseValue) / 2);
-        cat.notes.slice(0, Math.min(notesNeeded, cat.notes.length)).forEach(n => {
-          newSelection.notes.add(n.id);
-        });
-      } else if (currentValue > baseValue) {
-        newSelection.categories.add(cat.id);
-      } else if (wasInitial && currentValue >= baseValue - 1) {
-        newSelection.categories.add(cat.id);
-      } else if (currentValue >= 4) {
-        newSelection.categories.add(cat.id);
-      }
-    });
-    
-    setSelection(newSelection);
-  }, [currentProfile, baseProfile, initialCategorySet]);
-
-  const notifyChange = (newSelection: FlavorSelection) => {
-    skipNextSync.current = true;
-    const profile = selectionToFlavorProfile(newSelection, baseProfile, initialCategorySet);
-    const noteLabels: string[] = [];
-    FLAVOR_TAXONOMY.forEach(cat => {
-      cat.notes.forEach(note => {
-        if (newSelection.notes.has(note.id)) {
-          noteLabels.push(note.label);
-        }
-      });
-    });
-    onSelectionChange({
-      categories: Array.from(newSelection.categories),
-      notes: noteLabels,
-      profile: profile as unknown as FlavorProfile
-    });
-  };
-
-  const toggleCategory = (categoryId: string) => {
-    const newSelection: FlavorSelection = {
-      categories: new Set<string>(selection.categories),
-      notes: new Set<string>(selection.notes),
+    const newProfile: FlavorProfile = {
+      [FlavorDimension.SWEET]: profile['Sweet'] || 0,
+      [FlavorDimension.SOUR]: profile['Sour'] || 0,
+      [FlavorDimension.BITTER]: profile['Bitter'] || 0,
+      [FlavorDimension.BOOZY]: profile['Boozy'] || 0,
+      [FlavorDimension.HERBAL]: profile['Herbal'] || 0,
+      [FlavorDimension.FRUITY]: profile['Fruity'] || 0,
+      [FlavorDimension.SPICY]: profile['Spicy'] || 0,
+      [FlavorDimension.SMOKY]: profile['Smoky'] || 0,
     };
     
-    if (newSelection.categories.has(categoryId)) {
-      newSelection.categories.delete(categoryId);
-      const cat = FLAVOR_TAXONOMY.find(c => c.id === categoryId);
-      if (cat) {
-        cat.notes.forEach(n => newSelection.notes.delete(n.id));
-      }
-    } else {
-      newSelection.categories.add(categoryId);
-    }
-    
-    setSelection(newSelection);
-    notifyChange(newSelection);
+    newProfile[categoryLabel as FlavorDimension] = newValue;
+    onProfileChange(newProfile);
   };
 
-  const toggleNote = (noteId: string, categoryId: string) => {
-    const newSelection: FlavorSelection = {
-      categories: new Set<string>(selection.categories),
-      notes: new Set<string>(selection.notes),
-    };
+  const handleCategoryClick = (categoryLabel: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (readOnly) return;
     
-    if (newSelection.notes.has(noteId)) {
-      newSelection.notes.delete(noteId);
+    const currentValue = getCategoryValue(categoryLabel);
+    if (currentValue < 5) {
+      adjustCategoryValue(categoryLabel, 3);
+    } else if (currentValue < 8) {
+      adjustCategoryValue(categoryLabel, 2);
     } else {
-      newSelection.notes.add(noteId);
-      newSelection.categories.add(categoryId);
+      adjustCategoryValue(categoryLabel, -currentValue + 2);
     }
+  };
+
+  const handleNoteClick = (categoryLabel: string, noteIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (readOnly) return;
     
-    setSelection(newSelection);
-    notifyChange(newSelection);
+    const increment = 2;
+    adjustCategoryValue(categoryLabel, increment);
   };
 
   const segments = useMemo(() => {
@@ -171,8 +154,8 @@ const EditableFlavorWheel: React.FC<Props> = ({
       const catEndAngle = (catIndex + 1) * categoryAngle - gap / 2;
       const catMidAngle = catStartAngle + (categoryAngle - gap) / 2;
       
-      const isCategorySelected = selection.categories.has(cat.id);
-      const hasSelectedNotes = cat.notes.some(n => selection.notes.has(n.id));
+      const categoryValue = getCategoryValue(cat.label);
+      const categoryIntensity = getIntensityColor(cat.color, categoryValue);
       
       const innerLabelPos = polarToCartesian(center, center, (innerRingInner + innerRingOuter) / 2, catMidAngle);
       
@@ -182,18 +165,23 @@ const EditableFlavorWheel: React.FC<Props> = ({
         const noteEndAngle = catStartAngle + (noteIndex + 1) * noteAngleSpan - gap / 4;
         const noteMidAngle = noteStartAngle + noteAngleSpan / 2;
         
-        const isNoteSelected = selection.notes.has(note.id);
+        const noteValue = categoryValue * (0.6 + noteIndex * 0.1);
+        const noteIntensity = getIntensityColor(cat.color, noteValue);
+        
         const noteLabelPos = polarToCartesian(center, center, (outerRingInner + outerRingOuter) / 2, noteMidAngle);
         
         return {
           ...note,
           categoryId: cat.id,
+          categoryLabel: cat.label,
+          noteIndex,
           startAngle: noteStartAngle,
           endAngle: noteEndAngle,
           midAngle: noteMidAngle,
-          isSelected: isNoteSelected,
+          value: noteValue,
+          intensity: noteIntensity,
           labelPos: noteLabelPos,
-          color: cat.color,
+          baseColor: cat.color,
         };
       });
 
@@ -202,20 +190,35 @@ const EditableFlavorWheel: React.FC<Props> = ({
         startAngle: catStartAngle,
         endAngle: catEndAngle,
         midAngle: catMidAngle,
-        isSelected: isCategorySelected,
-        hasSelectedNotes,
+        value: categoryValue,
+        intensity: categoryIntensity,
         labelPos: innerLabelPos,
         notes: noteSegments,
       };
     });
-  }, [selection, center, categoryAngle]);
+  }, [profile, center, categoryAngle]);
 
-  const selectedLabels = getSelectedLabels(selection);
+  const activeCategories = segments
+    .filter(s => s.value >= 4)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 4);
 
   return (
     <div className="flex flex-col items-center">
       <div className="relative" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
+          <defs>
+            {segments.map((cat) => (
+              <filter key={`glow-${cat.id}`} id={`glow-${cat.id}`} x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation={cat.value > 5 ? 2 : 0} result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            ))}
+          </defs>
+          
           <circle cx={center} cy={center} r={outerRingOuter} fill="#1c1917" />
           
           {segments.map((cat) => (
@@ -223,20 +226,20 @@ const EditableFlavorWheel: React.FC<Props> = ({
               {cat.notes.map((note) => (
                 <g 
                   key={note.id} 
-                  className="cursor-pointer" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleNote(note.id, cat.id);
-                  }}
+                  className={readOnly ? '' : 'cursor-pointer'}
+                  onClick={(e) => handleNoteClick(cat.label, note.noteIndex, e)}
+                  onMouseEnter={() => setHoveredNote(note.id)}
+                  onMouseLeave={() => setHoveredNote(null)}
                 >
                   <path
                     d={describeArc(center, center, outerRingInner, outerRingOuter, note.startAngle, note.endAngle)}
-                    fill={note.isSelected ? note.color : '#292524'}
+                    fill={note.intensity.fill}
                     stroke="#0c0a09"
                     strokeWidth="1"
-                    className="transition-all duration-200 hover:brightness-150 hover:opacity-100"
+                    className="transition-all duration-300"
                     style={{ 
-                      opacity: note.isSelected ? 1 : 0.6,
+                      opacity: note.intensity.opacity,
+                      filter: hoveredNote === note.id ? 'brightness(1.3)' : undefined
                     }}
                   />
                   <text
@@ -244,10 +247,11 @@ const EditableFlavorWheel: React.FC<Props> = ({
                     y={note.labelPos.y}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill={note.isSelected ? '#1c1917' : '#a8a29e'}
+                    fill={note.value > 5 ? '#1c1917' : '#a8a29e'}
                     fontSize="7"
-                    fontWeight={note.isSelected ? '700' : '500'}
-                    className="pointer-events-none select-none"
+                    fontWeight={note.value > 5 ? '700' : '500'}
+                    className="pointer-events-none select-none transition-all duration-300"
+                    style={{ opacity: Math.max(0.5, note.intensity.opacity) }}
                     transform={`rotate(${note.midAngle > 90 && note.midAngle < 270 ? note.midAngle + 180 : note.midAngle}, ${note.labelPos.x}, ${note.labelPos.y})`}
                   >
                     {note.label}
@@ -256,20 +260,20 @@ const EditableFlavorWheel: React.FC<Props> = ({
               ))}
               
               <g 
-                className="cursor-pointer" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleCategory(cat.id);
-                }}
+                className={readOnly ? '' : 'cursor-pointer'}
+                onClick={(e) => handleCategoryClick(cat.label, e)}
+                onMouseEnter={() => setHoveredCategory(cat.id)}
+                onMouseLeave={() => setHoveredCategory(null)}
               >
                 <path
                   d={describeArc(center, center, innerRingInner, innerRingOuter, cat.startAngle, cat.endAngle)}
-                  fill={cat.isSelected ? cat.color : '#3f3f46'}
+                  fill={cat.intensity.fill}
                   stroke="#0c0a09"
                   strokeWidth="1.5"
-                  className="transition-all duration-200 hover:brightness-125"
+                  className="transition-all duration-300"
                   style={{ 
-                    opacity: cat.isSelected ? (cat.hasSelectedNotes ? 0.8 : 1) : 0.6,
+                    opacity: cat.intensity.opacity,
+                    filter: cat.value > 5 ? `url(#glow-${cat.id})` : undefined
                   }}
                 />
                 <text
@@ -277,14 +281,31 @@ const EditableFlavorWheel: React.FC<Props> = ({
                   y={cat.labelPos.y}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fill={cat.isSelected ? '#1c1917' : '#a8a29e'}
+                  fill={cat.value > 5 ? '#1c1917' : '#a8a29e'}
                   fontSize="9"
                   fontWeight="700"
-                  className="pointer-events-none select-none"
+                  className="pointer-events-none select-none transition-all duration-300"
+                  style={{ opacity: Math.max(0.6, cat.intensity.opacity) }}
                   transform={`rotate(${cat.midAngle > 90 && cat.midAngle < 270 ? cat.midAngle + 180 : cat.midAngle}, ${cat.labelPos.x}, ${cat.labelPos.y})`}
                 >
                   {cat.label}
                 </text>
+                
+                {hoveredCategory === cat.id && (
+                  <text
+                    x={cat.labelPos.x}
+                    y={cat.labelPos.y + 12}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#fbbf24"
+                    fontSize="8"
+                    fontWeight="700"
+                    className="pointer-events-none select-none"
+                    transform={`rotate(${cat.midAngle > 90 && cat.midAngle < 270 ? cat.midAngle + 180 : cat.midAngle}, ${cat.labelPos.x}, ${cat.labelPos.y + 12})`}
+                  >
+                    {cat.value.toFixed(0)}
+                  </text>
+                )}
               </g>
             </g>
           ))}
@@ -300,7 +321,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
             fontSize="9"
             className="pointer-events-none select-none uppercase tracking-wider"
           >
-            Target
+            Flavor
           </text>
           <text
             x={center}
@@ -312,33 +333,38 @@ const EditableFlavorWheel: React.FC<Props> = ({
             fontWeight="bold"
             className="pointer-events-none select-none"
           >
-            Flavors
+            Intensity
           </text>
         </svg>
       </div>
       
       <div className="mt-3 flex flex-wrap justify-center gap-1.5 max-w-xs">
-        {selectedLabels.map((label, i) => {
-          const cat = FLAVOR_TAXONOMY.find(c => c.label === label || c.notes.some(n => n.label === label));
-          const color = cat?.color || '#78716c';
-          return (
-            <span 
-              key={i}
-              className="px-2 py-0.5 rounded-full text-[10px] font-medium"
-              style={{ backgroundColor: color, color: '#1c1917' }}
-            >
-              {label}
-            </span>
-          );
-        })}
-        {selectedLabels.length === 0 && (
-          <span className="text-xs text-stone-500">Tap to select target flavors</span>
+        {activeCategories.map((cat) => (
+          <span 
+            key={cat.id}
+            className="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
+            style={{ 
+              backgroundColor: cat.intensity.fill, 
+              color: cat.value > 5 ? '#1c1917' : '#f5f5f4',
+              opacity: cat.intensity.opacity
+            }}
+          >
+            {cat.label}
+            <span className="font-bold">{cat.value.toFixed(0)}</span>
+          </span>
+        ))}
+        {activeCategories.length === 0 && (
+          <span className="text-xs text-stone-500">
+            {readOnly ? 'No strong flavors' : 'Tap to adjust flavor intensity'}
+          </span>
         )}
       </div>
       
-      <p className="text-[10px] text-stone-500 mt-2 text-center max-w-xs">
-        Inner ring = broad categories • Outer ring = specific notes
-      </p>
+      {!readOnly && (
+        <p className="text-[10px] text-stone-500 mt-2 text-center max-w-xs">
+          Tap categories to boost • Brightness shows intensity (0-10)
+        </p>
+      )}
     </div>
   );
 };
