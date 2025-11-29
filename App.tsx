@@ -224,16 +224,16 @@ export default function App() {
           const customRecipes: Cocktail[] = recipes.map((r: any) => ({
             id: `user-${r.id}`,
             name: r.name,
+            description: r.instructions || '',
             ingredients: r.ingredients || [],
-            instructions: r.instructions || '',
+            instructions: Array.isArray(r.instructions) ? r.instructions : [r.instructions || ''],
             flavorProfile: r.flavorProfile || {},
             nutrition: { calories: 0, carbs: 0, abv: 0 },
             category: r.category || 'Custom',
-            glassType: r.glassType,
-            garnish: r.garnish,
             imageUrl: r.imageUrl,
             isUserCreated: true,
-            rating: ratingMap.get(r.name)
+            rating: ratingMap.get(r.name),
+            dateAdded: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString()
           }));
           
           // Apply ratings to preloaded recipes and merge with custom recipes
@@ -506,8 +506,6 @@ export default function App() {
             ingredients: cocktail.ingredients,
             instructions: cocktail.instructions,
             category: cocktail.category,
-            glassType: cocktail.glassType,
-            garnish: cocktail.garnish,
             imageUrl: cocktail.imageUrl,
             flavorProfile: cocktail.flavorProfile
           })
@@ -561,7 +559,7 @@ export default function App() {
       }
   };
   
-  const handleResetPalate = () => {
+  const handleResetRatings = () => {
     setHistory(prev => prev.map(c => ({ ...c, rating: undefined })));
     
     if (isAuthenticated) {
@@ -569,6 +567,22 @@ export default function App() {
         method: 'DELETE',
         credentials: 'include'
       }).catch(() => {});
+    }
+  };
+
+  const handleResetToDefaults = () => {
+    setHistory(getPreloadedRecipes());
+    setShoppingList([]);
+    setPantry(INITIAL_PANTRY);
+    setSettings(INITIAL_SETTINGS);
+    setUserDataLoaded(false);
+    
+    if (isAuthenticated) {
+      Promise.all([
+        fetch('/api/ratings/reset', { method: 'DELETE', credentials: 'include' }),
+        fetch('/api/recipes/reset', { method: 'DELETE', credentials: 'include' }),
+        fetch('/api/shopping-list/reset', { method: 'DELETE', credentials: 'include' })
+      ]).catch(() => {});
     }
   };
   
@@ -913,7 +927,8 @@ export default function App() {
         onUpdateMasterItem={handleUpdateMasterItem}
         settings={settings}
         onUpdateSettings={setSettings}
-        onResetPalate={handleResetPalate}
+        onResetRatings={handleResetRatings}
+        onResetToDefaults={handleResetToDefaults}
       />
 
       <ShoppingListAddModal 

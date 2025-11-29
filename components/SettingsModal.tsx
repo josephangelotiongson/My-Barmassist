@@ -11,7 +11,8 @@ interface Props {
   onUpdateMasterItem: (item: MasterIngredient) => void;
   settings: AppSettings;
   onUpdateSettings: (settings: AppSettings) => void;
-  onResetPalate?: () => void;
+  onResetRatings?: () => void;
+  onResetToDefaults?: () => void;
 }
 
 const SettingsModal: React.FC<Props> = ({ 
@@ -23,7 +24,8 @@ const SettingsModal: React.FC<Props> = ({
   onUpdateMasterItem,
   settings,
   onUpdateSettings,
-  onResetPalate
+  onResetRatings,
+  onResetToDefaults
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'master'>('general');
   
@@ -159,10 +161,17 @@ const SettingsModal: React.FC<Props> = ({
       });
   };
   
-  const handleReset = () => {
-      if (confirm('Are you sure? This will remove all your ratings and reset your palate profile. Recipes will be kept.')) {
-          if (onResetPalate) onResetPalate();
-          alert('Palate reset successfully.');
+  const handleResetRatings = () => {
+      if (confirm('Are you sure? This will remove all your ratings and reset your palate profile. Your recipes will be kept.')) {
+          if (onResetRatings) onResetRatings();
+          alert('Ratings and palate profile reset successfully.');
+      }
+  };
+
+  const handleResetToDefaults = () => {
+      if (confirm('Are you sure? This will reset EVERYTHING to guest defaults - all recipes, ratings, shopping list, and settings will be cleared.')) {
+          if (onResetToDefaults) onResetToDefaults();
+          alert('All data reset to defaults.');
       }
   };
 
@@ -302,17 +311,35 @@ const SettingsModal: React.FC<Props> = ({
                     
                     {/* DANGER ZONE */}
                     <div className="pt-6 border-t border-stone-800">
-                        <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-2">Danger Zone</h3>
-                        <button 
-                            onClick={handleReset}
-                            className="w-full bg-red-950/30 border border-red-900/50 hover:bg-red-900/50 text-red-400 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors group"
-                        >
-                            <RefreshCcw className="w-5 h-5 group-hover:rotate-180 transition-transform" />
-                            <span className="font-bold">Reset Palate & Clear Ratings</span>
-                        </button>
-                        <p className="text-[10px] text-stone-500 mt-2 text-center">
-                            This will remove all ratings (stars) from recipes. Your recipes and pantry will be kept safe.
-                        </p>
+                        <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Danger Zone</h3>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <button 
+                                    onClick={handleResetRatings}
+                                    className="w-full bg-amber-950/30 border border-amber-900/50 hover:bg-amber-900/50 text-amber-400 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors group"
+                                >
+                                    <RefreshCcw className="w-5 h-5 group-hover:rotate-180 transition-transform" />
+                                    <span className="font-bold">Reset Ratings & Palate Profile</span>
+                                </button>
+                                <p className="text-[10px] text-stone-500 mt-2 text-center">
+                                    Clears all ratings (stars) from recipes and resets your palate profile. Your recipes and pantry will be kept.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <button 
+                                    onClick={handleResetToDefaults}
+                                    className="w-full bg-red-950/30 border border-red-900/50 hover:bg-red-900/50 text-red-400 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors group"
+                                >
+                                    <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                    <span className="font-bold">Reset Everything to Defaults</span>
+                                </button>
+                                <p className="text-[10px] text-stone-500 mt-2 text-center">
+                                    Resets ALL data to guest defaults - recipes, ratings, shopping list, and settings will be cleared.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

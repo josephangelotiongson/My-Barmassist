@@ -13,6 +13,10 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - Authenticated users get their personal data (ratings, custom recipes) merged with preloaded recipes
 - User data (ratings, recipes, settings) is loaded from database when logged in
 - User data resets to defaults when logged out
+- Fixed race condition in data loading by coordinating recipe and rating fetches with Promise.all
+- Added two reset options in Settings:
+  - **Full Reset**: Clears all user data (ratings, custom recipes, shopping list) back to defaults
+  - **Reset Ratings/Palate Only**: Clears only ratings while preserving custom recipes
 
 ## Recent Changes (November 28, 2025)
 

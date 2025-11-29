@@ -29,6 +29,7 @@ export interface IStorage {
   createRecipe(recipe: InsertUserRecipe): Promise<UserRecipe>;
   updateRecipe(id: number, userId: string, recipe: Partial<InsertUserRecipe>): Promise<UserRecipe | undefined>;
   deleteRecipe(id: number, userId: string): Promise<boolean>;
+  resetAllRecipes(userId: string): Promise<boolean>;
   
   // Rating/History operations
   getUserRatings(userId: string): Promise<UserRating[]>;
@@ -42,6 +43,7 @@ export interface IStorage {
   addToShoppingList(item: InsertUserShoppingItem): Promise<UserShoppingItem>;
   updateShoppingItem(id: number, userId: string, item: Partial<InsertUserShoppingItem>): Promise<UserShoppingItem | undefined>;
   removeFromShoppingList(id: number, userId: string): Promise<boolean>;
+  resetShoppingList(userId: string): Promise<boolean>;
   
   // Settings operations
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
@@ -96,6 +98,11 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(userRecipes)
       .where(and(eq(userRecipes.id, id), eq(userRecipes.userId, userId)));
+    return true;
+  }
+
+  async resetAllRecipes(userId: string): Promise<boolean> {
+    await db.delete(userRecipes).where(eq(userRecipes.userId, userId));
     return true;
   }
 
@@ -161,6 +168,11 @@ export class DatabaseStorage implements IStorage {
 
   async removeFromShoppingList(id: number, userId: string): Promise<boolean> {
     await db.delete(userShoppingList).where(and(eq(userShoppingList.id, id), eq(userShoppingList.userId, userId)));
+    return true;
+  }
+
+  async resetShoppingList(userId: string): Promise<boolean> {
+    await db.delete(userShoppingList).where(eq(userShoppingList.userId, userId));
     return true;
   }
 

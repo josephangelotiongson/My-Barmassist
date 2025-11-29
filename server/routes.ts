@@ -56,6 +56,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/recipes/reset', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await storage.resetAllRecipes(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error resetting recipes:", error);
+      res.status(500).json({ message: "Failed to reset recipes" });
+    }
+  });
+
   // User ratings/history routes
   app.get('/api/ratings', isAuthenticated, async (req: any, res) => {
     try {
@@ -161,6 +172,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing from shopping list:", error);
       res.status(500).json({ message: "Failed to remove from shopping list" });
+    }
+  });
+
+  app.delete('/api/shopping-list/reset', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await storage.resetShoppingList(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error resetting shopping list:", error);
+      res.status(500).json({ message: "Failed to reset shopping list" });
     }
   });
 
