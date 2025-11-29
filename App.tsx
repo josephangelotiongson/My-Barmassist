@@ -184,16 +184,101 @@ export default function App() {
   const [abvFilter, setAbvFilter] = useState<'all' | 'low' | 'zero'>('all');
   const [masterData, setMasterData] = useState<MasterIngredient[]>(INITIAL_MASTER_DATA);
 
-  // Initialize history with nutrition estimates for preloaded data
-  const [history, setHistory] = useState<Cocktail[]>(() => {
-    // Merge standard list with new additions if not already present
-    // For this implementation, we just use the expanded list directly
+  // Get preloaded recipes with nutrition calculated
+  const getPreloadedRecipes = () => {
     return INITIAL_RECIPES_DATA.map(drink => ({
         ...drink,
-        // Calculate nutrition using new improved logic, but prefer explicit if set in data file
         nutrition: drink.nutrition || estimateNutrition(drink.ingredients, INITIAL_MASTER_DATA)
     }));
-  });
+  };
+
+  // Initialize history with preloaded recipes (works for guests)
+  const [history, setHistory] = useState<Cocktail[]>(getPreloadedRecipes);
+
+  // Track if we've loaded user data
+  const [userDataLoaded, setUserDataLoaded] = useState(false);
+
+  // Load user data when authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && !userDataLoaded) {
+      setUserDataLoaded(true);
+      
+      // Load user's ratings and apply to history
+      fetch('/api/ratings', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .then((ratings: any[]) => {
+          if (ratings.length > 0) {
+            setHistory(prev => prev.map(recipe => {
+              const userRating = ratings.find(r => r.recipeName === recipe.name);
+              return userRating ? { ...recipe, rating: userRating.rating } : recipe;
+            }));
+          }
+        })
+        .catch(() => {});
+
+      // Load user's custom recipes and add to history
+      fetch('/api/recipes', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .then((recipes: any[]) => {
+          if (recipes.length > 0) {
+            const customRecipes = recipes.map((r: any) => ({
+              id: `user-${r.id}`,
+              name: r.name,
+              ingredients: r.ingredients || [],
+              instructions: r.instructions || '',
+              flavorProfile: r.flavorProfile || {},
+              nutrition: { calories: 0, carbs: 0, abv: 0 },
+              category: r.category || 'Custom',
+              glassType: r.glassType,
+              garnish: r.garnish,
+              imageUrl: r.imageUrl,
+              isUserCreated: true
+            }));
+            setHistory(prev => [...customRecipes, ...prev]);
+          }
+        })
+        .catch(() => {});
+
+      // Load user's shopping list
+      fetch('/api/shopping-list', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .then((items: any[]) => {
+          if (items.length > 0) {
+            const shoppingItems = items.map((item: any) => ({
+              id: `user-${item.id}`,
+              name: item.ingredientName,
+              category: item.category || 'Other',
+              isOwned: item.isOwned || false,
+              estimatedVolume: item.estimatedVolume
+            }));
+            setShoppingList(shoppingItems);
+          }
+        })
+        .catch(() => {});
+
+      // Load user's settings
+      fetch('/api/settings', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .then((userSettings: any) => {
+          if (userSettings && Object.keys(userSettings).length > 0) {
+            setSettings(prev => ({
+              ...prev,
+              ...(userSettings.lowStockKeywords && { lowStockKeywords: userSettings.lowStockKeywords }),
+              ...(userSettings.allergies && { allergies: userSettings.allergies }),
+              ...(userSettings.handedness && { handedness: userSettings.handedness }),
+              ...(userSettings.flavorProfile && { flavorProfile: userSettings.flavorProfile })
+            }));
+          }
+        })
+        .catch(() => {});
+    } else if (!isAuthenticated && !isAuthLoading && userDataLoaded) {
+      // User logged out - reset to preloaded recipes only
+      setUserDataLoaded(false);
+      setHistory(getPreloadedRecipes());
+      setShoppingList([]);
+      setSettings(INITIAL_SETTINGS);
+    }
+  }, [isAuthenticated, user, isAuthLoading, userDataLoaded]);
   
   const [pantry, setPantry] = useState<Ingredient[]>(INITIAL_PANTRY);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
