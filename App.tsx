@@ -203,41 +203,53 @@ export default function App() {
     if (isAuthenticated && user && !userDataLoaded) {
       setUserDataLoaded(true);
       
-      // Load user's ratings and apply to history
-      fetch('/api/ratings', { credentials: 'include' })
-        .then(res => res.ok ? res.json() : [])
-        .then((ratings: any[]) => {
-          if (ratings.length > 0) {
-            setHistory(prev => prev.map(recipe => {
-              const userRating = ratings.find(r => r.recipeName === recipe.name);
-              return userRating ? { ...recipe, rating: userRating.rating } : recipe;
-            }));
-          }
-        })
-        .catch(() => {});
-
-      // Load user's custom recipes and add to history
-      fetch('/api/recipes', { credentials: 'include' })
-        .then(res => res.ok ? res.json() : [])
-        .then((recipes: any[]) => {
-          if (recipes.length > 0) {
-            const customRecipes = recipes.map((r: any) => ({
-              id: `user-${r.id}`,
-              name: r.name,
-              ingredients: r.ingredients || [],
-              instructions: r.instructions || '',
-              flavorProfile: r.flavorProfile || {},
-              nutrition: { calories: 0, carbs: 0, abv: 0 },
-              category: r.category || 'Custom',
-              glassType: r.glassType,
-              garnish: r.garnish,
-              imageUrl: r.imageUrl,
-              isUserCreated: true
-            }));
-            setHistory(prev => [...customRecipes, ...prev]);
-          }
-        })
-        .catch(() => {});
+      // Load recipes and ratings together, then merge in single update
+      const loadRecipesAndRatings = async () => {
+        try {
+          const [recipesRes, ratingsRes] = await Promise.all([
+            fetch('/api/recipes', { credentials: 'include' }),
+            fetch('/api/ratings', { credentials: 'include' })
+          ]);
+          
+          const recipes: any[] = recipesRes.ok ? await recipesRes.json() : [];
+          const ratings: any[] = ratingsRes.ok ? await ratingsRes.json() : [];
+          
+          // Create rating lookup map
+          const ratingMap = new Map<string, number>();
+          ratings.forEach((r: any) => {
+            ratingMap.set(r.recipeName, r.rating);
+          });
+          
+          // Build custom recipes with ratings applied
+          const customRecipes: Cocktail[] = recipes.map((r: any) => ({
+            id: `user-${r.id}`,
+            name: r.name,
+            ingredients: r.ingredients || [],
+            instructions: r.instructions || '',
+            flavorProfile: r.flavorProfile || {},
+            nutrition: { calories: 0, carbs: 0, abv: 0 },
+            category: r.category || 'Custom',
+            glassType: r.glassType,
+            garnish: r.garnish,
+            imageUrl: r.imageUrl,
+            isUserCreated: true,
+            rating: ratingMap.get(r.name)
+          }));
+          
+          // Apply ratings to preloaded recipes and merge with custom recipes
+          setHistory(prev => {
+            const updatedPreloaded = prev.map(recipe => {
+              const rating = ratingMap.get(recipe.name);
+              return rating !== undefined ? { ...recipe, rating } : recipe;
+            });
+            return [...customRecipes, ...updatedPreloaded];
+          });
+        } catch {
+          // Silently fail - user will still see preloaded recipes
+        }
+      };
+      
+      loadRecipesAndRatings();
 
       // Load user's shopping list
       fetch('/api/shopping-list', { credentials: 'include' })
@@ -482,14 +494,83 @@ export default function App() {
     return finalGroups;
   }, [history, formularyView, searchQuery, showFavoritesOnly, abvFilter]);
 
-  const handleAddCocktail = (cocktail: Cocktail) => { setHistory(prev => [cocktail, ...prev]); };
-  const handleDeleteCocktail = (e: React.MouseEvent | null, id: string) => { e?.stopPropagation(); setHistory(prev => prev.filter(c => c.id !== id)); };
+  const handleAddCocktail = async (cocktail: Cocktail) => {
+    if (isAuthenticated) {
+      try {
+        const res = await fetch('/api/recipes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: cocktail.name,
+            ingredients: cocktail.ingredients,
+            instructions: cocktail.instructions,
+            category: cocktail.category,
+            glassType: cocktail.glassType,
+            garnish: cocktail.garnish,
+            imageUrl: cocktail.imageUrl,
+            flavorProfile: cocktail.flavorProfile
+          })
+        });
+        if (res.ok) {
+          const savedRecipe = await res.json();
+          const cocktailWithDbId = { ...cocktail, id: `user-${savedRecipe.id}`, isUserCreated: true };
+          setHistory(prev => [cocktailWithDbId, ...prev]);
+        } else {
+          setHistory(prev => [cocktail, ...prev]);
+        }
+      } catch {
+        setHistory(prev => [cocktail, ...prev]);
+      }
+    } else {
+      setHistory(prev => [cocktail, ...prev]);
+    }
+  };
+  
+  const handleDeleteCocktail = (e: React.MouseEvent | null, id: string) => {
+    e?.stopPropagation();
+    setHistory(prev => prev.filter(c => c.id !== id));
+    
+    if (isAuthenticated && id.startsWith('user-')) {
+      const dbId = id.replace('user-', '');
+      fetch(`/api/recipes/${dbId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      }).catch(() => {});
+    }
+  };
+  
   const handleRateCocktail = (e: React.MouseEvent | null, id: string, rating: number) => {
       e?.stopPropagation();
       setHistory(prev => prev.map(c => c.id === id ? { ...c, rating } : c));
       if (selectedCocktail?.id === id) { setSelectedCocktail(prev => prev ? ({ ...prev, rating }) : null); }
+      
+      if (isAuthenticated) {
+        const cocktail = history.find(c => c.id === id);
+        if (cocktail) {
+          fetch('/api/ratings/upsert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              recipeName: cocktail.name,
+              rating: rating
+            })
+          }).catch(() => {});
+        }
+      }
   };
-  const handleResetPalate = () => { setHistory(prev => prev.map(c => ({ ...c, rating: undefined }))); };
+  
+  const handleResetPalate = () => {
+    setHistory(prev => prev.map(c => ({ ...c, rating: undefined })));
+    
+    if (isAuthenticated) {
+      fetch('/api/ratings/reset', {
+        method: 'DELETE',
+        credentials: 'include'
+      }).catch(() => {});
+    }
+  };
   
   const handleGenerateImage = async (e: React.MouseEvent | null, cocktail: Cocktail) => {
       e?.stopPropagation();

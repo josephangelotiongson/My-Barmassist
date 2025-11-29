@@ -79,6 +79,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/ratings/upsert', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { recipeName, rating } = req.body;
+      const result = await storage.upsertRating(userId, recipeName, rating);
+      res.json(result);
+    } catch (error) {
+      console.error("Error upserting rating:", error);
+      res.status(500).json({ message: "Failed to save rating" });
+    }
+  });
+
   app.delete('/api/ratings/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -88,6 +100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting rating:", error);
       res.status(500).json({ message: "Failed to delete rating" });
+    }
+  });
+
+  app.delete('/api/ratings/reset', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await storage.resetAllRatings(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error resetting ratings:", error);
+      res.status(500).json({ message: "Failed to reset ratings" });
     }
   });
 

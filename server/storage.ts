@@ -33,7 +33,9 @@ export interface IStorage {
   // Rating/History operations
   getUserRatings(userId: string): Promise<UserRating[]>;
   createRating(rating: InsertUserRating): Promise<UserRating>;
+  upsertRating(userId: string, recipeName: string, rating: number): Promise<UserRating>;
   deleteRating(id: number, userId: string): Promise<boolean>;
+  resetAllRatings(userId: string): Promise<boolean>;
   
   // Shopping list operations
   getUserShoppingList(userId: string): Promise<UserShoppingItem[]>;
@@ -107,8 +109,34 @@ export class DatabaseStorage implements IStorage {
     return newRating;
   }
 
+  async upsertRating(userId: string, recipeName: string, rating: number): Promise<UserRating> {
+    const existing = await db.select().from(userRatings).where(
+      and(eq(userRatings.userId, userId), eq(userRatings.recipeName, recipeName))
+    );
+    
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(userRatings)
+        .set({ rating })
+        .where(and(eq(userRatings.userId, userId), eq(userRatings.recipeName, recipeName)))
+        .returning();
+      return updated;
+    } else {
+      const [newRating] = await db
+        .insert(userRatings)
+        .values({ userId, recipeName, rating })
+        .returning();
+      return newRating;
+    }
+  }
+
   async deleteRating(id: number, userId: string): Promise<boolean> {
     await db.delete(userRatings).where(and(eq(userRatings.id, id), eq(userRatings.userId, userId)));
+    return true;
+  }
+
+  async resetAllRatings(userId: string): Promise<boolean> {
+    await db.delete(userRatings).where(eq(userRatings.userId, userId));
     return true;
   }
 
