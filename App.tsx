@@ -960,7 +960,7 @@ export default function App() {
 
        <main className="flex-1 bg-background relative overflow-hidden">
         <div className="max-w-md mx-auto h-full relative">
-            <div className={`absolute inset-0 p-4 pb-20 flex flex-col gap-4 transition-opacity duration-300 ${activeTab === 'palate' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 p-4 pb-24 flex flex-col gap-4 transition-opacity duration-300 ${activeTab === 'palate' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
                <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700 flex-none">
                    <button 
                       onClick={() => setPalateView('diagnosis')}
@@ -1201,7 +1201,7 @@ export default function App() {
 
                 <button 
                     onClick={() => setIsImporterOpen(true)}
-                    className={`fixed bottom-20 ${fabPosition} z-40 bg-primary text-white p-4 rounded-full shadow-xl shadow-black/50 border border-white/10 hover:scale-105 transition-transform`}
+                    className={`fixed bottom-24 ${fabPosition} z-40 bg-primary text-white p-4 rounded-full shadow-xl shadow-black/50 border border-white/10 hover:scale-105 transition-transform`}
                 >
                     <Plus className="w-6 h-6" />
                 </button>
@@ -1281,7 +1281,7 @@ export default function App() {
                         )}
                          <button 
                             onClick={() => setIsShoppingAddOpen(true)}
-                            className={`fixed bottom-20 ${fabPosition} z-40 bg-secondary text-stone-900 p-4 rounded-full shadow-xl shadow-black/50 border border-white/10 hover:scale-105 transition-transform`}
+                            className={`fixed bottom-24 ${fabPosition} z-40 bg-secondary text-stone-900 p-4 rounded-full shadow-xl shadow-black/50 border border-white/10 hover:scale-105 transition-transform`}
                         >
                             <Plus className="w-6 h-6" />
                         </button>
@@ -1292,7 +1292,7 @@ export default function App() {
                      <div className="space-y-6 animate-in fade-in duration-300">
                          <button 
                             onClick={() => setIsIngredientScannerOpen(true)}
-                            className={`fixed bottom-20 ${fabPosition} z-40 bg-secondary text-stone-900 p-4 rounded-full shadow-xl shadow-black/50 border border-white/10 hover:scale-105 transition-transform`}
+                            className={`fixed bottom-24 ${fabPosition} z-40 bg-secondary text-stone-900 p-4 rounded-full shadow-xl shadow-black/50 border border-white/10 hover:scale-105 transition-transform`}
                         >
                             <Plus className="w-6 h-6" />
                         </button>
@@ -1593,34 +1593,34 @@ export default function App() {
       </main>
       
       <nav className="flex-none z-30 bg-surface border-t border-stone-700 pb-safe">
-        <div className="grid grid-cols-4 h-16 max-w-md mx-auto">
+        <div className="grid grid-cols-4 h-20 max-w-md mx-auto">
           <button 
              onClick={() => setActiveTab('palate')} 
-             className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeTab === 'palate' ? 'text-primary' : 'text-stone-500 hover:text-stone-400'}`}
+             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'palate' ? 'text-primary' : 'text-stone-500 hover:text-stone-400'}`}
           >
-            <BarChart3 className={`w-5 h-5 ${activeTab === 'palate' ? 'fill-primary/20' : ''}`} />
-            <span className="text-[10px] font-bold">Palate</span>
+            <BarChart3 className={`w-7 h-7 ${activeTab === 'palate' ? 'fill-primary/20' : ''}`} />
+            <span className="text-xs font-bold">Palate</span>
           </button>
           <button 
              onClick={() => setActiveTab('recipes')} 
-             className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeTab === 'recipes' ? 'text-white' : 'text-stone-500 hover:text-stone-400'}`}
+             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'recipes' ? 'text-white' : 'text-stone-500 hover:text-stone-400'}`}
           >
-            <BookOpen className={`w-5 h-5 ${activeTab === 'recipes' ? 'fill-white/20' : ''}`} />
-            <span className="text-[10px] font-bold">Barmulary</span>
+            <BookOpen className={`w-7 h-7 ${activeTab === 'recipes' ? 'fill-white/20' : ''}`} />
+            <span className="text-xs font-bold">Barmulary</span>
           </button>
           <button 
              onClick={() => setActiveTab('bar')} 
-             className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeTab === 'bar' ? 'text-secondary' : 'text-stone-500 hover:text-stone-400'}`}
+             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'bar' ? 'text-secondary' : 'text-stone-500 hover:text-stone-400'}`}
           >
-            <Wine className={`w-5 h-5 ${activeTab === 'bar' ? 'fill-secondary/20' : ''}`} />
-            <span className="text-[10px] font-bold">Bar</span>
+            <Wine className={`w-7 h-7 ${activeTab === 'bar' ? 'fill-secondary/20' : ''}`} />
+            <span className="text-xs font-bold">Bar</span>
           </button>
           <button 
              onClick={() => setActiveTab('recommend')} 
-             className={`flex flex-col items-center justify-center gap-1 transition-colors ${activeTab === 'recommend' ? 'text-accent' : 'text-stone-500 hover:text-stone-400'}`}
+             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'recommend' ? 'text-accent' : 'text-stone-500 hover:text-stone-400'}`}
           >
-            <ChefHat className={`w-5 h-5 ${activeTab === 'recommend' ? 'fill-accent/20' : ''}`} />
-            <span className="text-[10px] font-bold">Rx</span>
+            <ChefHat className={`w-7 h-7 ${activeTab === 'recommend' ? 'fill-accent/20' : ''}`} />
+            <span className="text-xs font-bold">Rx</span>
           </button>
         </div>
       </nav>
