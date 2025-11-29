@@ -1,7 +1,8 @@
 import { db } from './db';
 import { masterIngredients } from '../shared/schema';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, isNull } from 'drizzle-orm';
 import { GoogleGenAI } from '@google/genai';
+import { deriveFlavorForIngredient } from './flavorDataService';
 
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 5000;
@@ -141,11 +142,15 @@ export async function enrichPendingIngredients(limit: number = 5): Promise<{ enr
     );
 
     if (result) {
+      const flavorDerivation = await deriveFlavorForIngredient(ingredient.name);
+      
       await db.update(masterIngredients)
         .set({
           nutrition: result.nutrition,
           abv: Math.round(result.abv),
           flavorNotes: result.flavorNotes,
+          derivedFlavorNoteIds: flavorDerivation.noteIds.length > 0 ? flavorDerivation.noteIds : null,
+          flavorIntensities: Object.keys(flavorDerivation.intensities).length > 0 ? flavorDerivation.intensities : null,
           aromaProfile: result.aromaProfile,
           commonUses: result.commonUses,
           substitutes: result.substitutes,
@@ -163,7 +168,10 @@ export async function enrichPendingIngredients(limit: number = 5): Promise<{ enr
         })
         .where(eq(masterIngredients.id, ingredient.id));
       
-      console.log(`Enriched "${ingredient.name}" successfully (confidence: ${result.dataConfidenceScore}%)`);
+      const flavorInfo = flavorDerivation.noteIds.length > 0 
+        ? `, flavor notes: ${flavorDerivation.noteLabels.join(', ')}`
+        : '';
+      console.log(`Enriched "${ingredient.name}" successfully (confidence: ${result.dataConfidenceScore}%${flavorInfo})`);
       enriched++;
     } else {
       await db.update(masterIngredients)
@@ -182,4 +190,39 @@ export async function enrichPendingIngredients(limit: number = 5): Promise<{ enr
 
   console.log(`Ingredient enrichment complete: ${enriched} enriched, ${failed} failed`);
   return { enriched, failed };
+}
+
+export async function updateIngredientFlavorMappings(): Promise<{ updated: number; skipped: number }> {
+  const allIngredients = await db.select({
+    id: masterIngredients.id,
+    name: masterIngredients.name,
+    derivedFlavorNoteIds: masterIngredients.derivedFlavorNoteIds,
+  }).from(masterIngredients);
+
+  console.log(`Updating flavor mappings for ${allIngredients.length} ingredients`);
+
+  let updated = 0;
+  let skipped = 0;
+
+  for (const ingredient of allIngredients) {
+    const flavorDerivation = await deriveFlavorForIngredient(ingredient.name);
+    
+    if (flavorDerivation.noteIds.length > 0) {
+      await db.update(masterIngredients)
+        .set({
+          derivedFlavorNoteIds: flavorDerivation.noteIds,
+          flavorIntensities: flavorDerivation.intensities,
+          updatedAt: new Date(),
+        })
+        .where(eq(masterIngredients.id, ingredient.id));
+      
+      console.log(`Updated "${ingredient.name}": ${flavorDerivation.noteLabels.join(', ')}`);
+      updated++;
+    } else {
+      skipped++;
+    }
+  }
+
+  console.log(`Flavor mapping update complete: ${updated} updated, ${skipped} skipped (no matches)`);
+  return { updated, skipped };
 }

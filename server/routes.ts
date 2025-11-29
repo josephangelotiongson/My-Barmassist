@@ -7,7 +7,7 @@ import { seedGlobalRecipes } from "./seedGlobalRecipes";
 import { enrichPendingRecipes } from "./enrichGlobalRecipes";
 import { enrichRecipeData } from "./recipeEnrichment";
 import { seedMasterIngredients } from "./seedIngredients";
-import { enrichPendingIngredients } from "./ingredientEnrichment";
+import { enrichPendingIngredients, updateIngredientFlavorMappings } from "./ingredientEnrichment";
 import { seedModernRecipes } from "./seedModernRecipes";
 import { assignCocktailFamily, simulateFlavorSubstitutions } from "../services/geminiService";
 import { orchestrateFullLineage } from "./lineageOrchestrator";
@@ -275,6 +275,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error enriching ingredients:", error);
       res.status(500).json({ message: "Failed to enrich ingredients" });
+    }
+  });
+
+  app.post('/api/admin/update-ingredient-flavors', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = await updateIngredientFlavorMappings();
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating ingredient flavor mappings:", error);
+      res.status(500).json({ message: "Failed to update ingredient flavor mappings" });
     }
   });
 

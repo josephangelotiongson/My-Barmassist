@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { FlavorProfile, FlavorDimension, Recommendation, Ingredient } from '../types';
 import { analyzeSocialMediaLink, generateSearchSystemPrompt, sanitizeSocialMediaUrl, SocialMediaLinkInfo } from './socialMediaUtils';
-import { getFlavorDataForAI } from '../server/flavorDataService';
+import { getFlavorDataForAI, getIngredientFlavorContext } from '../server/flavorDataService';
 
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -1075,8 +1075,14 @@ export const simulateFlavorSubstitutions = async (
       : '';
 
     let flavorDataContext = '';
+    let ingredientContext = '';
     try {
       flavorDataContext = await getFlavorDataForAI();
+      const ingredientNames = baseRecipe.ingredients.map(i => {
+        const match = i.match(/^[\d.]+\s*(?:oz|ml|dash|dashes|tsp|tbsp|barspoon)?\s*(.+)/i);
+        return match ? match[1].trim() : i;
+      });
+      ingredientContext = await getIngredientFlavorContext(ingredientNames);
     } catch (e) {
       console.warn('Could not load flavor data from database, using defaults');
       flavorDataContext = `
@@ -1101,6 +1107,8 @@ INGREDIENT FLAVOR MAPPINGS:
       BASE RECIPE: "${baseRecipe.name}"
       INGREDIENTS: ${JSON.stringify(baseRecipe.ingredients)}
       CURRENT FLAVOR PROFILE: ${JSON.stringify(baseRecipe.flavorProfile)}
+      
+      ${ingredientContext}
       
       TARGET FLAVOR PROFILE: ${JSON.stringify(targetProfile)}
       FLAVOR ADJUSTMENTS NEEDED: ${profileDiff || 'None - profiles are identical'}
@@ -1194,8 +1202,11 @@ export const buildCocktailFromIngredients = async (
     ).join('\n');
 
     let flavorDataContext = '';
+    let ingredientContext = '';
     try {
       flavorDataContext = await getFlavorDataForAI();
+      const ingredientNames = selectedIngredients.map(i => i.name);
+      ingredientContext = await getIngredientFlavorContext(ingredientNames);
     } catch (e) {
       console.warn('Could not load flavor data from database for buildCocktail, continuing without');
     }
@@ -1205,6 +1216,8 @@ export const buildCocktailFromIngredients = async (
       
       SELECTED INGREDIENTS (these MUST be the foundation of the cocktail):
       ${ingredientSummary}
+      
+      ${ingredientContext}
       
       TARGET FLAVOR PROFILE:
       ${JSON.stringify(targetProfile)}

@@ -221,3 +221,89 @@ export async function updateVersion(newVersion: string, description?: string): P
   });
   await invalidateCache();
 }
+
+export interface IngredientFlavorDerivation {
+  noteIds: string[];
+  intensities: Record<string, number>;
+  noteLabels: string[];
+}
+
+export async function deriveFlavorForIngredient(ingredientName: string): Promise<IngredientFlavorDerivation> {
+  const taxonomy = await getFlavorTaxonomy();
+  const name = ingredientName.toLowerCase().trim();
+  const noteIds: string[] = [];
+  const intensities: Record<string, number> = {};
+  
+  for (const [keyword, mappedNoteIds] of Object.entries(taxonomy.ingredientMappings)) {
+    const keywordLower = keyword.toLowerCase();
+    if (name === keywordLower || name.includes(keywordLower) || keywordLower.includes(name)) {
+      for (const noteId of mappedNoteIds) {
+        if (!noteIds.includes(noteId)) {
+          noteIds.push(noteId);
+        }
+        const catId = noteId.split('.')[0];
+        intensities[catId] = (intensities[catId] || 0) + 1;
+      }
+    }
+  }
+  
+  const words = name.split(/\s+/);
+  for (const word of words) {
+    if (word.length < 3) continue;
+    for (const [keyword, mappedNoteIds] of Object.entries(taxonomy.ingredientMappings)) {
+      if (keyword.toLowerCase() === word) {
+        for (const noteId of mappedNoteIds) {
+          if (!noteIds.includes(noteId)) {
+            noteIds.push(noteId);
+          }
+          const catId = noteId.split('.')[0];
+          intensities[catId] = (intensities[catId] || 0) + 1;
+        }
+      }
+    }
+  }
+  
+  const noteLabels: string[] = [];
+  for (const noteId of noteIds) {
+    const [catId] = noteId.split('.');
+    const category = taxonomy.categories.find(c => c.id === catId);
+    const note = category?.notes.find(n => n.id === noteId);
+    if (note) {
+      noteLabels.push(note.label);
+    }
+  }
+  
+  return { noteIds, intensities, noteLabels };
+}
+
+export async function getIngredientFlavorContext(ingredientNames: string[]): Promise<string> {
+  const taxonomy = await getFlavorTaxonomy();
+  const results: Array<{ name: string; derivation: IngredientFlavorDerivation }> = [];
+  
+  for (const name of ingredientNames) {
+    const derivation = await deriveFlavorForIngredient(name);
+    if (derivation.noteIds.length > 0) {
+      results.push({ name, derivation });
+    }
+  }
+  
+  if (results.length === 0) {
+    return '';
+  }
+  
+  let context = `## Ingredient Flavor Analysis\n\n`;
+  context += `The following ingredients have been matched to our flavor taxonomy:\n\n`;
+  
+  for (const { name, derivation } of results) {
+    const intensityStr = Object.entries(derivation.intensities)
+      .map(([cat, intensity]) => {
+        const category = taxonomy.categories.find(c => c.id === cat);
+        return `${category?.label || cat}: ${intensity}`;
+      })
+      .join(', ');
+    
+    context += `- **${name}**: ${derivation.noteLabels.join(', ')} (${intensityStr})\n`;
+  }
+  
+  return context;
+}

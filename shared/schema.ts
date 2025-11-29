@@ -132,6 +132,8 @@ export const masterIngredients = pgTable("master_ingredients", {
     proteinPerOz: number;
   }>(),
   flavorNotes: text("flavor_notes"),
+  derivedFlavorNoteIds: jsonb("derived_flavor_note_ids").$type<string[]>(),
+  flavorIntensities: jsonb("flavor_intensities").$type<Record<string, number>>(),
   aromaProfile: jsonb("aroma_profile").$type<string[]>(),
   commonUses: jsonb("common_uses").$type<string[]>(),
   substitutes: jsonb("substitutes").$type<string[]>(),
