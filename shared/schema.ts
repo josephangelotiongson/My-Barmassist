@@ -57,6 +57,7 @@ export const userRecipes = pgTable("user_recipes", {
     sugarGrams: number;
     abvPercent: number;
   }>(),
+  targetVolume: varchar("target_volume"),
   category: varchar("category"),
   glassType: varchar("glass_type"),
   garnish: varchar("garnish"),
@@ -182,6 +183,7 @@ export const globalRecipes = pgTable("global_recipes", {
     sugarGrams: number;
     abvPercent: number;
   }>(),
+  targetVolume: varchar("target_volume"),
   enrichmentStatus: varchar("enrichment_status").default("pending"),
   enrichedAt: timestamp("enriched_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -233,6 +235,7 @@ export const labRiffs = pgTable("lab_riffs", {
     sugarGrams: number;
     abvPercent: number;
   }>(),
+  targetVolume: varchar("target_volume"),
   category: varchar("category"),
   glassType: varchar("glass_type"),
   garnish: varchar("garnish"),

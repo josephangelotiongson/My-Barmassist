@@ -37,6 +37,7 @@ export interface Cocktail {
   instructions: string[]; 
   flavorProfile: FlavorProfile;
   nutrition?: Nutrition; // New field for AI Nutritionist estimates
+  targetVolume?: string; // Total target volume (e.g. "4.5 oz" or "135 ml") - guides riff proportions
   imageUrl?: string;
   source?: 'Manual' | 'Social' | 'Scan' | 'Order';
   originalLink?: string; 
