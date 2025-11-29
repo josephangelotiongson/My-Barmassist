@@ -3,9 +3,10 @@ import {
   FlaskConical, Sparkles, ChevronDown, ChevronUp, ArrowRight, 
   Loader2, RefreshCw, Beaker, Target, Lightbulb, Check, X,
   Plus, Minus, Shuffle, Disc, Sliders, Save, Wine, BookOpen,
-  ExternalLink, Database
+  ExternalLink, Database, GlassWater
 } from 'lucide-react';
 import { Cocktail, FlavorProfile, FlavorDimension } from '../types';
+import { calculateTotalVolume, formatVolumeForDisplay } from '../shared/volumeUtils';
 import {
   Radar,
   RadarChart,
@@ -289,7 +290,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
           baseRecipe: {
             name: selectedRecipe.name,
             ingredients: selectedRecipe.ingredients,
-            flavorProfile: getRecipeProfile(selectedRecipe)
+            flavorProfile: getRecipeProfile(selectedRecipe),
+            targetVolume: selectedRecipe.targetVolume
           },
           targetProfile
         })
@@ -571,11 +573,19 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   </p>
                 </div>
               </div>
-              {showRecipeSelector ? (
-                <ChevronUp className="w-5 h-5 text-stone-400" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-stone-400" />
-              )}
+              <div className="flex items-center gap-2">
+                {selectedRecipe && (
+                  <span className="text-xs bg-stone-800 text-stone-300 px-2 py-1 rounded-lg flex items-center gap-1 border border-stone-700">
+                    <GlassWater className="w-3 h-3" />
+                    {formatVolumeForDisplay(selectedRecipe.targetVolume, selectedRecipe.ingredients)}
+                  </span>
+                )}
+                {showRecipeSelector ? (
+                  <ChevronUp className="w-5 h-5 text-stone-400" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-stone-400" />
+                )}
+              </div>
             </button>
             
             {showRecipeSelector && (

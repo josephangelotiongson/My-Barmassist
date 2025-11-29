@@ -1097,7 +1097,7 @@ const labSimulationSchema: Schema = {
 };
 
 export const simulateFlavorSubstitutions = async (
-  baseRecipe: { name: string; ingredients: string[]; flavorProfile: FlavorProfile },
+  baseRecipe: { name: string; ingredients: string[]; flavorProfile: FlavorProfile; targetVolume?: string },
   targetProfile: FlavorProfile,
   targetNotes?: string[]
 ): Promise<LabSimulationResult> => {
@@ -1110,6 +1110,10 @@ export const simulateFlavorSubstitutions = async (
 
     const notesSection = targetNotes && targetNotes.length > 0 
       ? `\nSPECIFIC FLAVOR NOTES REQUESTED: ${targetNotes.join(', ')}\nThese specific flavor notes are HIGH PRIORITY. Choose ingredients that specifically deliver these flavor characteristics.`
+      : '';
+    
+    const targetVolumeSection = baseRecipe.targetVolume 
+      ? `\nTARGET TOTAL VOLUME: ${baseRecipe.targetVolume}\nThis is the ideal total volume for this cocktail. When suggesting modifications, ensure the modified recipe maintains approximately this total volume to preserve the drink's balance and proportions (golden ratios).`
       : '';
 
     let flavorDataContext = '';
@@ -1145,6 +1149,7 @@ INGREDIENT FLAVOR MAPPINGS:
       BASE RECIPE: "${baseRecipe.name}"
       INGREDIENTS: ${JSON.stringify(baseRecipe.ingredients)}
       CURRENT FLAVOR PROFILE: ${JSON.stringify(baseRecipe.flavorProfile)}
+      ${targetVolumeSection}
       
       ${ingredientContext}
       
@@ -1169,6 +1174,7 @@ INGREDIENT FLAVOR MAPPINGS:
       4. Additions should use reasonable bar measurements (dashes, barspoons, rinses, small amounts).
       5. Include BOTH substitutions array AND additions array in your response.
       6. The newIngredients list should include all original ingredients with substitutions applied PLUS any additions.
+      7. If a target volume is provided, ensure the modified recipe maintains approximately the same total volume to preserve proportions.
       
       ${flavorDataContext}
       
