@@ -1,27 +1,12 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { FlavorProfile, FlavorDimension } from '../types';
 import { FLAVOR_TAXONOMY, FlavorSelection, createEmptySelection, selectionToFlavorProfile, getSelectedLabels } from '../shared/flavorTaxonomy';
 
-function profileToSelection(profile: FlavorProfile): FlavorSelection {
-  const sel = createEmptySelection();
-  const SIGNIFICANCE_THRESHOLD = 4;
-  
-  Object.entries(profile).forEach(([key, value]) => {
-    if (typeof value === 'number' && value >= SIGNIFICANCE_THRESHOLD) {
-      const cat = FLAVOR_TAXONOMY.find(c => c.label === key);
-      if (cat) {
-        sel.categories.add(cat.id);
-      }
-    }
-  });
-  return sel;
-}
-
 interface Props {
-  profile: FlavorProfile;
-  originalProfile?: FlavorProfile;
-  onProfileChange: (profile: FlavorProfile) => void;
-  onNotesChange?: (notes: string[]) => void;
+  recipeId?: number | string;
+  initialCategories?: string[];
+  initialNotes?: string[];
+  onSelectionChange: (selection: { categories: string[]; notes: string[]; profile: FlavorProfile }) => void;
   size?: number;
 }
 
@@ -50,9 +35,10 @@ function describeArc(x: number, y: number, innerRadius: number, outerRadius: num
 }
 
 const EditableFlavorWheel: React.FC<Props> = ({ 
-  profile, 
-  onProfileChange,
-  onNotesChange,
+  recipeId,
+  initialCategories = [],
+  initialNotes = [],
+  onSelectionChange,
   size = 320 
 }) => {
   const center = size / 2;
@@ -65,31 +51,42 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const categoryAngle = 360 / categoryCount;
   const gap = 1.5;
 
-  const [selection, setSelection] = useState<FlavorSelection>(() => profileToSelection(profile));
+  const buildInitialSelection = (): FlavorSelection => {
+    const sel = createEmptySelection();
+    initialCategories.forEach(catId => sel.categories.add(catId));
+    initialNotes.forEach(noteId => sel.notes.add(noteId));
+    initialNotes.forEach(noteId => {
+      const cat = FLAVOR_TAXONOMY.find(c => c.notes.some(n => n.id === noteId));
+      if (cat) sel.categories.add(cat.id);
+    });
+    return sel;
+  };
+
+  const [selection, setSelection] = useState<FlavorSelection>(buildInitialSelection);
+  const lastRecipeId = useRef(recipeId);
 
   useEffect(() => {
-    setSelection(profileToSelection(profile));
-  }, [profile]);
+    if (recipeId !== lastRecipeId.current) {
+      lastRecipeId.current = recipeId;
+      setSelection(buildInitialSelection());
+    }
+  }, [recipeId, initialCategories, initialNotes]);
 
-  const getNoteLabelsList = (sel: FlavorSelection): string[] => {
+  const notifyChange = (newSelection: FlavorSelection) => {
+    const profile = selectionToFlavorProfile(newSelection);
     const noteLabels: string[] = [];
     FLAVOR_TAXONOMY.forEach(cat => {
       cat.notes.forEach(note => {
-        if (sel.notes.has(note.id)) {
+        if (newSelection.notes.has(note.id)) {
           noteLabels.push(note.label);
         }
       });
     });
-    return noteLabels;
-  };
-
-  const updateProfile = (newSelection: FlavorSelection) => {
-    setSelection(newSelection);
-    const newProfile = selectionToFlavorProfile(newSelection);
-    onProfileChange(newProfile as unknown as FlavorProfile);
-    if (onNotesChange) {
-      onNotesChange(getNoteLabelsList(newSelection));
-    }
+    onSelectionChange({
+      categories: Array.from(newSelection.categories),
+      notes: noteLabels,
+      profile: profile as unknown as FlavorProfile
+    });
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -108,7 +105,8 @@ const EditableFlavorWheel: React.FC<Props> = ({
       newSelection.categories.add(categoryId);
     }
     
-    updateProfile(newSelection);
+    setSelection(newSelection);
+    notifyChange(newSelection);
   };
 
   const toggleNote = (noteId: string, categoryId: string) => {
@@ -119,18 +117,13 @@ const EditableFlavorWheel: React.FC<Props> = ({
     
     if (newSelection.notes.has(noteId)) {
       newSelection.notes.delete(noteId);
-      const cat = FLAVOR_TAXONOMY.find(c => c.id === categoryId);
-      if (cat) {
-        const hasOtherNotes = cat.notes.some(n => n.id !== noteId && newSelection.notes.has(n.id));
-        if (!hasOtherNotes && !newSelection.categories.has(categoryId)) {
-        }
-      }
     } else {
       newSelection.notes.add(noteId);
       newSelection.categories.add(categoryId);
     }
     
-    updateProfile(newSelection);
+    setSelection(newSelection);
+    notifyChange(newSelection);
   };
 
   const segments = useMemo(() => {
@@ -189,15 +182,22 @@ const EditableFlavorWheel: React.FC<Props> = ({
           {segments.map((cat) => (
             <g key={cat.id}>
               {cat.notes.map((note) => (
-                <g key={note.id} className="cursor-pointer" onClick={() => toggleNote(note.id, cat.id)}>
+                <g 
+                  key={note.id} 
+                  className="cursor-pointer" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleNote(note.id, cat.id);
+                  }}
+                >
                   <path
                     d={describeArc(center, center, outerRingInner, outerRingOuter, note.startAngle, note.endAngle)}
                     fill={note.isSelected ? note.color : '#292524'}
                     stroke="#0c0a09"
                     strokeWidth="1"
-                    className="transition-all duration-200 hover:brightness-125"
+                    className="transition-all duration-200 hover:brightness-150 hover:opacity-100"
                     style={{ 
-                      opacity: note.isSelected ? 1 : 0.5,
+                      opacity: note.isSelected ? 1 : 0.6,
                     }}
                   />
                   <text
@@ -205,7 +205,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
                     y={note.labelPos.y}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill={note.isSelected ? '#1c1917' : '#78716c'}
+                    fill={note.isSelected ? '#1c1917' : '#a8a29e'}
                     fontSize="7"
                     fontWeight={note.isSelected ? '700' : '500'}
                     className="pointer-events-none select-none"
@@ -216,15 +216,21 @@ const EditableFlavorWheel: React.FC<Props> = ({
                 </g>
               ))}
               
-              <g className="cursor-pointer" onClick={() => toggleCategory(cat.id)}>
+              <g 
+                className="cursor-pointer" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCategory(cat.id);
+                }}
+              >
                 <path
                   d={describeArc(center, center, innerRingInner, innerRingOuter, cat.startAngle, cat.endAngle)}
                   fill={cat.isSelected ? cat.color : '#3f3f46'}
                   stroke="#0c0a09"
                   strokeWidth="1.5"
-                  className="transition-all duration-200 hover:brightness-110"
+                  className="transition-all duration-200 hover:brightness-125"
                   style={{ 
-                    opacity: cat.isSelected ? (cat.hasSelectedNotes ? 0.7 : 1) : 0.6,
+                    opacity: cat.isSelected ? (cat.hasSelectedNotes ? 0.8 : 1) : 0.6,
                   }}
                 />
                 <text
@@ -287,12 +293,12 @@ const EditableFlavorWheel: React.FC<Props> = ({
           );
         })}
         {selectedLabels.length === 0 && (
-          <span className="text-xs text-stone-500">Tap to select flavors</span>
+          <span className="text-xs text-stone-500">Tap to select target flavors</span>
         )}
       </div>
       
       <p className="text-[10px] text-stone-500 mt-2 text-center max-w-xs">
-        Inner ring = broad flavors • Outer ring = specific notes
+        Inner ring = broad categories • Outer ring = specific notes
       </p>
     </div>
   );

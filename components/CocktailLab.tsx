@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   FlaskConical, Sparkles, ChevronDown, ChevronUp, ArrowRight, 
   Loader2, RefreshCw, Beaker, Target, Lightbulb, Check, X,
@@ -16,6 +16,7 @@ import {
   Legend
 } from 'recharts';
 import EditableFlavorWheel from './EditableFlavorWheel';
+import { deriveFlavorFromIngredients, flavorProfileToSelection } from '../shared/flavorTaxonomy';
 
 interface Props {
   allRecipes: Cocktail[];
@@ -98,6 +99,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [appliedAdds, setAppliedAdds] = useState<Set<number>>(new Set());
   const [editorMode, setEditorMode] = useState<'wheel' | 'sliders'>('wheel');
   
+  const [derivedCategories, setDerivedCategories] = useState<string[]>([]);
+  const [derivedNotes, setDerivedNotes] = useState<string[]>([]);
+  const wheelKeyRef = useRef<number>(0);
+  
   // Build mode states
   const [masterIngredients, setMasterIngredients] = useState<MasterIngredient[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<MasterIngredient[]>([]);
@@ -122,12 +127,25 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     if (initialRecipe) {
       setLabMode('recipe');
       setSelectedRecipe(initialRecipe);
-      setTargetProfile(initialRecipe.flavorProfile && Object.keys(initialRecipe.flavorProfile).length > 0 
+      const profile = initialRecipe.flavorProfile && Object.keys(initialRecipe.flavorProfile).length > 0 
         ? { ...initialRecipe.flavorProfile } 
-        : { ...DEFAULT_PROFILE });
+        : { ...DEFAULT_PROFILE };
+      setTargetProfile(profile);
       setLabResult(null);
       setErrorMessage(null);
       setAppliedSubs(new Set());
+      setAppliedAdds(new Set());
+      setTargetNotes([]);
+      
+      const ingredients = initialRecipe.ingredients?.map(ing => ({ name: ing })) || [];
+      const derived = deriveFlavorFromIngredients(ingredients);
+      const profileSelection = flavorProfileToSelection(profile as unknown as Record<string, number>);
+      const allCategories = [...new Set([...derived.categories, ...profileSelection.categories])];
+      
+      setDerivedCategories(allCategories);
+      setDerivedNotes(derived.notes);
+      wheelKeyRef.current += 1;
+      
       onClearInitialRecipe?.();
     }
   }, [initialRecipe?.id]);
@@ -258,6 +276,19 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     setLabResult(null);
     setErrorMessage(null);
     setAppliedSubs(new Set());
+    setAppliedAdds(new Set());
+    setTargetNotes([]);
+    
+    const ingredients = recipe.ingredients?.map(ing => ({ name: ing })) || [];
+    const derived = deriveFlavorFromIngredients(ingredients);
+    
+    const recipeProfile = getRecipeProfile(recipe);
+    const profileSelection = flavorProfileToSelection(recipeProfile as unknown as Record<string, number>);
+    const allCategories = [...new Set([...derived.categories, ...profileSelection.categories])];
+    
+    setDerivedCategories(allCategories);
+    setDerivedNotes(derived.notes);
+    wheelKeyRef.current += 1;
   };
 
   const adjustFlavor = (dim: FlavorDimension, delta: number) => {
@@ -659,11 +690,14 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                 
                 {editorMode === 'wheel' ? (
                   <EditableFlavorWheel
-                    key={`wheel-${selectedRecipe?.id || 'none'}`}
-                    profile={targetProfile}
-                    originalProfile={originalProfile}
-                    onProfileChange={setTargetProfile}
-                    onNotesChange={setTargetNotes}
+                    key={`wheel-${selectedRecipe?.id || 'none'}-${wheelKeyRef.current}`}
+                    recipeId={selectedRecipe?.id}
+                    initialCategories={derivedCategories}
+                    initialNotes={derivedNotes}
+                    onSelectionChange={({ notes, profile }) => {
+                      setTargetProfile(profile);
+                      setTargetNotes(notes);
+                    }}
                     size={280}
                   />
                 ) : (
