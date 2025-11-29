@@ -83,6 +83,10 @@ None set yet - will be documented as user expresses preferences during developme
 - **cocktail_lineage**: Stores AI-generated family tree data for each drink (family assignment, relationship, key modifications, evolution narrative).
 - **cocktail_relationships**: Stores connections between drinks (ancestors, siblings, descendants, flavor bridges).
 - **lab_riffs**: Stores user-created riffs from the Cocktail Laboratory (name, ingredients, signature hash for deduplication, parent recipe, predicted flavor profile).
+- **flavor_categories**: 8 primary flavor categories (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky) with colors and sort order.
+- **flavor_notes**: 32 specific flavor notes (4 per category) with keywords for ingredient matching.
+- **ingredient_flavor_mappings**: 150+ ingredient-to-flavor mappings with intensity and primary flag for AI interpretation.
+- **flavor_data_version**: Version tracking for flavor data updates and cache invalidation.
 
 ### Lineage API Endpoints
 - `GET /api/cocktail-families` - Lists all 6 root cocktail templates
@@ -96,6 +100,12 @@ None set yet - will be documented as user expresses preferences during developme
 - `POST /api/lab/riffs` - Creates a new lab riff with lineage integration (auth required)
 - `GET /api/lab/riffs` - Lists all riffs (optional ?parent= filter, auth required)
 - `GET /api/lab/riffs/:slug` - Retrieves a specific riff by slug (auth required)
+
+### Flavor Data API Endpoints
+- `GET /api/flavor-taxonomy` - Returns complete flavor taxonomy (categories, notes, ingredient mappings) with version
+- `POST /api/flavor-taxonomy/derive` - Derives flavor notes from ingredient list with intensity scores
+- `GET /api/flavor-taxonomy/ai-prompt` - Generates AI context prompt with full flavor mappings
+- `POST /api/admin/seed-flavor-data` (admin) - Seeds flavor master data from predefined mappings
 
 ### UI/UX Decisions
 - Uses custom components and Lucide React for a consistent interface.
