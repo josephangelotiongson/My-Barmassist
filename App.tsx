@@ -631,10 +631,11 @@ export default function App() {
       
       setGeneratingImages(prev => new Set(prev).add(cocktail.id));
       
-      // Determine if this is a user variation (has creator) or classic recipe
-      // User variations get their own images, classic recipes share globally
-      const isUserVariation = cocktail.creator && cocktail.creator !== 'AI Bartender';
-      const creatorId = isUserVariation ? (user?.id || cocktail.creator) : null;
+      // Determine if this is a user variation or classic recipe
+      // User variations: recipes created by users (id starts with 'user-' or has isUserCreated flag)
+      // Classic recipes: preloaded recipes share images globally
+      const isUserCreatedRecipe = cocktail.id.startsWith('user-') || (cocktail as any).isUserCreated === true;
+      const creatorId = isUserCreatedRecipe && user?.id ? user.id : null;
       
       try {
           // Build check URL with optional creatorId for user variations
