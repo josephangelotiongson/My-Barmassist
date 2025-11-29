@@ -15,8 +15,11 @@ const ERA_COLORS: Record<string, { bg: string; border: string; text: string }> =
   'Prohibition': { bg: 'bg-stone-800/60', border: 'border-stone-600', text: 'text-stone-400' },
   'Post-Prohibition': { bg: 'bg-emerald-950/40', border: 'border-emerald-700/50', text: 'text-emerald-400' },
   'Tiki Era': { bg: 'bg-orange-950/40', border: 'border-orange-700/50', text: 'text-orange-400' },
+  'Dark Ages': { bg: 'bg-gray-900/60', border: 'border-gray-700', text: 'text-gray-400' },
+  'Craft Revival': { bg: 'bg-purple-950/40', border: 'border-purple-700/50', text: 'text-purple-400' },
   'Modern': { bg: 'bg-blue-950/40', border: 'border-blue-700/50', text: 'text-blue-400' },
   'Contemporary': { bg: 'bg-purple-950/40', border: 'border-purple-700/50', text: 'text-purple-400' },
+  'Classic': { bg: 'bg-stone-800/40', border: 'border-stone-600', text: 'text-stone-400' },
 };
 
 const TEMPLATE_ICONS: Record<string, string> = {
@@ -57,14 +60,19 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
       ancestors: dbData.ancestors?.map((a: any) => ({
         name: a.targetRecipe,
         era: a.era || 'Classic',
+        inventionYear: a.inventionYear || 1900,
         relationship: a.description || ''
       })) || [],
       siblings: dbData.siblings?.map((s: any) => ({
         name: s.targetRecipe,
+        era: s.era || 'Classic',
+        inventionYear: s.inventionYear || 1900,
         sharedTrait: s.description || ''
       })) || [],
       descendants: dbData.descendants?.map((d: any) => ({
         name: d.targetRecipe,
+        era: d.era || 'Modern',
+        inventionYear: d.inventionYear || 2000,
         innovation: d.description || ''
       })) || [],
       flavorBridge: dbData.flavorBridges?.map((fb: any) => ({
@@ -385,50 +393,70 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                 })}
 
                 {activeSection === 'siblings' && familyTree.siblings.map((sibling, idx) => {
+                  const eraStyle = getEraStyle(sibling.era || 'Classic');
                   const clickable = isInDatabase(sibling.name);
                   return (
                     <div 
                       key={idx}
                       onClick={() => handleDrinkClick(sibling.name)}
-                      className={`bg-stone-800/50 rounded-xl p-4 border border-stone-700 ${clickable ? 'cursor-pointer hover:border-secondary/50' : 'opacity-75'} transition-all`}
+                      className={`${eraStyle.bg} rounded-xl p-4 border ${eraStyle.border} ${clickable ? 'cursor-pointer hover:border-secondary/50' : 'opacity-75'} transition-all`}
                     >
-                      <div className="flex items-start gap-3">
-                        <GitBranch className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-white">{sibling.name}</h3>
-                            {clickable && (
-                              <span className="text-[8px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-800">In Library</span>
-                            )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <GitBranch className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white">{sibling.name}</h3>
+                              {clickable && (
+                                <span className="text-[8px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-800">In Library</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-stone-400 mt-1">{sibling.sharedTrait}</p>
                           </div>
-                          <p className="text-xs text-stone-400 mt-1">{sibling.sharedTrait}</p>
                         </div>
-                        {clickable && <ChevronRight className="w-4 h-4 text-stone-500 flex-shrink-0" />}
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-[10px] ${eraStyle.text} px-2 py-0.5 rounded-full border ${eraStyle.border} whitespace-nowrap`}>
+                            {sibling.era || 'Classic'}
+                          </span>
+                          {sibling.inventionYear && sibling.inventionYear > 0 && (
+                            <span className="text-[9px] text-stone-500">~{sibling.inventionYear}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
 
                 {activeSection === 'descendants' && familyTree.descendants.map((desc, idx) => {
+                  const eraStyle = getEraStyle(desc.era || 'Modern');
                   const clickable = isInDatabase(desc.name);
                   return (
                     <div 
                       key={idx}
                       onClick={() => handleDrinkClick(desc.name)}
-                      className={`bg-blue-950/20 rounded-xl p-4 border border-blue-800/30 ${clickable ? 'cursor-pointer hover:border-blue-500/50' : 'opacity-75'} transition-all`}
+                      className={`${eraStyle.bg} rounded-xl p-4 border ${eraStyle.border} ${clickable ? 'cursor-pointer hover:border-blue-500/50' : 'opacity-75'} transition-all`}
                     >
-                      <div className="flex items-start gap-3">
-                        <Zap className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-white">{desc.name}</h3>
-                            {clickable && (
-                              <span className="text-[8px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-800">In Library</span>
-                            )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <Zap className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white">{desc.name}</h3>
+                              {clickable && (
+                                <span className="text-[8px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded border border-green-800">In Library</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-stone-400 mt-1">{desc.innovation}</p>
                           </div>
-                          <p className="text-xs text-stone-400 mt-1">{desc.innovation}</p>
                         </div>
-                        {clickable && <ChevronRight className="w-4 h-4 text-stone-500 flex-shrink-0" />}
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-[10px] ${eraStyle.text} px-2 py-0.5 rounded-full border ${eraStyle.border} whitespace-nowrap`}>
+                            {desc.era || 'Modern'}
+                          </span>
+                          {desc.inventionYear && desc.inventionYear > 0 && (
+                            <span className="text-[9px] text-stone-500">~{desc.inventionYear}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

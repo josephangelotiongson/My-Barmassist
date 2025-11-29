@@ -628,11 +628,12 @@ const familyTreeSchema: Schema = {
         properties: {
           name: { type: Type.STRING },
           era: { type: Type.STRING, description: "e.g., Pre-Prohibition, Prohibition, Tiki Era, Modern" },
-          relationship: { type: Type.STRING, description: "How it relates to the target drink" }
+          inventionYear: { type: Type.NUMBER, description: "Approximate year of invention (must be BEFORE the target drink)" },
+          relationship: { type: Type.STRING, description: "How it directly influenced the target drink" }
         },
-        required: ['name', 'era', 'relationship']
+        required: ['name', 'era', 'inventionYear', 'relationship']
       },
-      description: "Drinks that preceded and influenced the target drink"
+      description: "Drinks that PRECEDED and directly influenced the target drink. Must have been invented BEFORE the target."
     },
     siblings: {
       type: Type.ARRAY,
@@ -640,11 +641,13 @@ const familyTreeSchema: Schema = {
         type: Type.OBJECT,
         properties: {
           name: { type: Type.STRING },
-          sharedTrait: { type: Type.STRING, description: "What trait they share with the target" }
+          era: { type: Type.STRING, description: "Era of invention" },
+          inventionYear: { type: Type.NUMBER, description: "Year of invention (should be similar timeframe as target)" },
+          sharedTrait: { type: Type.STRING, description: "What structural trait they share with the target" }
         },
-        required: ['name', 'sharedTrait']
+        required: ['name', 'era', 'inventionYear', 'sharedTrait']
       },
-      description: "Drinks at the same evolutionary level, sharing similar structure"
+      description: "Drinks from the SAME ERA with similar structure - parallel innovations, NOT evolved from the target"
     },
     descendants: {
       type: Type.ARRAY,
@@ -652,11 +655,13 @@ const familyTreeSchema: Schema = {
         type: Type.OBJECT,
         properties: {
           name: { type: Type.STRING },
-          innovation: { type: Type.STRING, description: "What new element this drink introduced" }
+          era: { type: Type.STRING, description: "Era of invention" },
+          inventionYear: { type: Type.NUMBER, description: "Year of invention (MUST be AFTER the target drink)" },
+          innovation: { type: Type.STRING, description: "What specific change/twist makes this a riff on the target" }
         },
-        required: ['name', 'innovation']
+        required: ['name', 'era', 'inventionYear', 'innovation']
       },
-      description: "Modern riffs and variations inspired by the target drink"
+      description: "Drinks that evolved DIRECTLY from the target - riffs, twists, and variations invented AFTER the target"
     },
     flavorBridge: {
       type: Type.ARRAY,
@@ -690,14 +695,19 @@ export interface DrinkFamilyTree {
   ancestors: Array<{
     name: string;
     era: string;
+    inventionYear: number;
     relationship: string;
   }>;
   siblings: Array<{
     name: string;
+    era: string;
+    inventionYear: number;
     sharedTrait: string;
   }>;
   descendants: Array<{
     name: string;
+    era: string;
+    inventionYear: number;
     innovation: string;
   }>;
   flavorBridge: Array<{
@@ -715,36 +725,112 @@ export const analyzeDrinkFamilyTree = async (
   availableRecipes: string[]
 ): Promise<DrinkFamilyTree> => {
   try {
+    const ingredientList = cocktailIngredients
+      .map(ing => ing.replace(/^["']|["']$/g, '').trim())
+      .filter(ing => ing.length > 0)
+      .join('\n      - ');
+    
     const prompt = `
-      You are an Expert Mixologist Agent with encyclopedic knowledge of cocktail history, inspired by "Cocktail Codex" by Death & Company.
+      You are a COCKTAIL HISTORIAN and Expert Mixologist with deep knowledge of drink origins, evolution, and the documented history of cocktails from 1800 to present day.
       
-      TASK: Analyze the drink "${cocktailName}" and map its family tree showing evolutionary relationships.
+      YOUR EXPERTISE SOURCES:
+      - "Cocktail Codex" by Death & Company (2018)
+      - "The Oxford Companion to Spirits and Cocktails" (2022)
+      - "Imbibe!" by David Wondrich (2007)
+      - "The Fine Art of Mixing Drinks" by David Embury (1948)
+      - "The Savoy Cocktail Book" by Harry Craddock (1930)
+      - "Smuggler's Cove" by Martin Cate (2016)
+      - Death & Co recipe archives
       
-      INPUT DATA:
-      - Drink Name: ${cocktailName}
+      TASK: Research and map the family tree of "${cocktailName}" with ACCURATE historical dates.
+      
+      DRINK TO ANALYZE:
+      - Name: ${cocktailName}
       - Category: ${cocktailCategory}
-      - Ingredients: ${JSON.stringify(cocktailIngredients)}
-      - Available recipes in database: ${JSON.stringify(availableRecipes.slice(0, 50))}
+      - Ingredients:
+      - ${ingredientList}
       
+      KNOWN RECIPES IN DATABASE (prioritize these): ${JSON.stringify(availableRecipes.slice(0, 50))}
+      
+      ═══════════════════════════════════════════════════════════════
+      CRITICAL DEFINITIONS - UNDERSTAND BEFORE CLASSIFYING:
+      ═══════════════════════════════════════════════════════════════
+      
+      ANCESTORS = Drinks that EXISTED BEFORE "${cocktailName}" and DIRECTLY INFLUENCED its creation.
+      - The ancestor's invention year MUST be BEFORE ${cocktailName}'s invention.
+      - Example: The Whiskey Sour (1870s) is an ANCESTOR of the Margarita (1930s-40s).
+      
+      SIBLINGS = Drinks from ROUGHLY THE SAME ERA with SIMILAR STRUCTURE but PARALLEL development.
+      - Siblings evolved from the SAME ANCESTOR, not from each other.
+      - They were created around the same time period (within ~20 years).
+      - Example: Manhattan (1870s) and Martinez (1870s) are SIBLINGS - both evolved from earlier cocktails.
+      
+      DESCENDANTS (RIFFS) = Drinks that DIRECTLY EVOLVED FROM "${cocktailName}" and were invented AFTER it.
+      - The descendant MUST be invented AFTER ${cocktailName}.
+      - A descendant is a twist/variation on the target drink.
+      - Example: The Cosmopolitan (1980s) is a DESCENDANT/RIFF of the Kamikaze (1970s).
+      - Example: The Penicillin (2005) is a DESCENDANT/RIFF of the Whiskey Sour.
+      
+      ═══════════════════════════════════════════════════════════════
+      CHRONOLOGY IS CRITICAL - VALIDATE ALL DATES:
+      ═══════════════════════════════════════════════════════════════
+      
+      KEY HISTORICAL ERAS:
+      - Pre-Prohibition: Before 1920 (includes 1800s classics)
+      - Prohibition: 1920-1933
+      - Post-Prohibition: 1933-1960
+      - Tiki Era: 1934-1970s (Trader Vic, Don the Beachcomber)
+      - Dark Ages: 1970s-1990s (decline in craft cocktails)
+      - Craft Revival: 2000-present (Death & Co, modern craft bars)
+      
+      WELL-KNOWN INVENTION DATES (use as reference):
+      - Old Fashioned: ~1880
+      - Sazerac: ~1850s
+      - Manhattan: ~1874
+      - Martini: ~1880s
+      - Daiquiri: ~1898
+      - Sidecar: ~1920s
+      - Margarita: ~1940s
+      - Moscow Mule: 1941
+      - Mai Tai: 1944
+      - Zombie: 1934
+      - Negroni: 1919
+      - Last Word: 1920s, revived 2000s
+      - Cosmopolitan: 1980s
+      - Penicillin: 2005
+      - Paper Plane: 2007
+      
+      ═══════════════════════════════════════════════════════════════
       COCKTAIL CODEX TEMPLATE SYSTEM:
-      Every cocktail traces back to one of these 6 root templates:
-      1. OLD FASHIONED (Spirit + Sugar + Bitters): The ancestral template. Sazerac, Improved Whiskey Cocktail, etc.
-      2. MARTINI (Spirit + Aromatized Wine/Vermouth): Dry, wet, dirty variations. Manhattan, Negroni family.
-      3. DAIQUIRI (Spirit + Citrus + Sugar): The sour template. Margarita, Sidecar, Whiskey Sour, etc.
-      4. SIDECAR (Cognac + Lemon + Triple Sec): Actually a Daiquiri sibling but with its own lineage.
-      5. WHISKEY HIGHBALL (Spirit + Carbonation): G&T, Mules, Collins, etc.
-      6. FLIP (Spirit + Whole Egg + Sugar): Nogs, cream cocktails, White Russian lineage.
+      ═══════════════════════════════════════════════════════════════
       
-      RULES:
-      1. Identify the ROOT TEMPLATE this drink belongs to.
-      2. Map ANCESTORS (drinks that came before and influenced it).
-      3. Identify SIBLINGS (drinks at the same evolutionary level).
-      4. Find DESCENDANTS (modern riffs and variations).
-      5. Create FLAVOR BRIDGES showing how tastes evolved.
-      6. PRIORITIZE drinks from the available recipes list when possible.
-      7. Include classic historical drinks even if not in the database.
+      Every cocktail traces back to one of 6 root templates:
+      1. OLD FASHIONED (Spirit + Sugar + Bitters): Sazerac, Improved Cocktail, Monte Carlo
+      2. MARTINI (Spirit + Vermouth): Manhattan, Negroni, Martinez, Boulevardier
+      3. DAIQUIRI (Spirit + Citrus + Sugar): Whiskey Sour, Margarita, Gimlet, Mojito
+      4. SIDECAR (Spirit + Citrus + Liqueur): Cosmopolitan, Last Word, Paper Plane
+      5. WHISKEY HIGHBALL (Spirit + Carbonation): G&T, Moscow Mule, Collins, Paloma
+      6. FLIP (Spirit + Egg + Sugar): Eggnog, Ramos Gin Fizz, White Russian
       
-      GENERATE a comprehensive family tree analysis.
+      ═══════════════════════════════════════════════════════════════
+      YOUR TASK:
+      ═══════════════════════════════════════════════════════════════
+      
+      1. Research ${cocktailName}'s origin and approximate invention year.
+      2. Identify its ROOT TEMPLATE from the 6 above.
+      3. Find 2-4 ANCESTORS (drinks invented BEFORE it that influenced it).
+      4. Find 2-4 SIBLINGS (drinks from same era with similar structure).
+      5. Find 3-6 DESCENDANTS/RIFFS (drinks invented AFTER it, directly based on it).
+      6. Create FLAVOR BRIDGES showing how tastes evolved.
+      7. Write an EVOLUTION NARRATIVE telling this drink's story.
+      
+      PRIORITIZE drinks from the available recipes list when possible for better user experience.
+      
+      VALIDATION CHECKLIST:
+      ✓ All ancestor invention years are BEFORE the target drink
+      ✓ Sibling invention years are within ~20 years of target drink
+      ✓ All descendant invention years are AFTER the target drink
+      ✓ Descendants are DIRECTLY related to the target (not just similar category)
     `;
 
     const response = await ai.models.generateContent({
@@ -773,7 +859,7 @@ export const analyzeDrinkFamilyTree = async (
         keyModifications: cocktailIngredients.slice(0, 3)
       },
       ancestors: [
-        { name: "The Original Cocktail", era: "Pre-1800s", relationship: "The primordial ancestor of all mixed drinks" }
+        { name: "The Original Cocktail", era: "Pre-1800s", inventionYear: 1800, relationship: "The primordial ancestor of all mixed drinks" }
       ],
       siblings: [],
       descendants: [],

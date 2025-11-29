@@ -785,6 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sourceRecipe: recipeName,
             targetRecipe: sibling.name,
             relationshipType: 'sibling',
+            era: sibling.era,
             description: sibling.sharedTrait
           });
         }
@@ -797,6 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sourceRecipe: recipeName,
             targetRecipe: desc.name,
             relationshipType: 'descendant',
+            era: desc.era,
             description: desc.innovation
           });
         }
