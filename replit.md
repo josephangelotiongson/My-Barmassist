@@ -8,14 +8,19 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 
 ## Recent Changes (November 29, 2025)
 
+- **Object Storage for Cocktail Images**: Migrated image storage from database to Replit's App Storage (Object Storage)
+  - Images are now stored as files in the "mybarmassist generated images" bucket
+  - Solves payload size issues with base64 images in database
+  - Images served via `/cocktail-images/:filename` endpoint
+  - File paths stored in database, actual image files in Object Storage
 - **Migrated to Replit Auth**: Replaced custom email/password authentication with Replit Auth
   - Users can now log in via Google, GitHub, X, Apple, and email/password
   - Login: Navigate to `/api/login`
   - Logout: Navigate to `/api/logout`
 - **Persistent Cocktail Images**: AI-generated cocktail images are saved globally for all users
-  - Images are generated once and saved to the database, so all users (guests and logged-in) see them instantly
+  - Images are generated once and saved to Object Storage, so all users (guests and logged-in) see them instantly
   - No need to regenerate images - they're shared across all users
-  - Images are stored in the global recipeImages table
+  - Database stores only file paths, not the actual image data
 - **Improved Mobile Navigation**: Increased bottom navigation bar size for better phone usability
   - Larger touch targets (28px icons)
   - Larger text labels (12px)
@@ -60,6 +65,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 │   ├── routes.ts        # API route definitions
 │   ├── replitAuth.ts    # Replit Auth (OpenID Connect) configuration
 │   ├── storage.ts       # Database storage methods
+│   ├── objectStorage.ts # Object Storage service for cocktail images
 │   ├── db.ts            # Database connection
 │   └── vite.ts          # Vite middleware for development
 ├── shared/              # Shared code between frontend/backend
@@ -151,6 +157,7 @@ The `INITIAL_MASTER_DATA` array contains ingredient information used for nutriti
 - **DATABASE_URL** (Auto-configured): PostgreSQL connection string
 - **SESSION_SECRET** (Auto-generated): Session encryption key
 - **REPLIT_DOMAINS** (Auto-configured): Domain for OAuth callbacks
+- **PRIVATE_OBJECT_DIR**: Object Storage bucket path for cocktail images (`/mybarmassist generated images`)
 
 ### Database Commands
 ```bash
