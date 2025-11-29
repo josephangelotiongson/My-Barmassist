@@ -597,3 +597,188 @@ export const transcribeAudio = async (base64Audio: string, mimeType: string): Pr
     throw error;
   }
 };
+
+// --- DRINK FAMILY TREE ANALYSIS ---
+// Schema for Family Tree Analysis (Cocktail Codex inspired)
+const familyTreeSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    rootTemplate: {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING, description: "The fundamental template (e.g., Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip)" },
+        formula: { type: Type.STRING, description: "Core formula like 'Spirit + Sugar + Bitters'" },
+        description: { type: Type.STRING, description: "Brief explanation of what defines this template" }
+      },
+      required: ['name', 'formula', 'description']
+    },
+    targetDrink: {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING },
+        relationship: { type: Type.STRING, description: "How this drink relates to the root template" },
+        keyModifications: { type: Type.ARRAY, items: { type: Type.STRING }, description: "What makes this drink unique from the template" }
+      },
+      required: ['name', 'relationship', 'keyModifications']
+    },
+    ancestors: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          era: { type: Type.STRING, description: "e.g., Pre-Prohibition, Prohibition, Tiki Era, Modern" },
+          relationship: { type: Type.STRING, description: "How it relates to the target drink" }
+        },
+        required: ['name', 'era', 'relationship']
+      },
+      description: "Drinks that preceded and influenced the target drink"
+    },
+    siblings: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          sharedTrait: { type: Type.STRING, description: "What trait they share with the target" }
+        },
+        required: ['name', 'sharedTrait']
+      },
+      description: "Drinks at the same evolutionary level, sharing similar structure"
+    },
+    descendants: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          innovation: { type: Type.STRING, description: "What new element this drink introduced" }
+        },
+        required: ['name', 'innovation']
+      },
+      description: "Modern riffs and variations inspired by the target drink"
+    },
+    flavorBridge: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          fromDrink: { type: Type.STRING },
+          toDrink: { type: Type.STRING },
+          connection: { type: Type.STRING, description: "Flavor or technique connection" }
+        },
+        required: ['fromDrink', 'toDrink', 'connection']
+      },
+      description: "Connections showing how flavors evolved through the family"
+    },
+    evolutionNarrative: { type: Type.STRING, description: "A brief story explaining the drink's place in cocktail history" }
+  },
+  required: ['rootTemplate', 'targetDrink', 'ancestors', 'siblings', 'descendants', 'flavorBridge', 'evolutionNarrative']
+};
+
+export interface DrinkFamilyTree {
+  rootTemplate: {
+    name: string;
+    formula: string;
+    description: string;
+  };
+  targetDrink: {
+    name: string;
+    relationship: string;
+    keyModifications: string[];
+  };
+  ancestors: Array<{
+    name: string;
+    era: string;
+    relationship: string;
+  }>;
+  siblings: Array<{
+    name: string;
+    sharedTrait: string;
+  }>;
+  descendants: Array<{
+    name: string;
+    innovation: string;
+  }>;
+  flavorBridge: Array<{
+    fromDrink: string;
+    toDrink: string;
+    connection: string;
+  }>;
+  evolutionNarrative: string;
+}
+
+export const analyzeDrinkFamilyTree = async (
+  cocktailName: string,
+  cocktailCategory: string,
+  cocktailIngredients: string[],
+  availableRecipes: string[]
+): Promise<DrinkFamilyTree> => {
+  try {
+    const prompt = `
+      You are an Expert Mixologist Agent with encyclopedic knowledge of cocktail history, inspired by "Cocktail Codex" by Death & Company.
+      
+      TASK: Analyze the drink "${cocktailName}" and map its family tree showing evolutionary relationships.
+      
+      INPUT DATA:
+      - Drink Name: ${cocktailName}
+      - Category: ${cocktailCategory}
+      - Ingredients: ${JSON.stringify(cocktailIngredients)}
+      - Available recipes in database: ${JSON.stringify(availableRecipes.slice(0, 50))}
+      
+      COCKTAIL CODEX TEMPLATE SYSTEM:
+      Every cocktail traces back to one of these 6 root templates:
+      1. OLD FASHIONED (Spirit + Sugar + Bitters): The ancestral template. Sazerac, Improved Whiskey Cocktail, etc.
+      2. MARTINI (Spirit + Aromatized Wine/Vermouth): Dry, wet, dirty variations. Manhattan, Negroni family.
+      3. DAIQUIRI (Spirit + Citrus + Sugar): The sour template. Margarita, Sidecar, Whiskey Sour, etc.
+      4. SIDECAR (Cognac + Lemon + Triple Sec): Actually a Daiquiri sibling but with its own lineage.
+      5. WHISKEY HIGHBALL (Spirit + Carbonation): G&T, Mules, Collins, etc.
+      6. FLIP (Spirit + Whole Egg + Sugar): Nogs, cream cocktails, White Russian lineage.
+      
+      RULES:
+      1. Identify the ROOT TEMPLATE this drink belongs to.
+      2. Map ANCESTORS (drinks that came before and influenced it).
+      3. Identify SIBLINGS (drinks at the same evolutionary level).
+      4. Find DESCENDANTS (modern riffs and variations).
+      5. Create FLAVOR BRIDGES showing how tastes evolved.
+      6. PRIORITIZE drinks from the available recipes list when possible.
+      7. Include classic historical drinks even if not in the database.
+      
+      GENERATE a comprehensive family tree analysis.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_FLASH,
+      contents: prompt,
+      config: {
+        responseSchema: familyTreeSchema,
+        temperature: 0.3
+      }
+    });
+
+    const data = JSON.parse(response.text || '{}');
+    return data as DrinkFamilyTree;
+  } catch (error) {
+    console.error("Error analyzing drink family tree:", error);
+    // Return a sensible fallback
+    return {
+      rootTemplate: {
+        name: "Classic Template",
+        formula: "Spirit + Modifier + Accent",
+        description: "A foundational cocktail structure"
+      },
+      targetDrink: {
+        name: cocktailName,
+        relationship: "A unique expression of classic cocktail principles",
+        keyModifications: cocktailIngredients.slice(0, 3)
+      },
+      ancestors: [
+        { name: "The Original Cocktail", era: "Pre-1800s", relationship: "The primordial ancestor of all mixed drinks" }
+      ],
+      siblings: [],
+      descendants: [],
+      flavorBridge: [],
+      evolutionNarrative: "This cocktail represents a unique point in the evolution of mixed drinks."
+    };
+  }
+};

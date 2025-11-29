@@ -12,6 +12,7 @@ import SettingsModal from './components/SettingsModal';
 import ShoppingListAddModal from './components/ShoppingListAddModal';
 import HowItWorksModal from './components/HowItWorksModal';
 import AuthModal from './components/AuthModal';
+import DrinkFamilyTree from './components/DrinkFamilyTree';
 import { Cocktail, Ingredient, FlavorProfile, FlavorDimension, Recommendation, ShoppingListItem, MasterIngredient, AppSettings, Nutrition } from './types';
 import { getRecommendations, generateCocktailImage, enrichIngredientDetails, recommendFromMenu, getBarOrderSuggestion, deduceRecipe } from './services/geminiService';
 import { INITIAL_MASTER_DATA, INITIAL_RECIPES_DATA } from './initialData';
@@ -870,6 +871,7 @@ export default function App() {
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
 
   const [selectedCocktail, setSelectedCocktail] = useState<Cocktail | null>(null);
+  const [familyTreeCocktail, setFamilyTreeCocktail] = useState<Cocktail | null>(null);
   const [recentMenuScans, setRecentMenuScans] = useState<Cocktail[]>([]);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1704,6 +1706,10 @@ export default function App() {
         onAddLink={handleAddReferenceLink}
         isToConcoct={selectedCocktail ? toConcoct.has(selectedCocktail.name) : false}
         onRemoveFromToConcoct={removeFromToConcoct}
+        onViewFamilyTree={(cocktail) => {
+          setSelectedCocktail(null);
+          setFamilyTreeCocktail(cocktail);
+        }}
       />
       
       <SettingsModal 
@@ -1788,6 +1794,21 @@ export default function App() {
           onClose={() => setIsAuthModalOpen(false)}
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] })}
        />
+
+       {familyTreeCocktail && (
+          <DrinkFamilyTree
+            cocktail={familyTreeCocktail}
+            allRecipes={history}
+            onClose={() => setFamilyTreeCocktail(null)}
+            onSelectDrink={(drinkName) => {
+              const foundDrink = history.find(d => d.name.toLowerCase() === drinkName.toLowerCase());
+              if (foundDrink) {
+                setFamilyTreeCocktail(null);
+                setSelectedCocktail(foundDrink);
+              }
+            }}
+          />
+       )}
 
        <main className="flex-1 bg-background relative overflow-hidden">
         <div className="max-w-md mx-auto h-full relative">

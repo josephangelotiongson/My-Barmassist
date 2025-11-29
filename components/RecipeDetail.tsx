@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem } from '../types';
 import FlavorWheel from './FlavorWheel';
 import FlavorRadar from './RadarChart';
@@ -18,9 +18,10 @@ interface Props {
   onAddLink?: (id: string, url: string) => void;
   isToConcoct?: boolean;
   onRemoveFromToConcoct?: (recipeName: string) => void;
+  onViewFamilyTree?: (cocktail: Cocktail) => void;
 }
 
-const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct }) => {
+const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct, onViewFamilyTree }) => {
   const [newLink, setNewLink] = useState('');
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   
@@ -221,6 +222,23 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                 </h3>
                 <FlavorRadar data={cocktail.flavorProfile} height={300} />
             </div>
+
+            {/* FAMILY TREE BUTTON - Only for preloaded (non-temporary, non-user) recipes */}
+            {!isTemporary && onViewFamilyTree && (
+                <button 
+                    onClick={() => onViewFamilyTree(cocktail)}
+                    className="w-full bg-gradient-to-r from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 rounded-xl p-4 border border-stone-700 hover:border-primary/30 transition-all group flex items-center gap-4"
+                >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center border border-primary/30 group-hover:border-primary/50 transition-colors">
+                        <Network className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1 text-left">
+                        <h4 className="text-sm font-bold text-white group-hover:text-secondary transition-colors">View Cocktail Lineage</h4>
+                        <p className="text-xs text-stone-500 mt-0.5">Explore the family tree and related drinks</p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-stone-600 group-hover:text-secondary transition-colors" />
+                </button>
+            )}
 
             {/* HISTORY / LORE SECTION (EXPANDABLE) */}
             {cocktail.history && (
