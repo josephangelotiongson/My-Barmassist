@@ -182,9 +182,9 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
 
   return (
     <div className="space-y-4">
-      <div className="bg-gradient-to-br from-purple-950/40 to-stone-900 rounded-2xl p-4 border border-purple-800/30">
+      <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
             <FlaskConical className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -204,7 +204,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
           className="w-full p-4 flex items-center justify-between hover:bg-stone-800/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <Beaker className="w-5 h-5 text-purple-400" />
+            <Beaker className="w-5 h-5 text-secondary" />
             <div className="text-left">
               <p className="text-xs text-stone-500 uppercase tracking-wider">Base Recipe</p>
               <p className="text-white font-bold">
@@ -226,7 +226,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search recipes..."
-              className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm text-white mb-2 outline-none focus:border-purple-500"
+              className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm text-white mb-2 outline-none focus:border-secondary"
             />
             <div className="space-y-1">
               {filteredRecipes.map((recipe) => (
@@ -235,7 +235,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                   onClick={() => handleSelectRecipe(recipe)}
                   className={`w-full text-left p-2 rounded-lg transition-colors flex items-center justify-between ${
                     selectedRecipe?.id === recipe.id 
-                      ? 'bg-purple-900/30 border border-purple-700/50' 
+                      ? 'bg-amber-900/30 border border-amber-700/50' 
                       : 'hover:bg-stone-800'
                   }`}
                 >
@@ -245,13 +245,13 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                       <p className="text-xs text-stone-500">{recipe.category || 'Classic'}</p>
                     </div>
                     {!hasValidProfile(recipe) && (
-                      <span className="text-[9px] bg-yellow-950/50 text-yellow-500 px-1.5 py-0.5 rounded-full border border-yellow-800/30">
+                      <span className="text-[9px] bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded-full border border-stone-700">
                         No profile
                       </span>
                     )}
                   </div>
                   {selectedRecipe?.id === recipe.id && (
-                    <Check className="w-4 h-4 text-purple-400" />
+                    <Check className="w-4 h-4 text-secondary" />
                   )}
                 </button>
               ))}
@@ -278,8 +278,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
             </div>
 
             {!hasValidProfile(selectedRecipe) && (
-              <div className="bg-yellow-950/30 border border-yellow-800/50 rounded-lg p-2.5 mb-3">
-                <p className="text-xs text-yellow-400">
+              <div className="bg-stone-800/50 border border-stone-700 rounded-lg p-2.5 mb-3">
+                <p className="text-xs text-stone-400">
                   This recipe doesn't have flavor data yet. Using default profile as starting point.
                 </p>
               </div>
@@ -313,7 +313,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                       </button>
                       <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-200"
+                          className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
                           style={{ width: `${(target / 10) * 100}%` }}
                         />
                       </div>
@@ -332,7 +332,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
 
           <div className="bg-surface rounded-2xl border border-stone-700 p-4">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <Sparkles className="w-4 h-4 text-secondary" />
               Flavor Comparison
             </h3>
             <div className="h-64">
@@ -358,9 +358,9 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                   <Radar
                     name="Target"
                     dataKey="Target"
-                    stroke="#a855f7"
+                    stroke="#f59e0b"
                     strokeWidth={2}
-                    fill="#a855f7"
+                    fill="#f59e0b"
                     fillOpacity={0.3}
                   />
                   
@@ -387,7 +387,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                 <span className="text-stone-400">Original</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-3 h-0.5 bg-purple-500"></span>
+                <span className="w-3 h-0.5 bg-amber-500"></span>
                 <span className="text-stone-400">Target</span>
               </span>
               {labResult && (
@@ -402,7 +402,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
           <button
             onClick={analyzeSubstitutions}
             disabled={isAnalyzing || !hasChanges}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
           >
             {isAnalyzing ? (
               <>
@@ -436,11 +436,11 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
             <div className="space-y-4">
               <div className="bg-surface rounded-2xl border border-stone-700 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-4 h-4 text-yellow-400" />
+                  <Lightbulb className="w-4 h-4 text-secondary" />
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Recommendations</h3>
                 </div>
                 
-                <p className="text-sm text-stone-300 mb-4 leading-relaxed bg-stone-800/50 p-3 rounded-lg border-l-2 border-purple-500">
+                <p className="text-sm text-stone-300 mb-4 leading-relaxed bg-stone-800/50 p-3 rounded-lg border-l-2 border-secondary">
                   {labResult.rationale}
                 </p>
                 
@@ -454,7 +454,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                         className={`w-full text-left p-3 rounded-xl border transition-all ${
                           appliedSubs.has(idx)
                             ? 'bg-green-950/30 border-green-700/50'
-                            : 'bg-stone-800/50 border-stone-700 hover:border-purple-700/50'
+                            : 'bg-stone-800/50 border-stone-700 hover:border-amber-700/50'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -485,13 +485,13 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
               {appliedSubs.size > 0 && (
                 <div className="bg-surface rounded-2xl border border-stone-700 p-4">
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Beaker className="w-4 h-4 text-green-400" />
+                    <Beaker className="w-4 h-4 text-secondary" />
                     Modified Recipe
                   </h3>
                   <div className="space-y-1.5">
                     {getModifiedIngredients().map((ing, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
                         <span className="text-stone-300">{ing}</span>
                       </div>
                     ))}
