@@ -7,6 +7,9 @@ import {
   recipeImages,
   globalRecipes,
   masterIngredients,
+  cocktailFamilies,
+  cocktailLineage,
+  cocktailRelationships,
   type User,
   type UpsertUser,
   type UserRecipe,
@@ -20,6 +23,12 @@ import {
   type GlobalRecipe,
   type InsertGlobalRecipe,
   type MasterIngredient,
+  type CocktailFamily,
+  type InsertCocktailFamily,
+  type CocktailLineage,
+  type InsertCocktailLineage,
+  type CocktailRelationship,
+  type InsertCocktailRelationship,
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, and, isNull, or } from "drizzle-orm";
@@ -373,6 +382,152 @@ export class DatabaseStorage implements IStorage {
       complete: ingredients.filter(i => i.enrichmentStatus === 'complete').length,
       failed: ingredients.filter(i => i.enrichmentStatus === 'failed').length,
     };
+  }
+
+  // Cocktail Family operations
+  async getAllCocktailFamilies(): Promise<CocktailFamily[]> {
+    return await db.select().from(cocktailFamilies);
+  }
+
+  async getCocktailFamilyBySlug(slug: string): Promise<CocktailFamily | undefined> {
+    const [family] = await db.select().from(cocktailFamilies).where(eq(cocktailFamilies.slug, slug));
+    return family;
+  }
+
+  async getCocktailFamilyById(id: number): Promise<CocktailFamily | undefined> {
+    const [family] = await db.select().from(cocktailFamilies).where(eq(cocktailFamilies.id, id));
+    return family;
+  }
+
+  async createCocktailFamily(family: InsertCocktailFamily): Promise<CocktailFamily> {
+    const [newFamily] = await db.insert(cocktailFamilies).values(family).returning();
+    return newFamily;
+  }
+
+  async upsertCocktailFamily(family: InsertCocktailFamily): Promise<CocktailFamily> {
+    const [result] = await db
+      .insert(cocktailFamilies)
+      .values(family)
+      .onConflictDoUpdate({
+        target: cocktailFamilies.slug,
+        set: {
+          name: family.name,
+          formula: family.formula,
+          description: family.description,
+          icon: family.icon,
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // Cocktail Lineage operations
+  async getLineageByRecipeName(recipeName: string): Promise<CocktailLineage | undefined> {
+    const [lineage] = await db.select().from(cocktailLineage).where(eq(cocktailLineage.recipeName, recipeName));
+    return lineage;
+  }
+
+  async getAllLineages(): Promise<CocktailLineage[]> {
+    return await db.select().from(cocktailLineage);
+  }
+
+  async createLineage(lineage: InsertCocktailLineage): Promise<CocktailLineage> {
+    const [newLineage] = await db.insert(cocktailLineage).values(lineage).returning();
+    return newLineage;
+  }
+
+  async upsertLineage(lineage: InsertCocktailLineage): Promise<CocktailLineage> {
+    const [result] = await db
+      .insert(cocktailLineage)
+      .values(lineage)
+      .onConflictDoUpdate({
+        target: cocktailLineage.recipeName,
+        set: {
+          familyId: lineage.familyId,
+          relationship: lineage.relationship,
+          keyModifications: lineage.keyModifications,
+          evolutionNarrative: lineage.evolutionNarrative,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // Cocktail Relationships operations
+  async getRelationshipsForRecipe(recipeName: string): Promise<CocktailRelationship[]> {
+    return await db.select().from(cocktailRelationships)
+      .where(or(
+        eq(cocktailRelationships.sourceRecipe, recipeName),
+        eq(cocktailRelationships.targetRecipe, recipeName)
+      ));
+  }
+
+  async getRelationshipsByType(recipeName: string, type: string): Promise<CocktailRelationship[]> {
+    return await db.select().from(cocktailRelationships)
+      .where(and(
+        eq(cocktailRelationships.sourceRecipe, recipeName),
+        eq(cocktailRelationships.relationshipType, type)
+      ));
+  }
+
+  async createRelationship(relationship: InsertCocktailRelationship): Promise<CocktailRelationship> {
+    const [newRelationship] = await db.insert(cocktailRelationships).values(relationship).returning();
+    return newRelationship;
+  }
+
+  async upsertRelationship(relationship: InsertCocktailRelationship): Promise<CocktailRelationship> {
+    const existing = await db.select().from(cocktailRelationships)
+      .where(and(
+        eq(cocktailRelationships.sourceRecipe, relationship.sourceRecipe),
+        eq(cocktailRelationships.targetRecipe, relationship.targetRecipe),
+        eq(cocktailRelationships.relationshipType, relationship.relationshipType)
+      ));
+    
+    if (existing.length > 0) {
+      const [result] = await db
+        .update(cocktailRelationships)
+        .set({
+          era: relationship.era,
+          description: relationship.description,
+        })
+        .where(eq(cocktailRelationships.id, existing[0].id))
+        .returning();
+      return result;
+    } else {
+      const [result] = await db.insert(cocktailRelationships).values(relationship).returning();
+      return result;
+    }
+  }
+
+  async deleteRelationshipsForRecipe(recipeName: string): Promise<boolean> {
+    await db.delete(cocktailRelationships)
+      .where(or(
+        eq(cocktailRelationships.sourceRecipe, recipeName),
+        eq(cocktailRelationships.targetRecipe, recipeName)
+      ));
+    return true;
+  }
+
+  // Get full lineage data with relationships and family info
+  async getFullLineageData(recipeName: string): Promise<{
+    lineage: CocktailLineage | null;
+    family: CocktailFamily | null;
+    ancestors: CocktailRelationship[];
+    siblings: CocktailRelationship[];
+    descendants: CocktailRelationship[];
+    flavorBridges: CocktailRelationship[];
+  } | null> {
+    const lineage = await this.getLineageByRecipeName(recipeName);
+    if (!lineage) return null;
+
+    const family = lineage.familyId ? await this.getCocktailFamilyById(lineage.familyId) : null;
+    const ancestors = await this.getRelationshipsByType(recipeName, 'ancestor');
+    const siblings = await this.getRelationshipsByType(recipeName, 'sibling');
+    const descendants = await this.getRelationshipsByType(recipeName, 'descendant');
+    const flavorBridges = await this.getRelationshipsByType(recipeName, 'flavor_bridge');
+
+    return { lineage, family, ancestors, siblings, descendants, flavorBridges };
   }
 }
 

@@ -597,6 +597,199 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ COCKTAIL LINEAGE ROUTES ============
+
+  // Get all cocktail families (the 6 root templates)
+  app.get('/api/cocktail-families', async (req, res) => {
+    try {
+      const families = await storage.getAllCocktailFamilies();
+      res.json(families);
+    } catch (error) {
+      console.error("Error fetching cocktail families:", error);
+      res.status(500).json({ message: "Failed to fetch cocktail families" });
+    }
+  });
+
+  // Initialize/seed cocktail families (admin only)
+  app.post('/api/cocktail-families/seed', isAdmin, async (req, res) => {
+    try {
+      const families = [
+        {
+          slug: 'old-fashioned',
+          name: 'Old Fashioned',
+          formula: 'Spirit + Sugar + Bitters',
+          description: 'The ancestral template. Spirit-forward with sweetness and aromatic bitters. The foundation of cocktail making.',
+          icon: '🥃'
+        },
+        {
+          slug: 'martini',
+          name: 'Martini',
+          formula: 'Spirit + Aromatized Wine/Vermouth',
+          description: 'Spirit paired with vermouth or other aromatized wines. Creates elegant, complex, spirit-forward drinks.',
+          icon: '🍸'
+        },
+        {
+          slug: 'daiquiri',
+          name: 'Daiquiri',
+          formula: 'Spirit + Citrus + Sugar',
+          description: 'The sour template. Balances spirit with citrus acidity and sweetness. Foundation of all sour cocktails.',
+          icon: '🍹'
+        },
+        {
+          slug: 'sidecar',
+          name: 'Sidecar',
+          formula: 'Spirit + Citrus + Liqueur',
+          description: 'A Daiquiri sibling using liqueur instead of simple syrup. Creates more complex, layered sours.',
+          icon: '🍋'
+        },
+        {
+          slug: 'whiskey-highball',
+          name: 'Whiskey Highball',
+          formula: 'Spirit + Carbonation',
+          description: 'Simple refreshment. Spirit lengthened with carbonated mixer. Includes Collins, Mules, and G&Ts.',
+          icon: '🥂'
+        },
+        {
+          slug: 'flip',
+          name: 'Flip',
+          formula: 'Spirit + Whole Egg + Sugar',
+          description: 'Rich and creamy. Uses egg for texture and body. Includes nogs, cream cocktails, and dessert drinks.',
+          icon: '🥚'
+        }
+      ];
+
+      const results = [];
+      for (const family of families) {
+        const result = await storage.upsertCocktailFamily(family);
+        results.push(result);
+      }
+
+      res.json({ message: 'Families seeded successfully', count: results.length, families: results });
+    } catch (error) {
+      console.error("Error seeding cocktail families:", error);
+      res.status(500).json({ message: "Failed to seed cocktail families" });
+    }
+  });
+
+  // Get lineage for a specific recipe (returns from database if exists)
+  app.get('/api/lineage/:recipeName', async (req, res) => {
+    try {
+      const recipeName = decodeURIComponent(req.params.recipeName);
+      const lineageData = await storage.getFullLineageData(recipeName);
+      
+      if (!lineageData) {
+        return res.json({ exists: false });
+      }
+
+      res.json({ 
+        exists: true, 
+        data: lineageData 
+      });
+    } catch (error) {
+      console.error("Error fetching lineage:", error);
+      res.status(500).json({ message: "Failed to fetch lineage" });
+    }
+  });
+
+  // Save lineage data (stores AI-generated lineage to database)
+  app.post('/api/lineage', async (req, res) => {
+    try {
+      const { recipeName, familySlug, relationship, keyModifications, evolutionNarrative, ancestors, siblings, descendants, flavorBridges } = req.body;
+
+      if (!recipeName) {
+        return res.status(400).json({ message: "Recipe name is required" });
+      }
+
+      // Find or create family
+      let familyId: number | undefined;
+      if (familySlug) {
+        let family = await storage.getCocktailFamilyBySlug(familySlug);
+        if (family) {
+          familyId = family.id;
+        }
+      }
+
+      // Upsert lineage
+      const lineage = await storage.upsertLineage({
+        recipeName,
+        familyId,
+        relationship,
+        keyModifications,
+        evolutionNarrative
+      });
+
+      // Clear existing relationships and add new ones
+      await storage.deleteRelationshipsForRecipe(recipeName);
+
+      // Add ancestors
+      if (ancestors && Array.isArray(ancestors)) {
+        for (const ancestor of ancestors) {
+          await storage.upsertRelationship({
+            sourceRecipe: recipeName,
+            targetRecipe: ancestor.name,
+            relationshipType: 'ancestor',
+            era: ancestor.era,
+            description: ancestor.relationship
+          });
+        }
+      }
+
+      // Add siblings
+      if (siblings && Array.isArray(siblings)) {
+        for (const sibling of siblings) {
+          await storage.upsertRelationship({
+            sourceRecipe: recipeName,
+            targetRecipe: sibling.name,
+            relationshipType: 'sibling',
+            description: sibling.sharedTrait
+          });
+        }
+      }
+
+      // Add descendants
+      if (descendants && Array.isArray(descendants)) {
+        for (const desc of descendants) {
+          await storage.upsertRelationship({
+            sourceRecipe: recipeName,
+            targetRecipe: desc.name,
+            relationshipType: 'descendant',
+            description: desc.innovation
+          });
+        }
+      }
+
+      // Add flavor bridges
+      if (flavorBridges && Array.isArray(flavorBridges)) {
+        for (const bridge of flavorBridges) {
+          await storage.upsertRelationship({
+            sourceRecipe: bridge.fromDrink,
+            targetRecipe: bridge.toDrink,
+            relationshipType: 'flavor_bridge',
+            description: bridge.connection
+          });
+        }
+      }
+
+      // Return full lineage data
+      const fullData = await storage.getFullLineageData(recipeName);
+      res.json({ success: true, data: fullData });
+    } catch (error) {
+      console.error("Error saving lineage:", error);
+      res.status(500).json({ message: "Failed to save lineage" });
+    }
+  });
+
+  // Get all lineages (for stats/admin)
+  app.get('/api/lineages', async (req, res) => {
+    try {
+      const lineages = await storage.getAllLineages();
+      res.json(lineages);
+    } catch (error) {
+      console.error("Error fetching all lineages:", error);
+      res.status(500).json({ message: "Failed to fetch lineages" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

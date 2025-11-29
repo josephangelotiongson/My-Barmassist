@@ -201,6 +201,47 @@ export const recipeImages = pgTable("recipe_images", {
   index("idx_recipe_images_lookup").on(table.recipeName, table.creatorId),
 ]);
 
+// Cocktail Families - The 6 root templates from Cocktail Codex
+export const cocktailFamilies = pgTable("cocktail_families", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  slug: varchar("slug").notNull().unique(),
+  name: varchar("name").notNull(),
+  formula: varchar("formula").notNull(),
+  description: text("description"),
+  icon: varchar("icon"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Cocktail Lineage - Stores AI-generated family tree data for each drink
+export const cocktailLineage = pgTable("cocktail_lineage", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  recipeName: varchar("recipe_name").notNull().unique(),
+  familyId: integer("family_id").references(() => cocktailFamilies.id),
+  relationship: text("relationship"),
+  keyModifications: jsonb("key_modifications").$type<string[]>(),
+  evolutionNarrative: text("evolution_narrative"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_lineage_recipe").on(table.recipeName),
+  index("idx_lineage_family").on(table.familyId),
+]);
+
+// Cocktail Relationships - Stores connections between drinks
+export const cocktailRelationships = pgTable("cocktail_relationships", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  sourceRecipe: varchar("source_recipe").notNull(),
+  targetRecipe: varchar("target_recipe").notNull(),
+  relationshipType: varchar("relationship_type").notNull(), // 'ancestor', 'sibling', 'descendant', 'flavor_bridge'
+  era: varchar("era"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_relationships_source").on(table.sourceRecipe),
+  index("idx_relationships_target").on(table.targetRecipe),
+  index("idx_relationships_type").on(table.relationshipType),
+]);
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UserRecipe = typeof userRecipes.$inferSelect;
@@ -215,3 +256,9 @@ export type GlobalRecipe = typeof globalRecipes.$inferSelect;
 export type InsertGlobalRecipe = typeof globalRecipes.$inferInsert;
 export type MasterIngredient = typeof masterIngredients.$inferSelect;
 export type InsertMasterIngredient = typeof masterIngredients.$inferInsert;
+export type CocktailFamily = typeof cocktailFamilies.$inferSelect;
+export type InsertCocktailFamily = typeof cocktailFamilies.$inferInsert;
+export type CocktailLineage = typeof cocktailLineage.$inferSelect;
+export type InsertCocktailLineage = typeof cocktailLineage.$inferInsert;
+export type CocktailRelationship = typeof cocktailRelationships.$inferSelect;
+export type InsertCocktailRelationship = typeof cocktailRelationships.$inferInsert;

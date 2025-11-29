@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, GitBranch, Sparkles, ChevronRight, Clock, Beaker, ArrowRight, Loader2, Network, Zap } from 'lucide-react';
+import { X, GitBranch, Sparkles, ChevronRight, Clock, Beaker, ArrowRight, Loader2, Network, Zap, Database, RefreshCw } from 'lucide-react';
 import { Cocktail } from '../types';
 import { analyzeDrinkFamilyTree, DrinkFamilyTree as FamilyTreeData } from '../services/geminiService';
 
@@ -31,8 +31,10 @@ const TEMPLATE_ICONS: Record<string, string> = {
 const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSelectDrink }) => {
   const [familyTree, setFamilyTree] = useState<FamilyTreeData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState<'checking' | 'generating' | 'saving'>('checking');
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<'ancestors' | 'siblings' | 'descendants'>('ancestors');
+  const [isFromDatabase, setIsFromDatabase] = useState(false);
 
   const recipeNames = useMemo(() => allRecipes.map(r => r.name), [allRecipes]);
 
@@ -40,12 +42,84 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
     return recipeNames.some(n => n.toLowerCase() === drinkName.toLowerCase());
   }, [recipeNames]);
 
+  const convertDbToFamilyTree = (dbData: any): FamilyTreeData => {
+    return {
+      rootTemplate: {
+        name: dbData.family?.name || 'Classic Template',
+        formula: dbData.family?.formula || 'Spirit + Modifier + Accent',
+        description: dbData.family?.description || 'A foundational cocktail structure'
+      },
+      targetDrink: {
+        name: dbData.lineage?.recipeName || cocktail.name,
+        relationship: dbData.lineage?.relationship || '',
+        keyModifications: dbData.lineage?.keyModifications || []
+      },
+      ancestors: dbData.ancestors?.map((a: any) => ({
+        name: a.targetRecipe,
+        era: a.era || 'Classic',
+        relationship: a.description || ''
+      })) || [],
+      siblings: dbData.siblings?.map((s: any) => ({
+        name: s.targetRecipe,
+        sharedTrait: s.description || ''
+      })) || [],
+      descendants: dbData.descendants?.map((d: any) => ({
+        name: d.targetRecipe,
+        innovation: d.description || ''
+      })) || [],
+      flavorBridge: dbData.flavorBridges?.map((fb: any) => ({
+        fromDrink: fb.sourceRecipe,
+        toDrink: fb.targetRecipe,
+        connection: fb.description || ''
+      })) || [],
+      evolutionNarrative: dbData.lineage?.evolutionNarrative || ''
+    };
+  };
+
+  const saveLineageToDatabase = async (data: FamilyTreeData) => {
+    try {
+      const familySlug = data.rootTemplate.name.toLowerCase().replace(/\s+/g, '-');
+      
+      await fetch('/api/lineage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeName: cocktail.name,
+          familySlug,
+          relationship: data.targetDrink.relationship,
+          keyModifications: data.targetDrink.keyModifications,
+          evolutionNarrative: data.evolutionNarrative,
+          ancestors: data.ancestors,
+          siblings: data.siblings,
+          descendants: data.descendants,
+          flavorBridges: data.flavorBridge
+        })
+      });
+    } catch (err) {
+      console.warn('Failed to save lineage to database:', err);
+    }
+  };
+
   useEffect(() => {
     const fetchFamilyTree = async () => {
       setIsLoading(true);
       setError(null);
+      setIsFromDatabase(false);
       
       try {
+        setLoadingStatus('checking');
+        const dbResponse = await fetch(`/api/lineage/${encodeURIComponent(cocktail.name)}`);
+        const dbData = await dbResponse.json();
+
+        if (dbData.exists && dbData.data) {
+          const convertedData = convertDbToFamilyTree(dbData.data);
+          setFamilyTree(convertedData);
+          setIsFromDatabase(true);
+          setIsLoading(false);
+          return;
+        }
+
+        setLoadingStatus('generating');
         const result = await analyzeDrinkFamilyTree(
           cocktail.name,
           cocktail.category || 'Classic',
@@ -53,6 +127,10 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
           recipeNames
         );
         setFamilyTree(result);
+
+        setLoadingStatus('saving');
+        await saveLineageToDatabase(result);
+        
       } catch (err) {
         console.error('Family tree analysis failed:', err);
         setError('Failed to analyze cocktail lineage. Please try again.');
@@ -63,6 +141,31 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
 
     fetchFamilyTree();
   }, [cocktail, recipeNames]);
+
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    setError(null);
+    setIsFromDatabase(false);
+    setLoadingStatus('generating');
+    
+    try {
+      const result = await analyzeDrinkFamilyTree(
+        cocktail.name,
+        cocktail.category || 'Classic',
+        cocktail.ingredients,
+        recipeNames
+      );
+      setFamilyTree(result);
+
+      setLoadingStatus('saving');
+      await saveLineageToDatabase(result);
+    } catch (err) {
+      console.error('Family tree refresh failed:', err);
+      setError('Failed to refresh cocktail lineage. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDrinkClick = (drinkName: string) => {
     if (isInDatabase(drinkName)) {
@@ -88,6 +191,19 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
     return '🍸';
   };
 
+  const getLoadingMessage = () => {
+    switch (loadingStatus) {
+      case 'checking':
+        return { title: 'Checking Database...', subtitle: 'Looking for existing lineage data' };
+      case 'generating':
+        return { title: 'Analyzing Lineage...', subtitle: 'AI Mixologist is tracing ancestry' };
+      case 'saving':
+        return { title: 'Saving to Database...', subtitle: 'Preserving lineage for future use' };
+      default:
+        return { title: 'Loading...', subtitle: '' };
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/95 backdrop-blur-md animate-in fade-in duration-300">
       <div className="w-full h-full max-w-2xl flex flex-col bg-gradient-to-b from-stone-900 to-stone-950 sm:rounded-2xl sm:h-[90vh] sm:border sm:border-stone-700 overflow-hidden">
@@ -101,15 +217,35 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
               </div>
               <div>
                 <h1 className="text-lg font-bold text-white">Cocktail Lineage</h1>
-                <p className="text-xs text-stone-500">AI Mixologist Family Tree Analysis</p>
+                <p className="text-xs text-stone-500 flex items-center gap-1">
+                  {isFromDatabase ? (
+                    <>
+                      <Database className="w-3 h-3 text-green-500" />
+                      <span className="text-green-500">From Database</span>
+                    </>
+                  ) : (
+                    'AI Mixologist Family Tree Analysis'
+                  )}
+                </p>
               </div>
             </div>
-            <button 
-              onClick={onClose}
-              className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-white transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              {!isLoading && familyTree && (
+                <button 
+                  onClick={handleRefresh}
+                  className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-secondary transition-colors"
+                  title="Regenerate with AI"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              )}
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -120,23 +256,27 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-20">
               <div className="relative">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center animate-pulse">
-                  <Sparkles className="w-8 h-8 text-primary" />
+                  {loadingStatus === 'checking' ? (
+                    <Database className="w-8 h-8 text-primary" />
+                  ) : (
+                    <Sparkles className="w-8 h-8 text-primary" />
+                  )}
                 </div>
                 <Loader2 className="absolute -bottom-1 -right-1 w-6 h-6 text-secondary animate-spin" />
               </div>
               <div>
-                <p className="text-white font-bold">Analyzing Lineage...</p>
-                <p className="text-xs text-stone-500 mt-1">Tracing cocktail ancestry with AI</p>
+                <p className="text-white font-bold">{getLoadingMessage().title}</p>
+                <p className="text-xs text-stone-500 mt-1">{getLoadingMessage().subtitle}</p>
               </div>
             </div>
           ) : error ? (
             <div className="text-center py-20">
               <p className="text-red-400">{error}</p>
               <button 
-                onClick={onClose}
-                className="mt-4 px-4 py-2 bg-stone-800 rounded-lg text-white text-sm"
+                onClick={handleRefresh}
+                className="mt-4 px-4 py-2 bg-stone-800 rounded-lg text-white text-sm hover:bg-stone-700 transition-colors"
               >
-                Go Back
+                Try Again
               </button>
             </div>
           ) : familyTree && (
