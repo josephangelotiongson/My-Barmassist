@@ -1755,19 +1755,32 @@ const MODERN_CRAFT_COCKTAILS: RecipeData[] = [
   }
 ];
 
-export async function seedModernRecipes(): Promise<{ added: number; skipped: number; total: number }> {
+export async function seedModernRecipes(): Promise<{ added: number; skipped: number; total: number; skippedSlugs: string[] }> {
   console.log(`Starting to seed ${MODERN_CRAFT_COCKTAILS.length} modern craft cocktails...`);
+  
+  // First, get all existing slugs to check for duplicates
+  const existingRecipes = await db.select({ slug: globalRecipes.slug }).from(globalRecipes);
+  const existingSlugs = new Set(existingRecipes.map(r => r.slug));
   
   let added = 0;
   let skipped = 0;
+  const skippedSlugs: string[] = [];
   
   for (const recipe of MODERN_CRAFT_COCKTAILS) {
+    // Skip if slug already exists
+    if (existingSlugs.has(recipe.slug)) {
+      skipped++;
+      skippedSlugs.push(recipe.slug);
+      console.log(`Skipped (already exists): ${recipe.name} (${recipe.slug})`);
+      continue;
+    }
+    
     try {
       await db.insert(globalRecipes).values({
         slug: recipe.slug,
         name: recipe.name,
         description: recipe.description,
-        history: recipe.history,
+        history: recipe.history || null,
         category: recipe.category,
         ingredients: recipe.ingredients,
         instructions: recipe.instructions,
@@ -1793,10 +1806,14 @@ export async function seedModernRecipes(): Promise<{ added: number; skipped: num
   }
   
   console.log(`\nSeeding complete: ${added} added, ${skipped} skipped`);
+  if (skippedSlugs.length > 0) {
+    console.log(`Skipped slugs: ${skippedSlugs.join(', ')}`);
+  }
   
   return {
     added,
     skipped,
-    total: MODERN_CRAFT_COCKTAILS.length
+    total: MODERN_CRAFT_COCKTAILS.length,
+    skippedSlugs
   };
 }
