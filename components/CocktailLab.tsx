@@ -1125,8 +1125,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
                 {editorMode === 'wheel' ? (
                   <EditableFlavorWheel
-                    flavorProfile={targetProfile}
-                    onChange={setTargetProfile}
+                    profile={targetProfile}
+                    onProfileChange={setTargetProfile}
                   />
                 ) : (
                   <div className="space-y-3">
