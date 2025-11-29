@@ -11,6 +11,33 @@ import { enrichPendingIngredients } from "./ingredientEnrichment";
 
 const objectStorageService = new ObjectStorageService();
 
+async function resolveShortUrl(shortUrl: string): Promise<{ finalUrl: string; success: boolean }> {
+  try {
+    const response = await fetch(shortUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    return { finalUrl: response.url, success: true };
+  } catch (error) {
+    try {
+      const response = await fetch(shortUrl, {
+        method: 'GET',
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      return { finalUrl: response.url, success: true };
+    } catch (e) {
+      console.error("Failed to resolve short URL:", e);
+      return { finalUrl: shortUrl, success: false };
+    }
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
@@ -153,6 +180,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error enriching ingredients:", error);
       res.status(500).json({ message: "Failed to enrich ingredients" });
+    }
+  });
+
+  app.post('/api/resolve-url', async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: 'URL is required' });
+      }
+      
+      const isTikTokShortLink = /^https?:\/\/(vm|vt|m)\.tiktok\.com/i.test(url);
+      
+      if (!isTikTokShortLink) {
+        return res.json({ originalUrl: url, resolvedUrl: url, wasExpanded: false });
+      }
+      
+      console.log(`[URL Resolver] Expanding TikTok short link: ${url}`);
+      const result = await resolveShortUrl(url);
+      
+      console.log(`[URL Resolver] Resolved to: ${result.finalUrl}`);
+      
+      return res.json({
+        originalUrl: url,
+        resolvedUrl: result.finalUrl,
+        wasExpanded: result.success && result.finalUrl !== url,
+      });
+    } catch (error) {
+      console.error("Error resolving URL:", error);
+      res.status(500).json({ error: "Failed to resolve URL" });
     }
   });
 

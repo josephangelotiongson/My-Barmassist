@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { FlavorProfile, FlavorDimension, Recommendation, Ingredient } from '../types';
+import { analyzeSocialMediaLink, generateSearchSystemPrompt, sanitizeSocialMediaUrl, SocialMediaLinkInfo } from './socialMediaUtils';
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -142,66 +143,71 @@ const cleanJsonString = (text: string): string => {
   return clean.trim();
 };
 
-const cleanUrl = (url: string): string => {
-    try {
-        const urlObj = new URL(url);
-        // Remove query parameters
-        return `${urlObj.origin}${urlObj.pathname}`;
-    } catch (e) {
-        return url;
+async function resolveShortUrlIfNeeded(url: string): Promise<{ resolvedUrl: string; wasExpanded: boolean }> {
+  const isTikTokShortLink = /^https?:\/\/(vm|vt|m)\.tiktok\.com/i.test(url);
+  
+  if (!isTikTokShortLink) {
+    return { resolvedUrl: url, wasExpanded: false };
+  }
+  
+  try {
+    const apiBase = typeof window !== 'undefined' ? window.location.origin : '';
+    const response = await fetch(`${apiBase}/api/resolve-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`[URL Resolver] Successfully resolved: ${url} -> ${data.resolvedUrl}`);
+      return { resolvedUrl: data.resolvedUrl, wasExpanded: data.wasExpanded };
+    } else {
+      console.warn(`[URL Resolver] API returned status ${response.status}`);
     }
-};
+  } catch (error) {
+    console.warn('[URL Resolver] Failed to resolve short URL:', error);
+  }
+  
+  return { resolvedUrl: url, wasExpanded: false };
+}
 
 export const analyzeDrinkText = async (text: string): Promise<any> => {
   try {
     const isUrl = /(https?:\/\/[^\s]+)/g.test(text);
     let tools = undefined;
     let enrichedContext = text;
+    let linkInfo: SocialMediaLinkInfo | null = null;
     
-    // Social Media / URL Logic
+    // Social Media / URL Logic with enhanced URL cleaning
     if (isUrl) {
       tools = [{ googleSearch: {} }];
       
       const foundUrlMatch = text.match(/(https?:\/\/[^\s]+)/);
-      const rawUrl = foundUrlMatch ? foundUrlMatch[0] : '';
-      const cleanLink = cleanUrl(rawUrl);
-
-      // Regex Metadata Extraction for TikTok/IG to help the Search Tool
-      if (cleanLink.includes('tiktok.com')) {
-         const userMatch = cleanLink.match(/@([a-zA-Z0-9_.-]+)/);
-         const idMatch = cleanLink.match(/\/video\/(\d+)/);
-         
-         if (userMatch && idMatch) {
-            const username = userMatch[1];
-            const videoId = idMatch[1];
-            enrichedContext = `\n[SYSTEM HINT]: The user provided a TikTok link. 
-            Clean Link: ${cleanLink}
-            Creator: ${username}
-            Video ID: ${videoId}
-            
-            CRITICAL SEARCH INSTRUCTIONS:
-            Search for the VIDEO ID "${videoId}" directly. This is the most effective way to find the caption.
-            Suggested Queries:
-            1. "tiktok ${username} ${videoId} recipe"
-            2. "tiktok video ${videoId} transcript"
-            3. "${username} tiktok ${videoId} ingredients"
-            `;
-         } else {
-             // Handle generic or short tiktok links (vm.tiktok.com etc)
-             enrichedContext += `\n[SYSTEM HINT]: A TikTok link was detected (${cleanLink}). 
-             This appears to be a short link or a variation. 
-             ACTION REQUIRED: 
-             1. Use Google Search to find this URL directly to get the real page title.
-             2. "Watch" the video by finding the caption, transcript, or comments in the search results.
-             3. Extract any mentioned ingredients.
-             `;
-         }
-      } else if (cleanLink.includes('instagram.com')) {
-         const userMatch = cleanLink.match(/instagram\.com\/([a-zA-Z0-9_.-]+)/);
-         if (userMatch) {
-             enrichedContext += `\n[SYSTEM HINT]: This is an Instagram post by user @${userMatch[1]}. Search for "instagram @${userMatch[1]} cocktail recipe".`;
-         }
+      let rawUrl = foundUrlMatch ? foundUrlMatch[0] : '';
+      
+      // First, try to resolve short URLs (vm.tiktok.com, vt.tiktok.com, etc.)
+      const { resolvedUrl, wasExpanded } = await resolveShortUrlIfNeeded(rawUrl);
+      if (wasExpanded) {
+        console.log(`[Social Media Analysis] Expanded short link: ${rawUrl} -> ${resolvedUrl}`);
+        rawUrl = resolvedUrl;
       }
+      
+      // Use the new social media analyzer for comprehensive URL handling
+      linkInfo = analyzeSocialMediaLink(rawUrl);
+      linkInfo.wasExpanded = wasExpanded;
+      
+      // Generate platform-specific search prompts
+      const searchSystemPrompt = generateSearchSystemPrompt(linkInfo);
+      
+      // Replace tracking-laden URL with clean URL in the context
+      enrichedContext = text.replace(foundUrlMatch ? foundUrlMatch[0] : '', linkInfo.cleanUrl);
+      enrichedContext += '\n' + searchSystemPrompt;
+      
+      console.log(`[Social Media Analysis] Platform: ${linkInfo.platform}, Clean URL: ${linkInfo.cleanUrl}`);
+      if (linkInfo.username) console.log(`[Social Media Analysis] Creator: @${linkInfo.username}`);
+      if (linkInfo.videoId) console.log(`[Social Media Analysis] Video ID: ${linkInfo.videoId}`);
+      if (wasExpanded) console.log(`[Social Media Analysis] Short link was expanded`);
     }
 
     // Using gemini-3-pro-preview for advanced reasoning on search results (TikTok/IG)
