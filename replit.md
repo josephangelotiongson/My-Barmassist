@@ -31,6 +31,13 @@ None set yet - will be documented as user expresses preferences during developme
 - **Shared Image Storage**: Efficient image management using Replit Object Storage, with shared global images and user-specific variations.
 - **Mobile Optimization**: Enhanced bottom navigation for improved mobile usability.
 - **Data Reset Options**: Users can reset all data or just ratings/palate.
+- **DIY Ingredient System**: Make your own syrups, cordials, and shrubs with:
+  - 15 DIY recipes with scalable ingredient calculators
+  - "I Made This!" button to track homemade ingredients with expiration dates
+  - Status indicators showing what needs to be made vs. what's in stock
+  - Expiration tracking with warnings for items expiring within 7 days
+  - Freshness notifications for recently made batches (within 3 days)
+  - Memoized status map for consistent status display across views
 
 ### Database Schema
 - **users**: User profiles.
