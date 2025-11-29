@@ -744,45 +744,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Recipe name is required" });
       }
 
-      // Get all valid cocktail names from database for validation
+      // Get all existing cocktail names from database
       const globalRecipes = await storage.getAllGlobalRecipes();
-      const validCocktailNames = new Set(
+      const existingCocktailNames = new Set(
         globalRecipes.map(r => r.name.toLowerCase())
       );
       
       // Helper to check if a cocktail exists in the database (case-insensitive)
-      const isValidCocktail = (name: string) => {
-        return validCocktailNames.has(name.toLowerCase());
+      const cocktailExists = (name: string) => {
+        return existingCocktailNames.has(name.toLowerCase());
       };
 
-      // Filter relationships to only include cocktails that exist in the database
-      const validAncestors = (ancestors || []).filter((a: any) => {
-        const isValid = isValidCocktail(a.name);
-        if (!isValid) {
-          console.log(`[Lineage] Filtering out invalid ancestor: "${a.name}" for ${recipeName}`);
+      // Helper to create a new cocktail from lineage recipe data
+      const createCocktailFromLineage = async (item: any) => {
+        if (!item.recipe) {
+          console.log(`[Lineage] Cannot create "${item.name}" - no recipe provided`);
+          return false;
         }
-        return isValid;
-      });
 
-      const validSiblings = (siblings || []).filter((s: any) => {
-        const isValid = isValidCocktail(s.name);
-        if (!isValid) {
-          console.log(`[Lineage] Filtering out invalid sibling: "${s.name}" for ${recipeName}`);
+        try {
+          const slug = item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          
+          // Check if slug already exists
+          const existingBySlug = await storage.getGlobalRecipeBySlug(slug);
+          if (existingBySlug) {
+            console.log(`[Lineage] Cocktail with slug "${slug}" already exists, skipping creation`);
+            existingCocktailNames.add(item.name.toLowerCase());
+            return true;
+          }
+
+          // Ensure we have minimum valid data
+          const ingredients = item.recipe.ingredients && item.recipe.ingredients.length > 0 
+            ? item.recipe.ingredients 
+            : ['2 oz Spirit', '0.75 oz Modifier'];
+          const instructions = item.recipe.instructions 
+            ? [item.recipe.instructions] 
+            : ['Combine ingredients, stir or shake as appropriate, and strain into glass.'];
+
+          const newRecipe = await storage.createGlobalRecipe({
+            slug,
+            name: item.name,
+            description: `${item.name} - a ${item.era || 'classic'} cocktail.`,
+            history: null,
+            category: item.recipe.category || item.era || 'Classic',
+            ingredients,
+            instructions,
+            glassType: item.recipe.glass || 'Rocks',
+            garnish: '',
+            creator: 'AI Lineage',
+            creatorType: 'Gemini',
+            flavorProfile: null,
+            nutrition: null,
+            enrichmentStatus: 'pending'
+          });
+
+          console.log(`[Lineage] Created new cocktail: "${item.name}" (id: ${newRecipe.id})`);
+          existingCocktailNames.add(item.name.toLowerCase());
+          return true;
+        } catch (error) {
+          console.error(`[Lineage] Failed to create cocktail "${item.name}":`, error);
+          return false;
         }
-        return isValid;
-      });
+      };
 
-      const validDescendants = (descendants || []).filter((d: any) => {
-        const isValid = isValidCocktail(d.name);
-        if (!isValid) {
-          console.log(`[Lineage] Filtering out invalid descendant: "${d.name}" for ${recipeName}`);
+      // Process ancestors - create any that don't exist and have recipes
+      const processedAncestors = [];
+      for (const ancestor of (ancestors || [])) {
+        if (cocktailExists(ancestor.name)) {
+          processedAncestors.push(ancestor);
+        } else if (ancestor.inDatabase === false && ancestor.recipe) {
+          const created = await createCocktailFromLineage(ancestor);
+          if (created) {
+            processedAncestors.push(ancestor);
+          }
+        } else {
+          console.log(`[Lineage] Skipping ancestor "${ancestor.name}" - not in database and no recipe`);
         }
-        return isValid;
-      });
+      }
 
+      // Process siblings - create any that don't exist and have recipes
+      const processedSiblings = [];
+      for (const sibling of (siblings || [])) {
+        if (cocktailExists(sibling.name)) {
+          processedSiblings.push(sibling);
+        } else if (sibling.inDatabase === false && sibling.recipe) {
+          const created = await createCocktailFromLineage(sibling);
+          if (created) {
+            processedSiblings.push(sibling);
+          }
+        } else {
+          console.log(`[Lineage] Skipping sibling "${sibling.name}" - not in database and no recipe`);
+        }
+      }
+
+      // Process descendants - create any that don't exist and have recipes
+      const processedDescendants = [];
+      for (const desc of (descendants || [])) {
+        if (cocktailExists(desc.name)) {
+          processedDescendants.push(desc);
+        } else if (desc.inDatabase === false && desc.recipe) {
+          const created = await createCocktailFromLineage(desc);
+          if (created) {
+            processedDescendants.push(desc);
+          }
+        } else {
+          console.log(`[Lineage] Skipping descendant "${desc.name}" - not in database and no recipe`);
+        }
+      }
+
+      // Validate flavor bridges against final cocktail set
       const validFlavorBridges = (flavorBridges || []).filter((b: any) => {
-        const fromValid = isValidCocktail(b.fromDrink);
-        const toValid = isValidCocktail(b.toDrink);
+        const fromValid = cocktailExists(b.fromDrink);
+        const toValid = cocktailExists(b.toDrink);
         if (!fromValid || !toValid) {
           console.log(`[Lineage] Filtering out invalid flavor bridge: "${b.fromDrink}" -> "${b.toDrink}"`);
         }
@@ -810,8 +883,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear existing relationships and add new ones
       await storage.deleteRelationshipsForRecipe(recipeName);
 
-      // Add validated ancestors
-      for (const ancestor of validAncestors) {
+      // Add processed ancestors (includes newly created cocktails)
+      for (const ancestor of processedAncestors) {
         await storage.upsertRelationship({
           sourceRecipe: recipeName,
           targetRecipe: ancestor.name,
@@ -821,8 +894,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add validated siblings
-      for (const sibling of validSiblings) {
+      // Add processed siblings (includes newly created cocktails)
+      for (const sibling of processedSiblings) {
         await storage.upsertRelationship({
           sourceRecipe: recipeName,
           targetRecipe: sibling.name,
@@ -832,8 +905,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add validated descendants
-      for (const desc of validDescendants) {
+      // Add processed descendants (includes newly created cocktails)
+      for (const desc of processedDescendants) {
         await storage.upsertRelationship({
           sourceRecipe: recipeName,
           targetRecipe: desc.name,

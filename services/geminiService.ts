@@ -629,9 +629,20 @@ const familyTreeSchema: Schema = {
           name: { type: Type.STRING },
           era: { type: Type.STRING, description: "e.g., Pre-Prohibition, Prohibition, Tiki Era, Modern" },
           inventionYear: { type: Type.NUMBER, description: "Approximate year of invention (must be BEFORE the target drink)" },
-          relationship: { type: Type.STRING, description: "How it directly influenced the target drink" }
+          relationship: { type: Type.STRING, description: "How it directly influenced the target drink" },
+          inDatabase: { type: Type.BOOLEAN, description: "true if this cocktail exists in the database list, false if it needs to be created" },
+          recipe: {
+            type: Type.OBJECT,
+            properties: {
+              ingredients: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of ingredients with measurements" },
+              instructions: { type: Type.STRING, description: "Brief preparation instructions" },
+              category: { type: Type.STRING, description: "Category like Classic, Tiki, Modern, etc." },
+              glass: { type: Type.STRING, description: "Glass type" }
+            },
+            description: "Recipe details - ONLY include if inDatabase is false"
+          }
         },
-        required: ['name', 'era', 'inventionYear', 'relationship']
+        required: ['name', 'era', 'inventionYear', 'relationship', 'inDatabase']
       },
       description: "Drinks that PRECEDED and directly influenced the target drink. Must have been invented BEFORE the target."
     },
@@ -643,9 +654,20 @@ const familyTreeSchema: Schema = {
           name: { type: Type.STRING },
           era: { type: Type.STRING, description: "Era of invention" },
           inventionYear: { type: Type.NUMBER, description: "Year of invention (should be similar timeframe as target)" },
-          sharedTrait: { type: Type.STRING, description: "What structural trait they share with the target" }
+          sharedTrait: { type: Type.STRING, description: "What structural trait they share with the target" },
+          inDatabase: { type: Type.BOOLEAN, description: "true if this cocktail exists in the database list, false if it needs to be created" },
+          recipe: {
+            type: Type.OBJECT,
+            properties: {
+              ingredients: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of ingredients with measurements" },
+              instructions: { type: Type.STRING, description: "Brief preparation instructions" },
+              category: { type: Type.STRING, description: "Category like Classic, Tiki, Modern, etc." },
+              glass: { type: Type.STRING, description: "Glass type" }
+            },
+            description: "Recipe details - ONLY include if inDatabase is false"
+          }
         },
-        required: ['name', 'era', 'inventionYear', 'sharedTrait']
+        required: ['name', 'era', 'inventionYear', 'sharedTrait', 'inDatabase']
       },
       description: "Drinks from the SAME ERA with similar structure - parallel innovations, NOT evolved from the target"
     },
@@ -657,9 +679,20 @@ const familyTreeSchema: Schema = {
           name: { type: Type.STRING },
           era: { type: Type.STRING, description: "Era of invention" },
           inventionYear: { type: Type.NUMBER, description: "Year of invention (MUST be AFTER the target drink)" },
-          innovation: { type: Type.STRING, description: "What specific change/twist makes this a riff on the target" }
+          innovation: { type: Type.STRING, description: "What specific change/twist makes this a riff on the target" },
+          inDatabase: { type: Type.BOOLEAN, description: "true if this cocktail exists in the database list, false if it needs to be created" },
+          recipe: {
+            type: Type.OBJECT,
+            properties: {
+              ingredients: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of ingredients with measurements" },
+              instructions: { type: Type.STRING, description: "Brief preparation instructions" },
+              category: { type: Type.STRING, description: "Category like Classic, Tiki, Modern, etc." },
+              glass: { type: Type.STRING, description: "Glass type" }
+            },
+            description: "Recipe details - ONLY include if inDatabase is false"
+          }
         },
-        required: ['name', 'era', 'inventionYear', 'innovation']
+        required: ['name', 'era', 'inventionYear', 'innovation', 'inDatabase']
       },
       description: "Drinks that evolved DIRECTLY from the target - riffs, twists, and variations invented AFTER the target"
     },
@@ -681,6 +714,13 @@ const familyTreeSchema: Schema = {
   required: ['rootTemplate', 'targetDrink', 'ancestors', 'siblings', 'descendants', 'flavorBridge', 'evolutionNarrative']
 };
 
+interface LineageRecipe {
+  ingredients: string[];
+  instructions: string;
+  category: string;
+  glass: string;
+}
+
 export interface DrinkFamilyTree {
   rootTemplate: {
     name: string;
@@ -697,18 +737,24 @@ export interface DrinkFamilyTree {
     era: string;
     inventionYear: number;
     relationship: string;
+    inDatabase?: boolean;
+    recipe?: LineageRecipe;
   }>;
   siblings: Array<{
     name: string;
     era: string;
     inventionYear: number;
     sharedTrait: string;
+    inDatabase?: boolean;
+    recipe?: LineageRecipe;
   }>;
   descendants: Array<{
     name: string;
     era: string;
     inventionYear: number;
     innovation: string;
+    inDatabase?: boolean;
+    recipe?: LineageRecipe;
   }>;
   flavorBridge: Array<{
     fromDrink: string;
@@ -739,21 +785,25 @@ export const analyzeDrinkFamilyTree = async (
       You are a COCKTAIL HISTORIAN mapping the family tree of "${cocktailName}".
       
       ═══════════════════════════════════════════════════════════════
-      *** CRITICAL RULE - DATABASE COCKTAILS ONLY ***
+      *** DATABASE COCKTAILS - PRIORITIZE BUT CAN ADD NEW ***
       ═══════════════════════════════════════════════════════════════
       
-      YOU MUST USE COCKTAILS FROM THIS DATABASE for ancestors, siblings, and descendants:
-      
-      DATABASE COCKTAILS (use EXACT names from this numbered list):
+      EXISTING DATABASE COCKTAILS (check this list first):
 ${databaseCocktails}
       
       RULES:
-      1. ALL ancestors MUST be cocktails from the DATABASE list above
-      2. ALL siblings MUST be cocktails from the DATABASE list above  
-      3. ALL descendants MUST be cocktails from the DATABASE list above
-      4. DO NOT invent cocktail names - only use names from the DATABASE
+      1. PRIORITIZE cocktails from the DATABASE list above
+      2. For each cocktail you include, set "inDatabase": true if it's in the list above, or false if not
+      3. If a historically important cocktail is NOT in the database, you MAY include it with "inDatabase": false
+      4. When "inDatabase": false, you MUST provide full recipe details in the "recipe" field
       5. DO NOT use generic terms like "The Original Cocktail" or "Proto-Cocktail"
-      6. If a cocktail isn't in the database, DO NOT include it
+      6. Only add new cocktails if they are REAL, historically documented drinks
+      
+      FOR NEW COCKTAILS (inDatabase: false), include recipe with:
+      - ingredients: Array of ingredients with measurements (e.g., "2 oz Bourbon", "0.75 oz Simple Syrup")
+      - instructions: Brief preparation method
+      - category: Category like "Classic", "Tiki", "Modern Craft", etc.
+      - glass: Glass type (e.g., "Rocks", "Coupe", "Collins")
       
       ═══════════════════════════════════════════════════════════════
       DRINK TO ANALYZE:
