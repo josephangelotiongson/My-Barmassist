@@ -95,6 +95,10 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 │   ├── replitAuth.ts    # Replit Auth (OpenID Connect) configuration
 │   ├── storage.ts       # Database storage methods
 │   ├── objectStorage.ts # Object Storage service for cocktail images
+│   ├── recipeEnrichment.ts  # AI enrichment for recipes (flavor profiles, nutrition)
+│   ├── seedIngredients.ts   # Seed master ingredients from INITIAL_MASTER_DATA
+│   ├── ingredientEnrichment.ts  # AI enrichment for ingredients (web search + Gemini)
+│   ├── enrichGlobalRecipes.ts   # AI enrichment pipeline for global recipes
 │   ├── db.ts            # Database connection
 │   └── vite.ts          # Vite middleware for development
 ├── shared/              # Shared code between frontend/backend
@@ -134,11 +138,17 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
   - AI enrichment pipeline populates flavor and nutrition data
 - **master_ingredients**: Comprehensive ingredient database with AI enrichment
   - Includes nutrition (calories, carbs, sugar, protein per oz)
-  - ABV, flavor notes, aroma profiles, production methods
+  - ABV (integer), flavor notes, aroma profiles, production methods
   - Common uses, substitutes, pairings, allergens
   - History and origin information
   - Verification sources and confidence scores
-  - AI enrichment from reliable web sources
+  - AI enrichment from reliable web sources using Gemini AI
+  - API endpoints:
+    - `GET /api/ingredients` - List all ingredients
+    - `GET /api/ingredients/stats` - Get enrichment statistics
+    - `GET /api/ingredients/:slug` - Get single ingredient by slug
+    - `POST /api/admin/seed-ingredients` - Seed from INITIAL_MASTER_DATA (auth required)
+    - `POST /api/admin/enrich-ingredients?batch=N` - Enrich N ingredients with AI (auth required)
 - **user_recipes**: User-created cocktail recipes
 - **user_ratings**: User ratings for cocktails
 - **user_shopping_list**: User shopping list items
