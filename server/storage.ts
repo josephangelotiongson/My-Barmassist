@@ -61,6 +61,7 @@ export interface IStorage {
   
   // Global recipe images (no auth required)
   getAllRecipeImages(): Promise<RecipeImage[]>;
+  getRecipeImage(recipeName: string): Promise<RecipeImage | undefined>;
   upsertRecipeImage(recipeName: string, imageUrl: string): Promise<RecipeImage>;
 }
 
@@ -236,6 +237,11 @@ export class DatabaseStorage implements IStorage {
   // Global recipe images (no auth required)
   async getAllRecipeImages(): Promise<RecipeImage[]> {
     return await db.select().from(recipeImages);
+  }
+
+  async getRecipeImage(recipeName: string): Promise<RecipeImage | undefined> {
+    const [result] = await db.select().from(recipeImages).where(eq(recipeImages.recipeName, recipeName));
+    return result;
   }
 
   async upsertRecipeImage(recipeName: string, imageUrl: string): Promise<RecipeImage> {

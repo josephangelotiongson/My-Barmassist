@@ -266,6 +266,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if an image exists for a specific recipe (by name)
+  app.get('/api/recipe-images/:recipeName', async (req, res) => {
+    try {
+      const recipeName = decodeURIComponent(req.params.recipeName);
+      const image = await storage.getRecipeImage(recipeName);
+      if (image) {
+        res.json({ exists: true, imageUrl: image.imageUrl });
+      } else {
+        res.json({ exists: false });
+      }
+    } catch (error) {
+      console.error("Error checking recipe image:", error);
+      res.status(500).json({ message: "Failed to check recipe image" });
+    }
+  });
+
   app.post('/api/recipe-images', async (req, res) => {
     try {
       const { recipeName, imageData } = req.body;

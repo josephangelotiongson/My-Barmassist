@@ -632,6 +632,20 @@ export default function App() {
       setGeneratingImages(prev => new Set(prev).add(cocktail.id));
       
       try {
+          // First, check if an image already exists for this recipe name (from any user)
+          const checkResponse = await fetch(`/api/recipe-images/${encodeURIComponent(cocktail.name)}`);
+          if (checkResponse.ok) {
+            const checkResult = await checkResponse.json();
+            if (checkResult.exists && checkResult.imageUrl) {
+              // Use the existing shared image instead of generating a new one
+              console.log(`Using existing shared image for "${cocktail.name}"`);
+              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: checkResult.imageUrl } : c));
+              return;
+            }
+          }
+          
+          // No existing image found - generate a new one
+          console.log(`Generating new image for "${cocktail.name}"`);
           const imageData = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
           if (imageData) {
               // Upload to Object Storage and get the path

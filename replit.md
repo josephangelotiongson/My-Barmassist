@@ -8,19 +8,21 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 
 ## Recent Changes (November 29, 2025)
 
-- **Object Storage for Cocktail Images**: Migrated image storage from database to Replit's App Storage (Object Storage)
-  - Images are now stored as files in the "mybarmassist generated images" bucket
-  - Solves payload size issues with base64 images in database
+- **Shared Image Storage System**: Smart image management using App Storage (Object Storage)
+  - Images are stored globally and shared across ALL users (prevents storage flooding)
+  - When any user requests an image, the system first checks if one already exists for that recipe name
+  - If an image exists, it's reused instantly - no duplicate generation
+  - If no image exists, a new one is generated and saved for everyone
+  - One image per recipe name (stored by normalized recipe name in database)
   - Images served via `/cocktail-images/:filename` endpoint
-  - File paths stored in database, actual image files in Object Storage
+  - API endpoints: `GET /api/recipe-images/:recipeName` to check if image exists
 - **Migrated to Replit Auth**: Replaced custom email/password authentication with Replit Auth
   - Users can now log in via Google, GitHub, X, Apple, and email/password
   - Login: Navigate to `/api/login`
   - Logout: Navigate to `/api/logout`
-- **Persistent Cocktail Images**: AI-generated cocktail images are saved globally for all users
-  - Images are generated once and saved to Object Storage, so all users (guests and logged-in) see them instantly
-  - No need to regenerate images - they're shared across all users
-  - Database stores only file paths, not the actual image data
+- **AI Generated Badge**: Images from App Storage display "AI Generated" badge in UI
+  - Badge appears on both recipe detail view and list thumbnails
+  - Only shown for images stored in Object Storage (path starts with `/cocktail-images/`)
 - **Improved Mobile Navigation**: Increased bottom navigation bar size for better phone usability
   - Larger touch targets (28px icons)
   - Larger text labels (12px)
