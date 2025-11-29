@@ -60,6 +60,13 @@ None set yet - will be documented as user expresses preferences during developme
   - Handles recipes without flavor profiles gracefully with default profiles
   - Clear error messaging when AI analysis fails
   - Indicator for recipes lacking flavor data in recipe selector
+  - **Lab Riff Creation System**: Save your modified recipes as new riffs:
+    - Full recipe card display with name input, ingredients list, and modifications summary
+    - Signature-based deduplication: Normalizes ingredients (strips quantities, sorts, hashes) to detect duplicate riffs
+    - Automatic lineage integration: Saved riffs are registered as descendants of parent cocktail
+    - Existing riff detection: Shows "Existing Riff Found" badge when duplicate detected
+    - Predicted flavor profile preview with visual bars
+    - Save button with loading state and success/error feedback
 - **Privacy-First Approach**: User email is never stored in the database; only user ID, display name, and profile picture are retained
 
 ### Database Schema
@@ -75,6 +82,7 @@ None set yet - will be documented as user expresses preferences during developme
 - **cocktail_families**: The 6 root cocktail templates (Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip).
 - **cocktail_lineage**: Stores AI-generated family tree data for each drink (family assignment, relationship, key modifications, evolution narrative).
 - **cocktail_relationships**: Stores connections between drinks (ancestors, siblings, descendants, flavor bridges).
+- **lab_riffs**: Stores user-created riffs from the Cocktail Laboratory (name, ingredients, signature hash for deduplication, parent recipe, predicted flavor profile).
 
 ### Lineage API Endpoints
 - `GET /api/cocktail-families` - Lists all 6 root cocktail templates
@@ -82,6 +90,12 @@ None set yet - will be documented as user expresses preferences during developme
 - `POST /api/lineage` - Saves AI-generated lineage for future retrieval
 - `GET /api/lineages` - Lists all stored lineages (for admin/stats)
 - `POST /api/cocktail-families/seed` (admin) - Seeds the 6 root family templates
+
+### Lab Riffs API Endpoints
+- `POST /api/lab/riffs/detect` - Detects existing riff by signature hash or similar name (auth required)
+- `POST /api/lab/riffs` - Creates a new lab riff with lineage integration (auth required)
+- `GET /api/lab/riffs` - Lists all riffs (optional ?parent= filter, auth required)
+- `GET /api/lab/riffs/:slug` - Retrieves a specific riff by slug (auth required)
 
 ### UI/UX Decisions
 - Uses custom components and Lucide React for a consistent interface.
