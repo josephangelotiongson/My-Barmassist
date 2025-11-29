@@ -1081,10 +1081,11 @@ function MainApp() {
     return finalGroups;
   }, [history, formularyView, searchQuery, showFavoritesOnly, showToConcoctOnly, toConcoct, abvFilter]);
 
-  const handleAddCocktail = async (cocktail: Cocktail) => {
+  const handleAddCocktail = async (cocktail: Cocktail, forceAdd: boolean = false) => {
     if (isAuthenticated) {
       try {
-        const res = await fetch('/api/recipes', {
+        const url = forceAdd ? '/api/recipes?force=true' : '/api/recipes';
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1097,17 +1098,34 @@ function MainApp() {
             flavorProfile: cocktail.flavorProfile
           })
         });
+        
         if (res.ok) {
           const savedRecipe = await res.json();
           const cocktailWithDbId = { ...cocktail, id: `user-${savedRecipe.id}`, isUserCreated: true };
           setHistory(prev => [cocktailWithDbId, ...prev]);
+        } else if (res.status === 409) {
+          // Duplicate detected
+          const duplicateInfo = await res.json();
+          const shouldForce = duplicateInfo.canForce && window.confirm(
+            `${duplicateInfo.message}\n\nWould you like to add it anyway?`
+          );
+          
+          if (shouldForce) {
+            // Retry with force flag
+            return handleAddCocktail(cocktail, true);
+          } else {
+            // Show notification but don't add
+            alert(duplicateInfo.message);
+          }
         } else {
+          // Other error - fallback to local storage
           setHistory(prev => [cocktail, ...prev]);
         }
       } catch {
         setHistory(prev => [cocktail, ...prev]);
       }
     } else {
+      // Guest mode - add locally (no duplicate check for guests)
       setHistory(prev => [cocktail, ...prev]);
     }
   };

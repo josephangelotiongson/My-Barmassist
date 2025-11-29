@@ -12,6 +12,7 @@ import { seedModernRecipes } from "./seedModernRecipes";
 import { assignCocktailFamily, simulateFlavorSubstitutions } from "../services/geminiService";
 import { orchestrateFullLineage } from "./lineageOrchestrator";
 import { getFlavorTaxonomy, deriveFlavorNotesFromIngredients, getFlavorDataForAI, invalidateCache } from "./flavorDataService";
+import { checkForDuplicates, checkGlobalDuplicate } from "./recipeDuplicateDetection";
 import { seedFlavorData } from "./seedFlavorData";
 
 const objectStorageService = new ObjectStorageService();
@@ -168,9 +169,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/global-recipes', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { name, description, category, ingredients, instructions, glassType, garnish, creator, creatorType, history } = req.body;
+      const skipDuplicateCheck = req.query.force === 'true';
       
       if (!name || !ingredients || !instructions) {
         return res.status(400).json({ message: "Name, ingredients, and instructions are required" });
+      }
+      
+      // Check for duplicates unless force flag is set
+      if (!skipDuplicateCheck) {
+        const duplicateCheck = await checkGlobalDuplicate(
+          name,
+          Array.isArray(ingredients) ? ingredients : [ingredients],
+          storage
+        );
+        
+        if (duplicateCheck.isDuplicate) {
+          return res.status(409).json({
+            message: duplicateCheck.message,
+            duplicateType: duplicateCheck.duplicateType,
+            existingRecipe: duplicateCheck.existingRecipe,
+            canForce: duplicateCheck.duplicateType !== 'exact_name'
+          });
+        }
       }
       
       // Generate slug from name
@@ -382,6 +402,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const recipeData = { ...req.body, userId };
+      const skipDuplicateCheck = req.query.force === 'true';
+      
+      // Check for duplicates unless force flag is set
+      if (!skipDuplicateCheck && recipeData.name && recipeData.ingredients) {
+        const duplicateCheck = await checkForDuplicates(
+          recipeData.name,
+          Array.isArray(recipeData.ingredients) ? recipeData.ingredients : [],
+          userId,
+          storage
+        );
+        
+        if (duplicateCheck.isDuplicate) {
+          return res.status(409).json({
+            message: duplicateCheck.message,
+            duplicateType: duplicateCheck.duplicateType,
+            existingRecipe: duplicateCheck.existingRecipe,
+            canForce: duplicateCheck.duplicateType !== 'exact_name' // Allow force for similar but not exact duplicates
+          });
+        }
+      }
       
       const recipe = await storage.createRecipe(recipeData);
       
@@ -494,6 +534,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error resetting recipes:", error);
       res.status(500).json({ message: "Failed to reset recipes" });
+    }
+  });
+
+  // Check for duplicate recipes before creating
+  app.post('/api/recipes/check-duplicate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, ingredients } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Recipe name is required" });
+      }
+      
+      const duplicateCheck = await checkForDuplicates(
+        name,
+        Array.isArray(ingredients) ? ingredients : [],
+        userId,
+        storage
+      );
+      
+      res.json(duplicateCheck);
+    } catch (error) {
+      console.error("Error checking for duplicates:", error);
+      res.status(500).json({ message: "Failed to check for duplicates" });
     }
   });
 
