@@ -1,6 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { FlavorProfile, FlavorDimension } from '../types';
 import { FLAVOR_TAXONOMY, FlavorSelection, createEmptySelection, selectionToFlavorProfile, getSelectedLabels } from '../shared/flavorTaxonomy';
+
+function profileToSelection(profile: FlavorProfile): FlavorSelection {
+  const sel = createEmptySelection();
+  Object.entries(profile).forEach(([key, value]) => {
+    if (typeof value === 'number' && value > 0) {
+      const cat = FLAVOR_TAXONOMY.find(c => c.label === key);
+      if (cat) {
+        sel.categories.add(cat.id);
+      }
+    }
+  });
+  return sel;
+}
 
 interface Props {
   profile: FlavorProfile;
@@ -48,18 +61,11 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const categoryAngle = 360 / categoryCount;
   const gap = 1.5;
 
-  const [selection, setSelection] = useState<FlavorSelection>(() => {
-    const sel = createEmptySelection();
-    Object.entries(profile).forEach(([key, value]) => {
-      if (typeof value === 'number' && value > 0) {
-        const cat = FLAVOR_TAXONOMY.find(c => c.label === key);
-        if (cat) {
-          sel.categories.add(cat.id);
-        }
-      }
-    });
-    return sel;
-  });
+  const [selection, setSelection] = useState<FlavorSelection>(() => profileToSelection(profile));
+
+  useEffect(() => {
+    setSelection(profileToSelection(profile));
+  }, [profile]);
 
   const updateProfile = (newSelection: FlavorSelection) => {
     setSelection(newSelection);

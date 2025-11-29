@@ -623,6 +623,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                 
                 {editorMode === 'wheel' ? (
                   <EditableFlavorWheel
+                    key={`wheel-${selectedRecipe?.id || 'none'}`}
                     profile={targetProfile}
                     originalProfile={originalProfile}
                     onProfileChange={setTargetProfile}
