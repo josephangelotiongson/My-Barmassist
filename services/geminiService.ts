@@ -359,8 +359,12 @@ export const generateCocktailImage = async (name: string, description: string, i
       }
     }
     return undefined;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating cocktail image:", error);
+    // Re-throw rate limit errors so they can be handled by the caller
+    if (error?.status === 429 || error?.message?.includes('429')) {
+      throw error;
+    }
     return undefined;
   }
 };

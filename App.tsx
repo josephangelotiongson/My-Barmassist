@@ -396,8 +396,69 @@ export default function App() {
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
   
   // Use refs for image tracking to persist across hot reloads and avoid render loops
-  const attemptedRecipesRef = useRef<Set<string>>(new Set());
-  const storedImagesRef = useRef<Map<string, string>>(new Map());
+  // Initialize from localStorage immediately (synchronously) to survive HMR and page reloads
+  const attemptedRecipesRef = useRef<Set<string>>(() => {
+    // This runs synchronously during component initialization
+    try {
+      const saved = localStorage.getItem('attemptedRecipes');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set();
+  });
+  const storedImagesRef = useRef<Map<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('storedImages');
+      if (saved) return new Map(JSON.parse(saved));
+    } catch {}
+    return new Map();
+  });
+  
+  // Execute the initializer functions if refs contain functions (first render)
+  if (typeof attemptedRecipesRef.current === 'function') {
+    attemptedRecipesRef.current = (attemptedRecipesRef.current as unknown as () => Set<string>)();
+  }
+  if (typeof storedImagesRef.current === 'function') {
+    storedImagesRef.current = (storedImagesRef.current as unknown as () => Map<string, string>)();
+  }
+  
+  // Rate limit tracking - if we hit 429, pause all image generation for longer
+  const [rateLimitPaused, setRateLimitPaused] = useState<boolean>(() => {
+    try {
+      const pauseUntil = localStorage.getItem('rateLimitPauseUntil');
+      if (pauseUntil && Date.now() < parseInt(pauseUntil)) {
+        return true;
+      }
+      return false;
+    } catch { return false; }
+  });
+  
+  // Helper to save attempt tracking to localStorage
+  const saveAttemptedRecipes = () => {
+    try {
+      localStorage.setItem('attemptedRecipes', JSON.stringify([...attemptedRecipesRef.current]));
+    } catch {}
+  };
+  
+  const saveStoredImages = () => {
+    try {
+      localStorage.setItem('storedImages', JSON.stringify([...storedImagesRef.current.entries()]));
+    } catch {}
+  };
+  
+  // Handle rate limit - pause for 5 minutes
+  const handleRateLimitHit = () => {
+    const pauseUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+    localStorage.setItem('rateLimitPauseUntil', pauseUntil.toString());
+    setRateLimitPaused(true);
+    console.log('Rate limit hit - pausing image generation for 5 minutes');
+    
+    // Auto-resume after 5 minutes
+    setTimeout(() => {
+      setRateLimitPaused(false);
+      localStorage.removeItem('rateLimitPauseUntil');
+      console.log('Rate limit pause expired - resuming image generation');
+    }, 5 * 60 * 1000);
+  };
   
   // Rate Limiter State for Image Generation
   const [isImageGenCoolingDown, setIsImageGenCoolingDown] = useState(false);
@@ -485,13 +546,14 @@ export default function App() {
     // Logic: Find one drink that needs an image, process it, then wait 4 seconds.
     // This prevents API overload when 200+ drinks are loaded.
     
+    if (rateLimitPaused) return; // Paused due to rate limit
     if (isImageGenCoolingDown) return; // Wait for cool down
     if (generatingImages.size >= 1) return; // Strict Limit: 1 concurrent generation
 
     // Filter drinks that:
     // 1. Don't have an image
     // 2. Are not currently being generated
-    // 3. Haven't already been attempted (by recipe+creator key - persists via ref)
+    // 3. Haven't already been attempted (by recipe+creator key - persists via ref and localStorage)
     const missingImageDrinks = history.filter(drink => {
       if (drink.imageUrl) return false;
       if (generatingImages.has(drink.id)) return false;
@@ -506,6 +568,7 @@ export default function App() {
       // Mark as attempted immediately (via ref - persists across renders)
       const cacheKey = getImageCacheKey(drinkToVisualize);
       attemptedRecipesRef.current.add(cacheKey);
+      saveAttemptedRecipes(); // Persist to localStorage
       
       // Start Cool Down Timer immediately to prevent other effects from firing
       setIsImageGenCoolingDown(true);
@@ -517,7 +580,7 @@ export default function App() {
           }, 4000); // 4 second delay between generations
       });
     }
-  }, [history, generatingImages, isImageGenCoolingDown, user]);
+  }, [history, generatingImages, isImageGenCoolingDown, rateLimitPaused, user]);
 
   const enrichPantryItem = async (ingredient: Ingredient) => {
     if (ingredient.flavorNotes) return;
@@ -746,9 +809,10 @@ export default function App() {
           if (checkResponse.ok) {
             const checkResult = await checkResponse.json();
             if (checkResult.exists && checkResult.imageUrl) {
-              // Use the existing image - cache in ref with proper key
+              // Use the existing image - cache in ref with proper key and save to localStorage
               console.log(`Using existing ${checkResult.creatorId ? 'variation' : 'classic'} image for "${cocktail.name}"`);
               storedImagesRef.current.set(cacheKey, checkResult.imageUrl);
+              saveStoredImages();
               // Only update matching cocktails (same name and same creator type)
               setHistory(prev => prev.map(c => {
                 const cIsUserCreated = c.id.startsWith('user-') || (c as any).isUserCreated === true;
@@ -763,36 +827,47 @@ export default function App() {
           
           // No existing image found - generate a new one
           console.log(`Generating new ${creatorId ? 'variation' : 'classic'} image for "${cocktail.name}"`);
-          const imageData = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
-          if (imageData) {
-              // Upload to Object Storage with optional creatorId for variations
-              const response = await fetch('/api/recipe-images', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  recipeName: cocktail.name,
-                  imageData: imageData,
-                  creatorId: creatorId
-                })
-              });
-              
-              if (response.ok) {
-                const result = await response.json();
-                const imageUrl = result.imageUrl;
-                // Cache with proper key and only update matching cocktails
-                storedImagesRef.current.set(cacheKey, imageUrl);
-                setHistory(prev => prev.map(c => {
-                  const cIsUserCreated = c.id.startsWith('user-') || (c as any).isUserCreated === true;
-                  if (c.name === cocktail.name && cIsUserCreated === isUserCreatedRecipe) {
-                    return { ...c, imageUrl };
-                  }
-                  return c;
-                }));
-              } else {
-                console.warn(`Failed to upload image for "${cocktail.name}"`);
-              }
-          } else {
-             console.warn(`Image generation failed for "${cocktail.name}" (likely rate limited)`);
+          try {
+            const imageData = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
+            if (imageData) {
+                // Upload to Object Storage with optional creatorId for variations
+                const response = await fetch('/api/recipe-images', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipeName: cocktail.name,
+                    imageData: imageData,
+                    creatorId: creatorId
+                  })
+                });
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  const imageUrl = result.imageUrl;
+                  // Cache with proper key and save to localStorage
+                  storedImagesRef.current.set(cacheKey, imageUrl);
+                  saveStoredImages();
+                  setHistory(prev => prev.map(c => {
+                    const cIsUserCreated = c.id.startsWith('user-') || (c as any).isUserCreated === true;
+                    if (c.name === cocktail.name && cIsUserCreated === isUserCreatedRecipe) {
+                      return { ...c, imageUrl };
+                    }
+                    return c;
+                  }));
+                } else {
+                  console.warn(`Failed to upload image for "${cocktail.name}"`);
+                }
+            } else {
+               console.warn(`Image generation failed for "${cocktail.name}" (likely rate limited)`);
+            }
+          } catch (genError: any) {
+            // Check for rate limit error
+            if (genError?.status === 429 || genError?.name === 'ApiError' && genError?.status === 429) {
+              console.warn(`Rate limit hit for "${cocktail.name}" - pausing all image generation`);
+              handleRateLimitHit();
+            } else {
+              console.error("Error generating image:", genError);
+            }
           }
       } catch (e) {
           console.error("Error generating image for", cocktail.name, e);
