@@ -73,7 +73,7 @@ None set yet - will be documented as user expresses preferences during developme
 - **users**: User profiles.
 - **sessions**: Stores user session data.
 - **global_recipes**: Stores classic cocktail recipes, including AI-enriched flavor profiles and nutrition data.
-- **master_ingredients**: Comprehensive ingredient database with AI-enriched nutrition, ABV, flavor notes, and other details.
+- **master_ingredients**: Comprehensive ingredient database with AI-enriched nutrition, ABV, flavor notes, derived flavor note IDs from global mappings, and intensity scores.
 - **user_recipes**: User-created custom cocktail recipes, with automatic AI enrichment.
 - **user_ratings**: User-specific cocktail ratings.
 - **user_shopping_list**: User's personalized shopping list items.
@@ -106,6 +106,7 @@ None set yet - will be documented as user expresses preferences during developme
 - `POST /api/flavor-taxonomy/derive` - Derives flavor notes from ingredient list with intensity scores
 - `GET /api/flavor-taxonomy/ai-prompt` - Generates AI context prompt with full flavor mappings
 - `POST /api/admin/seed-flavor-data` (admin) - Seeds flavor master data from predefined mappings
+- `POST /api/admin/update-ingredient-flavors` (admin) - Bulk updates all master ingredients with derived flavor note mappings
 
 ### UI/UX Decisions
 - Uses custom components and Lucide React for a consistent interface.
