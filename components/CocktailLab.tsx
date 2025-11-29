@@ -16,7 +16,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import EditableFlavorWheel from './EditableFlavorWheel';
+import EditableFlavorWheel, { NoteProfile } from './EditableFlavorWheel';
 
 interface Props {
   allRecipes: Cocktail[];
@@ -90,6 +90,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
+  const [targetNoteProfile, setTargetNoteProfile] = useState<NoteProfile | undefined>(undefined);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [labResult, setLabResult] = useState<LabResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -127,6 +128,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
         ? { ...initialRecipe.flavorProfile } 
         : { ...DEFAULT_PROFILE };
       setTargetProfile(profile);
+      setTargetNoteProfile(undefined);
       setLabResult(null);
       setErrorMessage(null);
       setAppliedSubs(new Set());
@@ -259,6 +261,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const handleSelectRecipe = (recipe: Cocktail) => {
     setSelectedRecipe(recipe);
     setTargetProfile({ ...getRecipeProfile(recipe) });
+    setTargetNoteProfile(undefined);
     setShowRecipeSelector(false);
     setLabResult(null);
     setErrorMessage(null);
@@ -655,7 +658,11 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       </button>
                     </div>
                     <button
-                      onClick={() => setTargetProfile({ ...originalProfile })}
+                      onClick={() => {
+                        setTargetProfile({ ...originalProfile });
+                        setTargetNoteProfile(undefined);
+                        wheelKeyRef.current += 1;
+                      }}
                       className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
                     >
                       <RefreshCw className="w-3 h-3" />
@@ -678,7 +685,11 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     recipeId={selectedRecipe?.id}
                     baseProfile={originalProfile as unknown as Record<string, number>}
                     currentProfile={targetProfile as unknown as Record<string, number>}
-                    onProfileChange={(profile) => setTargetProfile(profile)}
+                    noteProfile={targetNoteProfile}
+                    onProfileChange={(profile, noteProfile) => {
+                      setTargetProfile(profile);
+                      setTargetNoteProfile(noteProfile);
+                    }}
                     size={280}
                   />
                 </div>
@@ -1215,7 +1226,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       </button>
                     </div>
                     <button
-                      onClick={() => setTargetProfile({ ...DEFAULT_PROFILE })}
+                      onClick={() => {
+                        setTargetProfile({ ...DEFAULT_PROFILE });
+                        setTargetNoteProfile(undefined);
+                      }}
                       className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
                     >
                       <RefreshCw className="w-3 h-3" />
@@ -1229,7 +1243,11 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     key={`build-wheel-${selectedIngredients.length}`}
                     baseProfile={DEFAULT_PROFILE as unknown as Record<string, number>}
                     currentProfile={targetProfile as unknown as Record<string, number>}
-                    onProfileChange={(profile) => setTargetProfile(profile)}
+                    noteProfile={targetNoteProfile}
+                    onProfileChange={(profile, noteProfile) => {
+                      setTargetProfile(profile);
+                      setTargetNoteProfile(noteProfile);
+                    }}
                     size={280}
                   />
                 ) : (

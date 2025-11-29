@@ -57,13 +57,16 @@ None set yet - will be documented as user expresses preferences during developme
     - Automatically calculates volume from ingredient measurements (supports mixed fractions like "1 1/2 oz")
     - AI considers target volume when suggesting substitutions to maintain golden ratios
     - Volume displayed in recipe selector for quick reference
-  - **Interactive Editable Flavor Wheel**: Continuous color intensity system (0-10 scale):
-    - All 8 flavor categories always visible with varying opacity/brightness
-    - Color intensity maps directly to profile values (0 = 20% opacity/dim, 10 = 100% opacity/full)
-    - Bidirectional sync between wheel and slider views (changes in either reflect instantly)
+  - **Interactive Editable Flavor Wheel**: Hierarchical two-ring design with granular control:
+    - Inner ring: 8 main flavor categories (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky)
+    - Outer ring: 32 fine flavor notes (4 per category) - each independently modifiable
+    - Continuous color intensity (0-10 scale) with opacity mapping (20%-100%)
+    - Category values derived from child notes using weighted formula (70% max + 30% average)
+    - Fine flavor labels positioned OUTSIDE the wheel for readability
+    - Click outer ring notes to modify individual flavors (e.g., Citrus vs Tart in Sour category)
+    - Click inner ring categories to adjust all child notes together
+    - Hover shows precise values for both notes and categories
     - HSL interpolation for smooth color transitions
-    - Click categories to increment values, shift+click to decrement
-    - Top 3 flavors automatically highlighted based on profile values
   - Visual radar chart comparing Original, Target, and Predicted flavor profiles
   - AI suggests ingredient substitutions to achieve target flavor goals
   - Toggle individual substitutions to preview modified recipe
