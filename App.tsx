@@ -434,19 +434,20 @@ export default function App() {
     } catch {}
   };
   
-  // Handle rate limit - pause for 5 minutes
+  // Handle rate limit - pause for 30 seconds then retry
   const handleRateLimitHit = () => {
-    const pauseUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const pauseDuration = 30 * 1000; // 30 seconds
+    const pauseUntil = Date.now() + pauseDuration;
     localStorage.setItem('rateLimitPauseUntil', pauseUntil.toString());
     setRateLimitPaused(true);
-    console.log('Rate limit hit - pausing image generation for 5 minutes');
+    console.log('Rate limit hit - pausing image generation for 30 seconds');
     
-    // Auto-resume after 5 minutes
+    // Auto-resume after 30 seconds
     setTimeout(() => {
       setRateLimitPaused(false);
       localStorage.removeItem('rateLimitPauseUntil');
       console.log('Rate limit pause expired - resuming image generation');
-    }, 5 * 60 * 1000);
+    }, pauseDuration);
   };
   
   // Rate Limiter State for Image Generation
