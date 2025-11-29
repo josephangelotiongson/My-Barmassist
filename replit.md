@@ -31,6 +31,11 @@ None set yet - will be documented as user expresses preferences during developme
 - **Shared Image Storage**: Efficient image management using Replit Object Storage, with shared global images and user-specific variations.
 - **Mobile Optimization**: Enhanced bottom navigation for improved mobile usability.
 - **Data Reset Options**: Users can reset all data or just ratings/palate.
+- **Order History Photos**: Take and store photos for drinks ordered at bars/restaurants:
+  - Camera button on order history cards (tap image area to add/update photo)
+  - Photos stored in Replit Object Storage per user
+  - Optimistic UI updates with proper error rollback
+  - Works with mobile camera via `capture="environment"`
 - **DIY Ingredient System**: Make your own syrups, cordials, and shrubs with:
   - 15 DIY recipes with scalable ingredient calculators
   - "I Made This!" button to track homemade ingredients with expiration dates
@@ -63,7 +68,7 @@ None set yet - will be documented as user expresses preferences during developme
     - Outer ring: Specific flavor notes - each independently modifiable
     - Continuous color intensity (0-10 scale) with opacity mapping (25%-100%)
     - Category and subcategory values derived using weighted aggregation formula (70% max + 30% average)
-    - Fine flavor labels positioned OUTSIDE the wheel for readability
+    - Fine flavor labels positioned INSIDE the outer ring arc for maximum screen utilization on mobile
     - Click outer ring notes to modify individual flavors
     - Click middle ring subcategories to adjust related notes together
     - Click inner ring categories to adjust all child notes together
