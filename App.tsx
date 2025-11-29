@@ -395,6 +395,10 @@ export default function App() {
   const [isScanningMenu, setIsScanningMenu] = useState(false);
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
   
+  // Use refs for image tracking to persist across hot reloads and avoid render loops
+  const attemptedRecipesRef = useRef<Set<string>>(new Set());
+  const storedImagesRef = useRef<Map<string, string>>(new Map());
+  
   // Rate Limiter State for Image Generation
   const [isImageGenCoolingDown, setIsImageGenCoolingDown] = useState(false);
   
@@ -464,6 +468,18 @@ export default function App() {
       }
   };
 
+  // Helper to get a unique key for tracking images (recipe name + creator type)
+  const getImageCacheKey = (drink: Cocktail): string => {
+    const isUserCreated = drink.id.startsWith('user-') || (drink as any).isUserCreated === true;
+    // For user-created recipes, include user id if available; otherwise use 'user' prefix
+    if (isUserCreated) {
+      const creatorId = user?.id || 'user';
+      return `${drink.name}::${creatorId}`;
+    }
+    // Classic recipes share images globally
+    return `${drink.name}::classic`;
+  };
+
   // --- THROTTLED IMAGE GENERATION QUEUE ---
   useEffect(() => {
     // Logic: Find one drink that needs an image, process it, then wait 4 seconds.
@@ -472,10 +488,24 @@ export default function App() {
     if (isImageGenCoolingDown) return; // Wait for cool down
     if (generatingImages.size >= 1) return; // Strict Limit: 1 concurrent generation
 
-    const missingImageDrinks = history.filter(drink => !drink.imageUrl && !generatingImages.has(drink.id));
+    // Filter drinks that:
+    // 1. Don't have an image
+    // 2. Are not currently being generated
+    // 3. Haven't already been attempted (by recipe+creator key - persists via ref)
+    const missingImageDrinks = history.filter(drink => {
+      if (drink.imageUrl) return false;
+      if (generatingImages.has(drink.id)) return false;
+      const cacheKey = getImageCacheKey(drink);
+      if (attemptedRecipesRef.current.has(cacheKey)) return false;
+      return true;
+    });
 
     if (missingImageDrinks.length > 0) {
       const drinkToVisualize = missingImageDrinks[0];
+      
+      // Mark as attempted immediately (via ref - persists across renders)
+      const cacheKey = getImageCacheKey(drinkToVisualize);
+      attemptedRecipesRef.current.add(cacheKey);
       
       // Start Cool Down Timer immediately to prevent other effects from firing
       setIsImageGenCoolingDown(true);
@@ -487,7 +517,7 @@ export default function App() {
           }, 4000); // 4 second delay between generations
       });
     }
-  }, [history, generatingImages, isImageGenCoolingDown]);
+  }, [history, generatingImages, isImageGenCoolingDown, user]);
 
   const enrichPantryItem = async (ingredient: Ingredient) => {
     if (ingredient.flavorNotes) return;
@@ -682,13 +712,28 @@ export default function App() {
       e?.stopPropagation();
       if (generatingImages.has(cocktail.id)) return;
       
-      setGeneratingImages(prev => new Set(prev).add(cocktail.id));
-      
       // Determine if this is a user variation or classic recipe
-      // User variations: recipes created by users (id starts with 'user-' or has isUserCreated flag)
-      // Classic recipes: preloaded recipes share images globally
       const isUserCreatedRecipe = cocktail.id.startsWith('user-') || (cocktail as any).isUserCreated === true;
       const creatorId = isUserCreatedRecipe && user?.id ? user.id : null;
+      const cacheKey = creatorId ? `${cocktail.name}::${creatorId}` : `${cocktail.name}::classic`;
+      
+      // Check if we already have a cached image for this recipe+creator (via ref)
+      const cachedImage = storedImagesRef.current.get(cacheKey);
+      if (cachedImage) {
+        console.log(`Using cached image for "${cocktail.name}" (${creatorId ? 'variation' : 'classic'})`);
+        // Only update cocktails with matching creator type
+        setHistory(prev => prev.map(c => {
+          if (c.imageUrl) return c;
+          const cIsUserCreated = c.id.startsWith('user-') || (c as any).isUserCreated === true;
+          if (c.name === cocktail.name && cIsUserCreated === isUserCreatedRecipe) {
+            return { ...c, imageUrl: cachedImage };
+          }
+          return c;
+        }));
+        return;
+      }
+      
+      setGeneratingImages(prev => new Set(prev).add(cocktail.id));
       
       try {
           // Build check URL with optional creatorId for user variations
@@ -701,9 +746,17 @@ export default function App() {
           if (checkResponse.ok) {
             const checkResult = await checkResponse.json();
             if (checkResult.exists && checkResult.imageUrl) {
-              // Use the existing image (user-specific or classic fallback)
+              // Use the existing image - cache in ref with proper key
               console.log(`Using existing ${checkResult.creatorId ? 'variation' : 'classic'} image for "${cocktail.name}"`);
-              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: checkResult.imageUrl } : c));
+              storedImagesRef.current.set(cacheKey, checkResult.imageUrl);
+              // Only update matching cocktails (same name and same creator type)
+              setHistory(prev => prev.map(c => {
+                const cIsUserCreated = c.id.startsWith('user-') || (c as any).isUserCreated === true;
+                if (c.name === cocktail.name && cIsUserCreated === isUserCreatedRecipe) {
+                  return { ...c, imageUrl: checkResult.imageUrl };
+                }
+                return c;
+              }));
               return;
             }
           }
@@ -726,16 +779,23 @@ export default function App() {
               if (response.ok) {
                 const result = await response.json();
                 const imageUrl = result.imageUrl;
-                setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl } : c));
+                // Cache with proper key and only update matching cocktails
+                storedImagesRef.current.set(cacheKey, imageUrl);
+                setHistory(prev => prev.map(c => {
+                  const cIsUserCreated = c.id.startsWith('user-') || (c as any).isUserCreated === true;
+                  if (c.name === cocktail.name && cIsUserCreated === isUserCreatedRecipe) {
+                    return { ...c, imageUrl };
+                  }
+                  return c;
+                }));
               } else {
-                setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));
+                console.warn(`Failed to upload image for "${cocktail.name}"`);
               }
           } else {
-             setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));
+             console.warn(`Image generation failed for "${cocktail.name}" (likely rate limited)`);
           }
       } catch (e) {
-          if (e) console.log("Failed to generate image for", cocktail.name);
-          setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));
+          console.error("Error generating image for", cocktail.name, e);
       } finally {
           setGeneratingImages(prev => {
               const next = new Set(prev);
@@ -1291,11 +1351,8 @@ export default function App() {
                                                                         alt={drink.name} 
                                                                         className="w-full h-full object-cover"
                                                                         onError={(e) => {
-                                                                            if (drink.imageUrl && drink.imageUrl.includes('unsplash.com')) {
-                                                                                setHistory(prev => prev.map(d => d.id === drink.id ? { ...d, imageUrl: undefined } : d));
-                                                                            } else {
-                                                                                e.currentTarget.src = FALLBACK_IMAGE;
-                                                                            }
+                                                                            // Don't clear imageUrl - just show fallback inline to prevent retry loops
+                                                                            e.currentTarget.src = FALLBACK_IMAGE;
                                                                         }}
                                                                     />
                                                                     <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent"></div>
