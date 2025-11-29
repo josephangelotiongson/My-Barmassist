@@ -2261,14 +2261,9 @@ export default function App() {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded uppercase font-bold">{recipe.category}</span>
-                                                    {status.inPantry && (
+                                                    {status.inPantry && !status.isExpired && (
                                                         <span className="text-[10px] bg-green-900/50 text-green-400 px-2 py-0.5 rounded uppercase font-bold flex items-center gap-1">
                                                             <CheckCircle2 className="w-3 h-3" /> In Stock
-                                                        </span>
-                                                    )}
-                                                    {!status.inPantry && (
-                                                        <span className="text-[10px] bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded uppercase font-bold flex items-center gap-1">
-                                                            <AlertTriangle className="w-3 h-3" /> Need to Make
                                                         </span>
                                                     )}
                                                 </div>
@@ -2461,7 +2456,7 @@ export default function App() {
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="text-sm font-medium text-white group-hover:text-secondary transition-colors truncate">{recipe.name}</div>
-                                                                    {recipeStatus.inPantry && !recipeStatus.isExpired && (
+                                                                    {recipeStatus.inPantry && !recipeStatus.isExpired && !recipeStatus.isExpiringSoon && (
                                                                         <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                                                                     )}
                                                                     {recipeStatus.isExpiringSoon && (
@@ -2469,9 +2464,6 @@ export default function App() {
                                                                     )}
                                                                     {recipeStatus.isExpired && (
                                                                         <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                                                                    )}
-                                                                    {!recipeStatus.inPantry && (
-                                                                        <span className="text-[9px] bg-amber-900/40 text-amber-400 px-1.5 py-0.5 rounded flex-shrink-0">MAKE</span>
                                                                     )}
                                                                 </div>
                                                                 <div className="text-[10px] text-stone-500 truncate">{recipe.description}</div>
