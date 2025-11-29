@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   FlaskConical, Sparkles, ChevronDown, ChevronUp, ArrowRight, 
   Loader2, RefreshCw, Beaker, Target, Lightbulb, Check, X,
-  Plus, Minus, Shuffle
+  Plus, Minus, Shuffle, Disc, Sliders
 } from 'lucide-react';
 import { Cocktail, FlavorProfile, FlavorDimension } from '../types';
 import {
@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import EditableFlavorWheel from './EditableFlavorWheel';
 
 interface Props {
   allRecipes: Cocktail[];
@@ -53,6 +54,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSubs, setAppliedSubs] = useState<Set<number>>(new Set());
+  const [editorMode, setEditorMode] = useState<'wheel' | 'sliders'>('wheel');
 
   const getRecipeProfile = (recipe: Cocktail): FlavorProfile => {
     return recipe.flavorProfile && Object.keys(recipe.flavorProfile).length > 0 
@@ -268,13 +270,31 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
                 <Target className="w-4 h-4 text-secondary" />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Target Flavor Profile</h3>
               </div>
-              <button
-                onClick={() => setTargetProfile({ ...originalProfile })}
-                className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Reset
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex bg-stone-800 rounded-lg p-0.5 border border-stone-700">
+                  <button
+                    onClick={() => setEditorMode('wheel')}
+                    className={`p-1.5 rounded transition-colors ${editorMode === 'wheel' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
+                    title="Wheel View"
+                  >
+                    <Disc className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setEditorMode('sliders')}
+                    className={`p-1.5 rounded transition-colors ${editorMode === 'sliders' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
+                    title="Sliders View"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <button
+                  onClick={() => setTargetProfile({ ...originalProfile })}
+                  className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Reset
+                </button>
+              </div>
             </div>
 
             {!hasValidProfile(selectedRecipe) && (
@@ -285,49 +305,58 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
               </div>
             )}
             
-            <div className="grid grid-cols-2 gap-3">
-              {Object.values(FlavorDimension).map((dim) => {
-                const original = originalProfile[dim];
-                const target = targetProfile[dim];
-                const diff = target - original;
-                
-                return (
-                  <div key={dim} className="bg-stone-800/50 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-medium text-stone-300">{dim}</span>
-                      <div className="flex items-center gap-1">
-                        {diff !== 0 && (
-                          <span className={`text-[10px] font-bold ${diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {diff > 0 ? '+' : ''}{diff}
-                          </span>
-                        )}
-                        <span className="text-xs font-bold text-white w-4 text-center">{target}</span>
+            {editorMode === 'wheel' ? (
+              <EditableFlavorWheel
+                profile={targetProfile}
+                originalProfile={originalProfile}
+                onProfileChange={setTargetProfile}
+                size={280}
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {Object.values(FlavorDimension).map((dim) => {
+                  const original = originalProfile[dim];
+                  const target = targetProfile[dim];
+                  const diff = target - original;
+                  
+                  return (
+                    <div key={dim} className="bg-stone-800/50 rounded-lg p-2.5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-medium text-stone-300">{dim}</span>
+                        <div className="flex items-center gap-1">
+                          {diff !== 0 && (
+                            <span className={`text-[10px] font-bold ${diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {diff > 0 ? '+' : ''}{diff}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-white w-4 text-center">{target}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => adjustFlavor(dim, -1)}
+                          className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
+                        >
+                          <Minus className="w-3 h-3 text-stone-300" />
+                        </button>
+                        <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
+                            style={{ width: `${(target / 10) * 100}%` }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => adjustFlavor(dim, 1)}
+                          className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
+                        >
+                          <Plus className="w-3 h-3 text-stone-300" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => adjustFlavor(dim, -1)}
-                        className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
-                      >
-                        <Minus className="w-3 h-3 text-stone-300" />
-                      </button>
-                      <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
-                          style={{ width: `${(target / 10) * 100}%` }}
-                        />
-                      </div>
-                      <button
-                        onClick={() => adjustFlavor(dim, 1)}
-                        className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
-                      >
-                        <Plus className="w-3 h-3 text-stone-300" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="bg-surface rounded-2xl border border-stone-700 p-4">
