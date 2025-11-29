@@ -379,7 +379,7 @@ export function selectionToFlavorProfile(
   return profile;
 }
 
-const INGREDIENT_FLAVOR_MAP: Record<string, string[]> = {
+export const INGREDIENT_FLAVOR_MAP: Record<string, string[]> = {
   'bourbon': ['boozy.aged.whiskey', 'sweet.rich.caramel', 'sweet.nutty.vanilla', 'earthy.smoky.charcoal'],
   'rye': ['boozy.aged.whiskey', 'spicy.hot.pepper', 'earthy.smoky.charcoal'],
   'rye whiskey': ['boozy.aged.whiskey', 'spicy.hot.pepper', 'earthy.smoky.charcoal'],

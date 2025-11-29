@@ -305,11 +305,25 @@ export const flavorCategories = pgTable("flavor_categories", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Flavor Notes - Specific flavor notes within each category
-export const flavorNotes = pgTable("flavor_notes", {
-  id: varchar("id").primaryKey(), // e.g., 'sweet.honey', 'sweet.caramel'
+// Flavor Subcategories - Middle tier of flavor hierarchy (e.g., 'citrus' under 'fruity')
+export const flavorSubcategories = pgTable("flavor_subcategories", {
+  id: varchar("id").primaryKey(), // e.g., 'fruity.citrus', 'sweet.rich'
   categoryId: varchar("category_id").notNull().references(() => flavorCategories.id, { onDelete: "cascade" }),
-  label: varchar("label").notNull(), // Display name: 'Honey', 'Caramel'
+  label: varchar("label").notNull(), // Display name: 'Citrus', 'Rich'
+  sortOrder: integer("sort_order").notNull().default(0),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_flavor_subcategories_category").on(table.categoryId),
+]);
+
+// Flavor Notes - Specific flavor notes within each subcategory
+export const flavorNotes = pgTable("flavor_notes", {
+  id: varchar("id").primaryKey(), // e.g., 'sweet.rich.honey', 'fruity.citrus.lemon'
+  categoryId: varchar("category_id").notNull().references(() => flavorCategories.id, { onDelete: "cascade" }),
+  subcategoryId: varchar("subcategory_id").references(() => flavorSubcategories.id, { onDelete: "cascade" }),
+  label: varchar("label").notNull(), // Display name: 'Honey', 'Lemon'
   sortOrder: integer("sort_order").notNull().default(0),
   description: text("description"),
   keywords: jsonb("keywords").$type<string[]>(), // Alternative terms for AI matching
@@ -317,6 +331,7 @@ export const flavorNotes = pgTable("flavor_notes", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_flavor_notes_category").on(table.categoryId),
+  index("idx_flavor_notes_subcategory").on(table.subcategoryId),
 ]);
 
 // Ingredient Flavor Mappings - Links ingredients to their flavor notes
@@ -366,6 +381,8 @@ export type LabRiff = typeof labRiffs.$inferSelect;
 export type InsertLabRiff = typeof labRiffs.$inferInsert;
 export type FlavorCategory = typeof flavorCategories.$inferSelect;
 export type InsertFlavorCategory = typeof flavorCategories.$inferInsert;
+export type FlavorSubcategory = typeof flavorSubcategories.$inferSelect;
+export type InsertFlavorSubcategory = typeof flavorSubcategories.$inferInsert;
 export type FlavorNote = typeof flavorNotes.$inferSelect;
 export type InsertFlavorNote = typeof flavorNotes.$inferInsert;
 export type IngredientFlavorMapping = typeof ingredientFlavorMappings.$inferSelect;

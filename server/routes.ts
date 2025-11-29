@@ -11,9 +11,9 @@ import { enrichPendingIngredients, updateIngredientFlavorMappings } from "./ingr
 import { seedModernRecipes } from "./seedModernRecipes";
 import { assignCocktailFamily, simulateFlavorSubstitutions } from "../services/geminiService";
 import { orchestrateFullLineage } from "./lineageOrchestrator";
-import { getFlavorTaxonomy, deriveFlavorNotesFromIngredients, getFlavorDataForAI, invalidateCache } from "./flavorDataService";
+import { getFlavorTaxonomy, getFull3TierTaxonomy, deriveFlavorNotesFromIngredients, getFlavorDataForAI, invalidateCache } from "./flavorDataService";
 import { checkForDuplicates, checkGlobalDuplicate } from "./recipeDuplicateDetection";
-import { seedFlavorData } from "./seedFlavorData";
+import { seedFlavorData, migrateToSubcategories, migrateLegacyProfiles, reenrichAllRecipes } from "./seedFlavorData";
 
 const objectStorageService = new ObjectStorageService();
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
@@ -320,6 +320,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/flavor-taxonomy/3-tier', async (req, res) => {
+    try {
+      const taxonomy = await getFull3TierTaxonomy();
+      res.json(taxonomy);
+    } catch (error) {
+      console.error("Error fetching 3-tier flavor taxonomy:", error);
+      res.status(500).json({ message: "Failed to fetch 3-tier flavor taxonomy" });
+    }
+  });
+
   app.post('/api/flavor-taxonomy/derive', async (req, res) => {
     try {
       const { ingredients } = req.body;
@@ -354,6 +364,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error seeding flavor data:", error);
       res.status(500).json({ message: "Failed to seed flavor data" });
+    }
+  });
+
+  app.post('/api/admin/migrate-to-subcategories', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = await migrateToSubcategories();
+      if (result.success) {
+        await invalidateCache();
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error migrating to subcategories:", error);
+      res.status(500).json({ message: "Failed to migrate to subcategories" });
+    }
+  });
+
+  app.post('/api/admin/migrate-flavor-profiles', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = await migrateLegacyProfiles();
+      if (result.success) {
+        await invalidateCache();
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error migrating flavor profiles:", error);
+      res.status(500).json({ message: "Failed to migrate flavor profiles" });
+    }
+  });
+
+  app.post('/api/admin/reenrich-all-recipes', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = await reenrichAllRecipes();
+      res.json(result);
+    } catch (error) {
+      console.error("Error marking recipes for re-enrichment:", error);
+      res.status(500).json({ message: "Failed to mark recipes for re-enrichment" });
     }
   });
 

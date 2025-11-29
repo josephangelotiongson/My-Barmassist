@@ -106,8 +106,9 @@ None set yet - will be documented as user expresses preferences during developme
 - **cocktail_lineage**: Stores AI-generated family tree data for each drink (family assignment, relationship, key modifications, evolution narrative).
 - **cocktail_relationships**: Stores connections between drinks (ancestors, siblings, descendants, flavor bridges).
 - **lab_riffs**: Stores user-created riffs from the Cocktail Laboratory (name, ingredients, signature hash for deduplication, parent recipe, predicted flavor profile).
-- **flavor_categories**: 8 primary flavor categories (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky) with colors and sort order.
-- **flavor_notes**: 32 specific flavor notes (4 per category) with keywords for ingredient matching.
+- **flavor_categories**: 8 primary flavor categories (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy) with colors and sort order.
+- **flavor_subcategories**: Middle tier of the 3-tier flavor hierarchy linking categories to specific notes.
+- **flavor_notes**: 96 specific flavor notes organized by subcategory with keywords for ingredient matching.
 - **ingredient_flavor_mappings**: 150+ ingredient-to-flavor mappings with intensity and primary flag for AI interpretation.
 - **flavor_data_version**: Version tracking for flavor data updates and cache invalidation.
 
@@ -125,10 +126,12 @@ None set yet - will be documented as user expresses preferences during developme
 - `GET /api/lab/riffs/:slug` - Retrieves a specific riff by slug (auth required)
 
 ### Flavor Data API Endpoints
-- `GET /api/flavor-taxonomy` - Returns complete flavor taxonomy (categories, notes, ingredient mappings) with version
+- `GET /api/flavor-taxonomy` - Returns complete flavor taxonomy (categories, subcategories, notes, ingredient mappings) with version
+- `GET /api/flavor-taxonomy/3-tier` - Returns full 3-tier hierarchical taxonomy (categories → subcategories → notes)
 - `POST /api/flavor-taxonomy/derive` - Derives flavor notes from ingredient list with intensity scores
 - `GET /api/flavor-taxonomy/ai-prompt` - Generates AI context prompt with full flavor mappings
-- `POST /api/admin/seed-flavor-data` (admin) - Seeds flavor master data from predefined mappings
+- `POST /api/admin/seed-flavor-data` (admin) - Fresh seed of flavor master data (deletes and recreates all flavor data)
+- `POST /api/admin/migrate-to-subcategories` (admin) - In-place migration to add subcategories to existing data (non-destructive)
 - `POST /api/admin/update-ingredient-flavors` (admin) - Bulk updates all master ingredients with derived flavor note mappings
 
 ### UI/UX Decisions

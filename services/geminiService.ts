@@ -50,17 +50,78 @@ const MODEL_FLASH = 'gemini-2.5-flash';
 const MODEL_PRO = 'gemini-3-pro-preview'; // Used for complex tasks like Social Media analysis
 const MODEL_IMAGE = 'gemini-2.5-flash-image';
 
+// --- 3-TIER FLAVOR TAXONOMY FRAMEWORK ---
+const FLAVOR_TAXONOMY_PROMPT = `
+## 3-TIER FLAVOR TAXONOMY FRAMEWORK
+
+The Bar Assistant uses a hierarchical 3-tier flavor classification system:
+- TIER 1 (Categories): 8 primary flavor dimensions
+- TIER 2 (Subcategories): Groupings within each category
+- TIER 3 (Notes): Specific flavor descriptors
+
+### SWEET (sweet)
+  - Rich: Coffee, Chocolate, Maple, Caramel, Honey
+  - Sugar: Molasses, Brown, Simple
+  - Nutty: Vanilla, Almond, Walnut, Pecan
+
+### FRUITY (fruity)
+  - Citrus: Lemon, Lime, Grapefruit, Orange
+  - Berry: Raspberry, Strawberry, Blackberry, Cranberry
+  - Tree: Apple, Pear, Peach, Cherry
+  - Tropic: Pineapple, Mango, Coconut, Passion
+
+### FLORAL (floral)
+  - Flower: Rose, Lavender, Elderflower, Violet
+  - Fresh: Mint, Basil, Thyme, Sage
+
+### HERBAL (herbal)
+  - Veg: Celery, Cucumber, Tomato, Grass
+  - Bitter: Amaro, Gentian, Wormwood, Quinine
+
+### SPICY (spicy)
+  - Hot: Pepper, Chili, Ginger, Jalapeño
+  - Warm: Nutmeg, Clove, Cinnamon, Allspice
+
+### EARTHY (earthy)
+  - Smoky: Peat, Charcoal, Smoke, Tobacco
+  - Woody: Pine, Cedar, Oak, Leather
+
+### SOUR (sour)
+  - Acidic: Tart, Tangy, Sharp
+  - Fermented: Vinegar, Wine, Shrub
+
+### BOOZY (boozy)
+  - Aged: Whiskey, Brandy, Rum, Tequila
+  - Clear: Gin, Vodka, Mezcal, Pisco
+`;
+
 // --- STANDARDIZED SCORING RUBRICS ---
 const FLAVOR_RUBRIC = `
-FLAVOR SCORING RUBRIC (0-10 Scale) - 8 Primary Categories:
-- SWEET: 0 (Bone Dry, e.g., Dry Martini) -> 3 (Old Fashioned) -> 5 (Balanced Sour/Daisy) -> 8 (Tiki) -> 10 (Liqueur/Syrup heavy).
-- FRUITY: 0 (None) -> 3 (Twist/Garnish) -> 6 (Juice Modifier) -> 10 (Fruit Puree/Tiki Bomb).
-- FLORAL: 0 (None) -> 3 (St-Germain touch) -> 6 (Lavender/Rose) -> 10 (Violet liqueur dominant).
-- HERBAL: 0 (None) -> 3 (Gin botanicals) -> 6 (Chartreuse/Benedictine) -> 10 (Absinthe/Medicinal/Bitter amaro).
-- SPICY: 0 (None) -> 3 (Rye Whiskey spice) -> 6 (Ginger Beer) -> 10 (Habanero/Ghost Pepper).
-- EARTHY: 0 (None) -> 3 (Aged spirits) -> 6 (Mezcal smoke/Peated scotch) -> 10 (Heavily Peated Islay/Fungal/Truffle).
-- SOUR: 0 (No Acid, e.g., Manhattan) -> 5 (Standard Sour, e.g., Whiskey Sour) -> 8 (Lime heavy) -> 10 (Vinegar/Shrub based).
-- BOOZY: 0 (Mocktail) -> 4 (Standard Highball) -> 6 (Sour/Shake) -> 8 (Stirred/Spirit-Forward) -> 10 (Cask Strength/Overproof).
+FLAVOR SCORING RUBRIC (0-10 Scale) - 8 Primary Categories with Subcategory Nuance:
+
+- SWEET: 0 (Bone Dry, Dry Martini) → 3 (Old Fashioned - caramel/vanilla) → 5 (Balanced Sour) → 8 (Tiki - rich sweetness) → 10 (Liqueur dominant)
+  * Rich sweetness (coffee, chocolate, caramel) adds depth; Sugar sweetness (simple, molasses) adds body; Nutty (vanilla, almond) adds creaminess
+
+- FRUITY: 0 (No fruit) → 3 (Citrus twist) → 6 (Juice modifier) → 10 (Fruit puree/Tiki)
+  * Citrus (lemon, lime, grapefruit) adds brightness; Berry (raspberry, strawberry) adds tartness; Tropical (pineapple, mango) adds sweetness
+
+- FLORAL: 0 (None) → 3 (St-Germain touch) → 6 (Lavender/Rose forward) → 10 (Violet liqueur dominant)
+  * Flower (rose, lavender, elderflower) adds perfume; Fresh herbs (mint, basil) in this category add aromatics
+
+- HERBAL: 0 (None) → 3 (Gin botanicals) → 6 (Chartreuse/Benedictine) → 10 (Bitter amaro forward)
+  * Vegetal (cucumber, celery) adds freshness; Bitter (amaro, gentian, wormwood) adds complexity and bitterness
+
+- SPICY: 0 (None) → 3 (Rye whiskey spice) → 6 (Ginger beer) → 10 (Habanero/Ghost pepper)
+  * Hot spice (pepper, chili, ginger) adds heat; Warm spice (cinnamon, clove, nutmeg) adds depth
+
+- EARTHY: 0 (None) → 3 (Aged spirit oak) → 6 (Mezcal smoke/Peated scotch) → 10 (Heavily Peated Islay)
+  * Smoky (peat, charcoal, tobacco) adds smoke; Woody (oak, cedar, leather) adds aged character
+
+- SOUR: 0 (No acid, Manhattan) → 5 (Standard Sour) → 8 (Lime heavy) → 10 (Vinegar/Shrub based)
+  * Acidic (tart, tangy) from citrus; Fermented (vinegar, shrub) adds funky sourness
+
+- BOOZY: 0 (Mocktail) → 4 (Highball) → 6 (Sour/Shake) → 8 (Stirred/Spirit-Forward) → 10 (Cask Strength)
+  * Aged spirits (whiskey, brandy, rum) have more character; Clear spirits (gin, vodka) are more neutral
 `;
 
 const MATCH_LOGIC = `
@@ -457,24 +518,35 @@ export const getRecommendations = async (
   pantryIngredients: string[]
 ): Promise<Recommendation[]> => {
   try {
+    const flavorContext = await getFlavorDataForAI();
+    
     const prompt = `
-      You are a Master Mixologist Algorithm.
+      You are a Master Mixologist Algorithm using the 3-Tier Flavor Taxonomy.
       
-      User Palate (0-10): ${JSON.stringify(userPalate)}
+      ${FLAVOR_TAXONOMY_PROMPT}
+      
+      User Palate (0-10 for 8 categories): ${JSON.stringify(userPalate)}
       Available Ingredients: ${JSON.stringify(pantryIngredients)}
 
       ${FLAVOR_RUBRIC}
       ${MATCH_LOGIC}
       
-      Suggest 3 cocktail recipes based on available ingredients.
+      ${flavorContext ? `## INGREDIENT FLAVOR MAPPINGS\n${flavorContext}` : ''}
+      
+      ## TASK
+      Suggest 3 cocktail recipes that:
+      1. Use the available ingredients (or close substitutions)
+      2. Match the user's flavor palate preferences
+      3. Consider both category-level (Sweet, Fruity, etc.) AND subcategory nuance
       
       CRITICAL FORMATTING:
-      1. Ingredients MUST include standard volumes/measurements (e.g. "2 oz Gin", "0.75 oz Lime Juice"). Do not just list the name.
+      1. Ingredients MUST include standard volumes/measurements (e.g. "2 oz Gin", "0.75 oz Lime Juice").
       2. Instructions MUST be a detailed step-by-step array.
       3. Include NUTRITION estimates (calories, carbs, and ABV) in the output.
+      4. FlavorProfile MUST use the 8 new categories: Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy.
       
       Calculate Match Score (0-100) based on Ingredient Availability AND Palate Fit.
-      Ensure description highlights flavor profile match.
+      Ensure description highlights flavor profile match using subcategory vocabulary.
     `;
 
     const response = await ai.models.generateContent({
@@ -501,23 +573,25 @@ export const recommendFromMenu = async (
 ): Promise<Recommendation[]> => {
   try {
     const prompt = `
-      You are a Master Mixologist Agent.
+      You are a Master Mixologist Agent using the 3-Tier Flavor Taxonomy.
       I will provide a photo of a Cocktail Menu and a User's Flavor Palate.
       
-      User Palate: ${JSON.stringify(userPalate)}
+      ${FLAVOR_TAXONOMY_PROMPT}
+      
+      User Palate (0-10 for 8 categories): ${JSON.stringify(userPalate)}
       
       ${FLAVOR_RUBRIC}
       ${MATCH_LOGIC}
 
       TASK:
       1. Identify ALL valid cocktail options listed on the menu image.
-      2. INGREDIENT ANALYSIS: For each drink, analyze the listed ingredients to DEDUCE the flavor profile (0-10) using the RUBRIC above.
-      3. DESCRIPTION: Generate a "Flavor Summary" description. e.g. "A refreshing and herbal gin cocktail with strong notes of cucumber and a tart lime finish."
+      2. INGREDIENT ANALYSIS: For each drink, analyze the listed ingredients to DEDUCE the flavor profile using the 8 categories (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy).
+      3. DESCRIPTION: Generate a "Flavor Summary" using subcategory vocabulary. e.g. "A refreshing herbal cocktail with vegetal cucumber notes and tart citrus finish from fresh lime."
       4. INSTRUCTIONS: Since these are menu items, set instructions to ["Order at bar"].
       5. ESTIMATE NUTRITION: Provide an educated guess for calories, carbs, and final ABV based on likely ingredients.
       6. Compare against User Palate for Match Score.
       
-      OUTPUT JSON.
+      OUTPUT JSON with flavorProfile using: Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy.
     `;
 
     const response = await ai.models.generateContent({
