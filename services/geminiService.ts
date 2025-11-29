@@ -1110,3 +1110,102 @@ export const simulateFlavorSubstitutions = async (
     throw error;
   }
 };
+
+export interface BuildCocktailResult {
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string[];
+  predictedProfile: FlavorProfile;
+  rationale: string;
+}
+
+const buildCocktailSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    name: { type: Type.STRING, description: "A creative name for the cocktail" },
+    description: { type: Type.STRING, description: "A short, enticing description of the cocktail" },
+    ingredients: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Complete list of ingredients with exact measurements (e.g., '2 oz Bourbon', '0.75 oz Fresh Lemon Juice')"
+    },
+    instructions: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Step-by-step instructions for making the cocktail"
+    },
+    predictedProfile: flavorProfileSchema,
+    rationale: { type: Type.STRING, description: "Explanation of how this cocktail achieves the target flavor profile and uses the selected ingredients" }
+  },
+  required: ['name', 'description', 'ingredients', 'instructions', 'predictedProfile', 'rationale']
+};
+
+export const buildCocktailFromIngredients = async (
+  selectedIngredients: { name: string; category: string; abv?: number; flavorNotes?: string }[],
+  targetProfile: FlavorProfile
+): Promise<BuildCocktailResult> => {
+  try {
+    const ingredientSummary = selectedIngredients.map(i => 
+      `- ${i.name} (${i.category}${i.abv ? `, ${i.abv}% ABV` : ''}${i.flavorNotes ? `, notes: ${i.flavorNotes}` : ''})`
+    ).join('\n');
+
+    const prompt = `
+      You are a Master Mixologist and Cocktail Creator.
+      
+      SELECTED INGREDIENTS (these MUST be the foundation of the cocktail):
+      ${ingredientSummary}
+      
+      TARGET FLAVOR PROFILE:
+      ${JSON.stringify(targetProfile)}
+      
+      ${FLAVOR_RUBRIC}
+      
+      TASK:
+      Create a complete, balanced cocktail recipe using the selected ingredients as the foundation.
+      You may add complementary ingredients (citrus, sweeteners, bitters, garnishes) to create a well-balanced drink,
+      but the selected ingredients must be the stars of the show.
+      
+      RULES:
+      1. ALL selected ingredients MUST appear in the final recipe.
+      2. Add only necessary complementary ingredients for balance.
+      3. The flavor profile should match the target as closely as possible.
+      4. Provide exact measurements for all ingredients.
+      5. Include clear, professional instructions.
+      6. Create a creative but appropriate name that reflects the ingredients.
+      7. The description should be enticing and hint at the flavors.
+      
+      COCKTAIL BALANCE GUIDELINES:
+      - Spirit-forward drinks: 2-2.5 oz base spirit, minimal mixers
+      - Sours: 2 oz spirit, 0.75 oz citrus, 0.5-0.75 oz sweetener
+      - Highballs: 1.5-2 oz spirit, 4-5 oz mixer
+      - Stirred cocktails: 2 oz base, 1 oz modifier, dashes of bitters/liqueur
+      
+      Return your creation as JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_FLASH,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: buildCocktailSchema,
+        temperature: 0.8,
+      }
+    });
+
+    const data = JSON.parse(response.text || '{}');
+    
+    return {
+      name: data.name || 'Custom Cocktail',
+      description: data.description || 'A custom creation',
+      ingredients: data.ingredients || selectedIngredients.map(i => i.name),
+      instructions: data.instructions || ['Combine ingredients and stir.'],
+      predictedProfile: data.predictedProfile || targetProfile,
+      rationale: data.rationale || 'A balanced cocktail using your selected ingredients.'
+    };
+  } catch (error) {
+    console.error("Error building cocktail from ingredients:", error);
+    throw error;
+  }
+};

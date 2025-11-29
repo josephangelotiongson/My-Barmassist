@@ -1145,6 +1145,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/lab/build', async (req, res) => {
+    try {
+      const { ingredients, targetProfile } = req.body;
+      
+      if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+        return res.status(400).json({ 
+          message: "At least one ingredient is required" 
+        });
+      }
+      
+      if (!targetProfile) {
+        return res.status(400).json({ 
+          message: "Target flavor profile is required" 
+        });
+      }
+      
+      console.log(`[Lab] Building cocktail from ${ingredients.length} ingredients`);
+      
+      const { buildCocktailFromIngredients } = await import('../services/geminiService');
+      const result = await buildCocktailFromIngredients(ingredients, targetProfile);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error building cocktail from ingredients:", error);
+      res.status(500).json({ 
+        message: "Failed to build cocktail",
+        error: error.message 
+      });
+    }
+  });
+
   // Helper: Compute ingredient signature hash for deduplication
   function computeIngredientSignature(ingredients: string[], parentSlug: string): string {
     // Normalize ingredients: lowercase, remove measurements, sort alphabetically

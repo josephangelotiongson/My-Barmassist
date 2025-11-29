@@ -58,7 +58,27 @@ interface ExistingRiff {
   parentRecipeName: string;
 }
 
+interface MasterIngredient {
+  id: number;
+  slug: string;
+  name: string;
+  category: string;
+  subCategory?: string;
+  abv?: number;
+  flavorNotes?: string;
+}
+
+interface BuildResult {
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string[];
+  predictedProfile: FlavorProfile;
+  rationale: string;
+}
+
 const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe }) => {
+  const [labMode, setLabMode] = useState<'recipe' | 'build'>('recipe');
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
@@ -68,6 +88,14 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSubs, setAppliedSubs] = useState<Set<number>>(new Set());
   const [editorMode, setEditorMode] = useState<'wheel' | 'sliders'>('wheel');
+  
+  // Build mode states
+  const [masterIngredients, setMasterIngredients] = useState<MasterIngredient[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<MasterIngredient[]>([]);
+  const [ingredientSearchQuery, setIngredientSearchQuery] = useState('');
+  const [showIngredientPicker, setShowIngredientPicker] = useState(false);
+  const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
+  const [isBuilding, setIsBuilding] = useState(false);
   
   // Riff saving states
   const [riffName, setRiffName] = useState('');
@@ -79,6 +107,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
   useEffect(() => {
     if (initialRecipe) {
+      setLabMode('recipe');
       setSelectedRecipe(initialRecipe);
       setTargetProfile(initialRecipe.flavorProfile && Object.keys(initialRecipe.flavorProfile).length > 0 
         ? { ...initialRecipe.flavorProfile } 
@@ -89,6 +118,100 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
       onClearInitialRecipe?.();
     }
   }, [initialRecipe?.id]);
+
+  useEffect(() => {
+    const fetchMasterIngredients = async () => {
+      try {
+        const response = await fetch('/api/ingredients');
+        if (response.ok) {
+          const data = await response.json();
+          setMasterIngredients(data);
+        }
+      } catch (err) {
+        console.error('Failed to load master ingredients:', err);
+      }
+    };
+    fetchMasterIngredients();
+  }, []);
+
+  const filteredIngredients = useMemo(() => {
+    if (!ingredientSearchQuery.trim()) return masterIngredients.slice(0, 50);
+    const q = ingredientSearchQuery.toLowerCase();
+    return masterIngredients.filter(i => 
+      i.name.toLowerCase().includes(q) || 
+      i.category.toLowerCase().includes(q) ||
+      i.subCategory?.toLowerCase().includes(q)
+    ).slice(0, 50);
+  }, [masterIngredients, ingredientSearchQuery]);
+
+  const ingredientsByCategory = useMemo(() => {
+    const grouped: Record<string, MasterIngredient[]> = {};
+    filteredIngredients.forEach(ing => {
+      if (!grouped[ing.category]) grouped[ing.category] = [];
+      grouped[ing.category].push(ing);
+    });
+    return grouped;
+  }, [filteredIngredients]);
+
+  const handleAddIngredient = (ingredient: MasterIngredient) => {
+    if (!selectedIngredients.find(i => i.id === ingredient.id)) {
+      setSelectedIngredients(prev => [...prev, ingredient]);
+    }
+  };
+
+  const handleRemoveIngredient = (ingredientId: number) => {
+    setSelectedIngredients(prev => prev.filter(i => i.id !== ingredientId));
+  };
+
+  const buildCocktail = async () => {
+    if (selectedIngredients.length === 0) return;
+    
+    setIsBuilding(true);
+    setBuildResult(null);
+    setErrorMessage(null);
+    
+    try {
+      const response = await fetch('/api/lab/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ingredients: selectedIngredients.map(i => ({
+            name: i.name,
+            category: i.category,
+            abv: i.abv,
+            flavorNotes: i.flavorNotes
+          })),
+          targetProfile
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to build cocktail');
+      }
+      
+      const result = await response.json();
+      setBuildResult(result);
+    } catch (err) {
+      setErrorMessage('Failed to build cocktail. Please try again.');
+      console.error('Build error:', err);
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
+  const handleModeSwitch = (mode: 'recipe' | 'build') => {
+    setLabMode(mode);
+    setErrorMessage(null);
+    if (mode === 'recipe') {
+      setBuildResult(null);
+      setSelectedIngredients([]);
+    } else {
+      setLabResult(null);
+      setSelectedRecipe(null);
+      setAppliedSubs(new Set());
+    }
+  };
 
   const getRecipeProfile = (recipe: Cocktail): FlavorProfile => {
     return recipe.flavorProfile && Object.keys(recipe.flavorProfile).length > 0 
@@ -349,480 +472,792 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
         </div>
         
         <p className="text-sm text-stone-300 leading-relaxed">
-          Select a cocktail as your starting point, adjust the target flavor profile, and let AI suggest ingredient substitutions to achieve your desired taste.
+          {labMode === 'recipe' 
+            ? 'Select a cocktail as your starting point, adjust the target flavor profile, and let AI suggest ingredient substitutions.'
+            : 'Pick your ingredients and target flavor profile, and AI will create a custom cocktail recipe for you.'
+          }
         </p>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-stone-700 overflow-hidden">
+      <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
         <button
-          onClick={() => setShowRecipeSelector(!showRecipeSelector)}
-          className="w-full p-4 flex items-center justify-between hover:bg-stone-800/50 transition-colors"
+          onClick={() => handleModeSwitch('recipe')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            labMode === 'recipe' 
+              ? 'bg-surface text-white shadow-lg border border-stone-600' 
+              : 'text-stone-400 hover:text-stone-300'
+          }`}
         >
-          <div className="flex items-center gap-3">
-            <Beaker className="w-5 h-5 text-secondary" />
-            <div className="text-left">
-              <p className="text-xs text-stone-500 uppercase tracking-wider">Base Recipe</p>
-              <p className="text-white font-bold">
-                {selectedRecipe ? selectedRecipe.name : 'Select a cocktail...'}
-              </p>
-            </div>
-          </div>
-          {showRecipeSelector ? (
-            <ChevronUp className="w-5 h-5 text-stone-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-stone-400" />
-          )}
+          <Beaker className="w-4 h-4" />
+          Modify Recipe
         </button>
-        
-        {showRecipeSelector && (
-          <div className="border-t border-stone-700 p-3 max-h-64 overflow-y-auto">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search recipes..."
-              className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm text-white mb-2 outline-none focus:border-secondary"
-            />
-            <div className="space-y-1">
-              {filteredRecipes.map((recipe) => (
-                <button
-                  key={recipe.id}
-                  onClick={() => handleSelectRecipe(recipe)}
-                  className={`w-full text-left p-2 rounded-lg transition-colors flex items-center justify-between ${
-                    selectedRecipe?.id === recipe.id 
-                      ? 'bg-amber-900/30 border border-amber-700/50' 
-                      : 'hover:bg-stone-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-white">{recipe.name}</p>
-                      <p className="text-xs text-stone-500">{recipe.category || 'Classic'}</p>
-                    </div>
-                    {!hasValidProfile(recipe) && (
-                      <span className="text-[9px] bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded-full border border-stone-700">
-                        No profile
-                      </span>
-                    )}
-                  </div>
-                  {selectedRecipe?.id === recipe.id && (
-                    <Check className="w-4 h-4 text-secondary" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <button
+          onClick={() => handleModeSwitch('build')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            labMode === 'build' 
+              ? 'bg-surface text-white shadow-lg border border-stone-600' 
+              : 'text-stone-400 hover:text-stone-300'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Build from Scratch
+        </button>
       </div>
 
-      {selectedRecipe && (
+      {labMode === 'recipe' ? (
         <>
-          <div className="bg-surface rounded-2xl border border-stone-700 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-secondary" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Target Flavor Profile</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex bg-stone-800 rounded-lg p-0.5 border border-stone-700">
-                  <button
-                    onClick={() => setEditorMode('wheel')}
-                    className={`p-1.5 rounded transition-colors ${editorMode === 'wheel' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
-                    title="Wheel View"
-                  >
-                    <Disc className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('sliders')}
-                    className={`p-1.5 rounded transition-colors ${editorMode === 'sliders' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
-                    title="Sliders View"
-                  >
-                    <Sliders className="w-3.5 h-3.5" />
-                  </button>
+          <div className="bg-surface rounded-2xl border border-stone-700 overflow-hidden">
+            <button
+              onClick={() => setShowRecipeSelector(!showRecipeSelector)}
+              className="w-full p-4 flex items-center justify-between hover:bg-stone-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Beaker className="w-5 h-5 text-secondary" />
+                <div className="text-left">
+                  <p className="text-xs text-stone-500 uppercase tracking-wider">Base Recipe</p>
+                  <p className="text-white font-bold">
+                    {selectedRecipe ? selectedRecipe.name : 'Select a cocktail...'}
+                  </p>
                 </div>
-                <button
-                  onClick={() => setTargetProfile({ ...originalProfile })}
-                  className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Reset
-                </button>
               </div>
-            </div>
-
-            {!hasValidProfile(selectedRecipe) && (
-              <div className="bg-stone-800/50 border border-stone-700 rounded-lg p-2.5 mb-3">
-                <p className="text-xs text-stone-400">
-                  This recipe doesn't have flavor data yet. Using default profile as starting point.
-                </p>
-              </div>
-            )}
-            
-            {editorMode === 'wheel' ? (
-              <EditableFlavorWheel
-                profile={targetProfile}
-                originalProfile={originalProfile}
-                onProfileChange={setTargetProfile}
-                size={280}
-              />
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {Object.values(FlavorDimension).map((dim) => {
-                  const original = originalProfile[dim];
-                  const target = targetProfile[dim];
-                  const diff = target - original;
-                  
-                  return (
-                    <div key={dim} className="bg-stone-800/50 rounded-lg p-2.5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-medium text-stone-300">{dim}</span>
-                        <div className="flex items-center gap-1">
-                          {diff !== 0 && (
-                            <span className={`text-[10px] font-bold ${diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {diff > 0 ? '+' : ''}{diff}
-                            </span>
-                          )}
-                          <span className="text-xs font-bold text-white w-4 text-center">{target}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => adjustFlavor(dim, -1)}
-                          className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
-                        >
-                          <Minus className="w-3 h-3 text-stone-300" />
-                        </button>
-                        <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
-                            style={{ width: `${(target / 10) * 100}%` }}
-                          />
-                        </div>
-                        <button
-                          onClick={() => adjustFlavor(dim, 1)}
-                          className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
-                        >
-                          <Plus className="w-3 h-3 text-stone-300" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-surface rounded-2xl border border-stone-700 p-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-secondary" />
-              Flavor Comparison
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
-                  <PolarGrid stroke="#44403c" />
-                  <PolarAngleAxis 
-                    dataKey="subject" 
-                    tick={{ fill: '#a8a29e', fontSize: 10, fontWeight: 600 }} 
-                  />
-                  <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
-                  
-                  <Radar
-                    name="Original"
-                    dataKey="Original"
-                    stroke="#6b7280"
-                    strokeWidth={2}
-                    fill="#6b7280"
-                    fillOpacity={0.2}
-                    strokeDasharray="4 4"
-                  />
-                  
-                  <Radar
-                    name="Target"
-                    dataKey="Target"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    fill="#f59e0b"
-                    fillOpacity={0.3}
-                  />
-                  
-                  {labResult && (
-                    <Radar
-                      name="Predicted"
-                      dataKey="Predicted"
-                      stroke="#22c55e"
-                      strokeWidth={3}
-                      fill="#22c55e"
-                      fillOpacity={0.2}
-                    />
-                  )}
-                  
-                  <Legend 
-                    wrapperStyle={{ fontSize: '10px' }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex gap-2 text-[10px] justify-center mt-2">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-0.5 bg-stone-500" style={{ borderStyle: 'dashed' }}></span>
-                <span className="text-stone-400">Original</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-0.5 bg-amber-500"></span>
-                <span className="text-stone-400">Target</span>
-              </span>
-              {labResult && (
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-0.5 bg-green-500"></span>
-                  <span className="text-stone-400">Predicted</span>
-                </span>
+              {showRecipeSelector ? (
+                <ChevronUp className="w-5 h-5 text-stone-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-stone-400" />
               )}
-            </div>
+            </button>
+            
+            {showRecipeSelector && (
+              <div className="border-t border-stone-700 p-3 max-h-64 overflow-y-auto">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search recipes..."
+                  className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm text-white mb-2 outline-none focus:border-secondary"
+                />
+                <div className="space-y-1">
+                  {filteredRecipes.map((recipe) => (
+                    <button
+                      key={recipe.id}
+                      onClick={() => handleSelectRecipe(recipe)}
+                      className={`w-full text-left p-2 rounded-lg transition-colors flex items-center justify-between ${
+                        selectedRecipe?.id === recipe.id 
+                          ? 'bg-amber-900/30 border border-amber-700/50' 
+                          : 'hover:bg-stone-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-white">{recipe.name}</p>
+                          <p className="text-xs text-stone-500">{recipe.category || 'Classic'}</p>
+                        </div>
+                        {!hasValidProfile(recipe) && (
+                          <span className="text-[9px] bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded-full border border-stone-700">
+                            No profile
+                          </span>
+                        )}
+                      </div>
+                      {selectedRecipe?.id === recipe.id && (
+                        <Check className="w-4 h-4 text-secondary" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={analyzeSubstitutions}
-            disabled={isAnalyzing || !hasChanges}
-            className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                AI Analyzing Substitutions...
-              </>
-            ) : (
-              <>
-                <Shuffle className="w-5 h-5" />
-                {hasChanges ? 'Get AI Substitution Recommendations' : 'Adjust Target Profile First'}
-              </>
-            )}
-          </button>
-
-          {errorMessage && (
-            <div className="bg-red-950/30 border border-red-800/50 rounded-xl p-3 flex items-start gap-2">
-              <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-red-400">{errorMessage}</p>
-                <button 
-                  onClick={() => setErrorMessage(null)}
-                  className="text-xs text-stone-400 hover:text-white mt-1"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          )}
-
-          {labResult && (
-            <div className="space-y-4">
+          {selectedRecipe && (
+            <>
               <div className="bg-surface rounded-2xl border border-stone-700 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-4 h-4 text-secondary" />
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Recommendations</h3>
-                </div>
-                
-                <p className="text-sm text-stone-300 mb-4 leading-relaxed bg-stone-800/50 p-3 rounded-lg border-l-2 border-secondary">
-                  {labResult.rationale}
-                </p>
-                
-                {labResult.substitutions.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Suggested Substitutions</p>
-                    {labResult.substitutions.map((sub, idx) => (
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-secondary" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Target Flavor Profile</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-stone-800 rounded-lg p-0.5 border border-stone-700">
                       <button
-                        key={idx}
-                        onClick={() => toggleSubstitution(idx)}
-                        className={`w-full text-left p-3 rounded-xl border transition-all ${
-                          appliedSubs.has(idx)
-                            ? 'bg-green-950/30 border-green-700/50'
-                            : 'bg-stone-800/50 border-stone-700 hover:border-amber-700/50'
-                        }`}
+                        onClick={() => setEditorMode('wheel')}
+                        className={`p-1.5 rounded transition-colors ${editorMode === 'wheel' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
+                        title="Wheel View"
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-red-400 line-through">{sub.original}</span>
-                            <ArrowRight className="w-3 h-3 text-stone-500" />
-                            <span className="text-sm text-green-400 font-medium">{sub.replacement}</span>
+                        <Disc className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEditorMode('sliders')}
+                        className={`p-1.5 rounded transition-colors ${editorMode === 'sliders' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
+                        title="Sliders View"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setTargetProfile({ ...originalProfile })}
+                      className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                {!hasValidProfile(selectedRecipe) && (
+                  <div className="bg-stone-800/50 border border-stone-700 rounded-lg p-2.5 mb-3">
+                    <p className="text-xs text-stone-400">
+                      This recipe doesn't have flavor data yet. Using default profile as starting point.
+                    </p>
+                  </div>
+                )}
+                
+                {editorMode === 'wheel' ? (
+                  <EditableFlavorWheel
+                    profile={targetProfile}
+                    originalProfile={originalProfile}
+                    onProfileChange={setTargetProfile}
+                    size={280}
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.values(FlavorDimension).map((dim) => {
+                      const original = originalProfile[dim];
+                      const target = targetProfile[dim];
+                      const diff = target - original;
+                      
+                      return (
+                        <div key={dim} className="bg-stone-800/50 rounded-lg p-2.5">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-medium text-stone-300">{dim}</span>
+                            <div className="flex items-center gap-1">
+                              {diff !== 0 && (
+                                <span className={`text-[10px] font-bold ${diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {diff > 0 ? '+' : ''}{diff}
+                                </span>
+                              )}
+                              <span className="text-xs font-bold text-white w-4 text-center">{target}</span>
+                            </div>
                           </div>
-                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                            appliedSubs.has(idx)
-                              ? 'bg-green-600 border-green-500'
-                              : 'border-stone-600'
-                          }`}>
-                            {appliedSubs.has(idx) && <Check className="w-3 h-3 text-white" />}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => adjustFlavor(dim, -1)}
+                              className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
+                            >
+                              <Minus className="w-3 h-3 text-stone-300" />
+                            </button>
+                            <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
+                                style={{ width: `${(target / 10) * 100}%` }}
+                              />
+                            </div>
+                            <button
+                              onClick={() => adjustFlavor(dim, 1)}
+                              className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
+                            >
+                              <Plus className="w-3 h-3 text-stone-300" />
+                            </button>
                           </div>
                         </div>
-                        <p className="text-xs text-stone-400">{sub.rationale}</p>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-stone-500 text-sm">
-                    The original recipe already achieves the target profile well!
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              {appliedSubs.size > 0 && (
-                <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-2xl border border-amber-800/30 overflow-hidden">
-                  <div className="bg-gradient-to-r from-amber-900/40 to-orange-900/30 px-4 py-3 border-b border-amber-800/30">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Wine className="w-5 h-5 text-amber-400" />
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Your New Riff</h3>
-                      </div>
-                      {existingRiff && (
-                        <span className="flex items-center gap-1 text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded-full border border-blue-700/50">
-                          <Database className="w-3 h-3" />
-                          Existing Riff Found
-                        </span>
-                      )}
-                      {saveSuccess && (
-                        <span className="flex items-center gap-1 text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded-full border border-green-700/50">
-                          <Check className="w-3 h-3" />
-                          Saved!
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 space-y-4">
-                    {/* Riff Name Input */}
-                    {!saveSuccess && !existingRiff && (
-                      <div>
-                        <label className="block text-xs text-stone-400 mb-1.5 uppercase tracking-wider">Riff Name</label>
-                        <input
-                          type="text"
-                          value={riffName}
-                          onChange={(e) => setRiffName(e.target.value)}
-                          placeholder={generateRiffName()}
-                          className="w-full bg-stone-800/80 border border-stone-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-600 transition-colors"
+              <div className="bg-surface rounded-2xl border border-stone-700 p-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-secondary" />
+                  Flavor Comparison
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
+                      <PolarGrid stroke="#44403c" />
+                      <PolarAngleAxis 
+                        dataKey="subject" 
+                        tick={{ fill: '#a8a29e', fontSize: 10, fontWeight: 600 }} 
+                      />
+                      <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+                      
+                      <Radar
+                        name="Original"
+                        dataKey="Original"
+                        stroke="#6b7280"
+                        strokeWidth={2}
+                        fill="#6b7280"
+                        fillOpacity={0.2}
+                        strokeDasharray="4 4"
+                      />
+                      
+                      <Radar
+                        name="Target"
+                        dataKey="Target"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        fill="#f59e0b"
+                        fillOpacity={0.3}
+                      />
+                      
+                      {labResult && (
+                        <Radar
+                          name="Predicted"
+                          dataKey="Predicted"
+                          stroke="#22c55e"
+                          strokeWidth={3}
+                          fill="#22c55e"
+                          fillOpacity={0.2}
                         />
-                      </div>
-                    )}
-                    
-                    {/* Show saved or existing riff name */}
-                    {(saveSuccess || existingRiff) && (
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-700/50 to-orange-800/50 flex items-center justify-center border border-amber-700/30">
-                          <FlaskConical className="w-6 h-6 text-amber-300" />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-white">
-                            {savedRiff?.name || existingRiff?.name}
-                          </h4>
-                          <p className="text-xs text-stone-400">
-                            Riff of {selectedRecipe?.name}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Ingredients List */}
-                    <div>
-                      <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Ingredients</p>
-                      <div className="bg-stone-800/50 rounded-xl p-3 space-y-1.5">
-                        {getModifiedIngredients().map((ing, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                            <span className="text-stone-300">{ing}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Flavor Profile Preview */}
-                    {labResult?.predictedProfile && (
-                      <div>
-                        <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Predicted Flavor Profile</p>
-                        <div className="grid grid-cols-4 gap-2">
-                          {Object.entries(labResult.predictedProfile).map(([dim, value]) => (
-                            <div key={dim} className="text-center">
-                              <div className="h-1.5 bg-stone-700 rounded-full overflow-hidden mb-1">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-amber-600 to-orange-500"
-                                  style={{ width: `${(Number(value) / 10) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-[10px] text-stone-400">{dim}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Substitutions Applied */}
-                    <div>
-                      <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Modifications Made</p>
-                      <div className="space-y-1.5">
-                        {getAppliedSubstitutions().map((sub, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs bg-stone-800/50 rounded-lg px-2 py-1.5">
-                            <span className="text-red-400 line-through">{sub.original}</span>
-                            <ArrowRight className="w-3 h-3 text-stone-500" />
-                            <span className="text-green-400 font-medium">{sub.replacement}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Existing Riff Message */}
-                    {existingRiff && (
-                      <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-3">
-                        <p className="text-sm text-blue-300 mb-2">
-                          This riff already exists in your collection!
-                        </p>
-                        <p className="text-xs text-stone-400">
-                          {existingRiff.description || `A variation of ${existingRiff.parentRecipeName} with similar ingredients.`}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Save Button */}
-                    {!saveSuccess && !existingRiff && (
-                      <button
-                        onClick={saveRiff}
-                        disabled={isSavingRiff}
-                        className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
-                      >
-                        {isSavingRiff ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Saving Riff...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4" />
-                            Save Riff to Collection
-                          </>
-                        )}
-                      </button>
-                    )}
-                    
-                    {/* Success Message */}
-                    {saveSuccess && savedRiff && (
-                      <div className="bg-green-950/30 border border-green-800/50 rounded-xl p-3 text-center">
-                        <p className="text-sm text-green-300 mb-1">
-                          Your riff has been saved and added to the cocktail family tree!
-                        </p>
-                        <p className="text-xs text-stone-400">
-                          Find it in your Barmulary under Lab Riffs.
-                        </p>
-                      </div>
-                    )}
+                      )}
+                      
+                      <Legend 
+                        wrapperStyle={{ fontSize: '10px' }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex gap-2 text-[10px] justify-center mt-2">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-0.5 bg-stone-500" style={{ borderStyle: 'dashed' }}></span>
+                    <span className="text-stone-400">Original</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-0.5 bg-amber-500"></span>
+                    <span className="text-stone-400">Target</span>
+                  </span>
+                  {labResult && (
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-0.5 bg-green-500"></span>
+                      <span className="text-stone-400">Predicted</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={analyzeSubstitutions}
+                disabled={isAnalyzing || !hasChanges}
+                className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    AI Analyzing Substitutions...
+                  </>
+                ) : (
+                  <>
+                    <Shuffle className="w-5 h-5" />
+                    {hasChanges ? 'Get AI Substitution Recommendations' : 'Adjust Target Profile First'}
+                  </>
+                )}
+              </button>
+
+              {errorMessage && (
+                <div className="bg-red-950/30 border border-red-800/50 rounded-xl p-3 flex items-start gap-2">
+                  <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-red-400">{errorMessage}</p>
+                    <button 
+                      onClick={() => setErrorMessage(null)}
+                      className="text-xs text-stone-400 hover:text-white mt-1"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </div>
               )}
+
+              {labResult && (
+                <div className="space-y-4">
+                  <div className="bg-surface rounded-2xl border border-stone-700 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lightbulb className="w-4 h-4 text-secondary" />
+                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Recommendations</h3>
+                    </div>
+                    
+                    <p className="text-sm text-stone-300 mb-4 leading-relaxed bg-stone-800/50 p-3 rounded-lg border-l-2 border-secondary">
+                      {labResult.rationale}
+                    </p>
+                    
+                    {labResult.substitutions.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Suggested Substitutions</p>
+                        {labResult.substitutions.map((sub, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => toggleSubstitution(idx)}
+                            className={`w-full text-left p-3 rounded-xl border transition-all ${
+                              appliedSubs.has(idx)
+                                ? 'bg-green-950/30 border-green-700/50'
+                                : 'bg-stone-800/50 border-stone-700 hover:border-amber-700/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-red-400 line-through">{sub.original}</span>
+                                <ArrowRight className="w-3 h-3 text-stone-500" />
+                                <span className="text-sm text-green-400 font-medium">{sub.replacement}</span>
+                              </div>
+                              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                                appliedSubs.has(idx)
+                                  ? 'bg-green-600 border-green-500'
+                                  : 'border-stone-600'
+                              }`}>
+                                {appliedSubs.has(idx) && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                            </div>
+                            <p className="text-xs text-stone-400">{sub.rationale}</p>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-stone-500 text-sm">
+                        The original recipe already achieves the target profile well!
+                      </div>
+                    )}
+                  </div>
+
+                  {appliedSubs.size > 0 && (
+                    <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-2xl border border-amber-800/30 overflow-hidden">
+                      <div className="bg-gradient-to-r from-amber-900/40 to-orange-900/30 px-4 py-3 border-b border-amber-800/30">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wine className="w-5 h-5 text-amber-400" />
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Your New Riff</h3>
+                          </div>
+                          {existingRiff && (
+                            <span className="flex items-center gap-1 text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded-full border border-blue-700/50">
+                              <Database className="w-3 h-3" />
+                              Existing Riff Found
+                            </span>
+                          )}
+                          {saveSuccess && (
+                            <span className="flex items-center gap-1 text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded-full border border-green-700/50">
+                              <Check className="w-3 h-3" />
+                              Saved!
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 space-y-4">
+                        {/* Riff Name Input */}
+                        {!saveSuccess && !existingRiff && (
+                          <div>
+                            <label className="block text-xs text-stone-400 mb-1.5 uppercase tracking-wider">Riff Name</label>
+                            <input
+                              type="text"
+                              value={riffName}
+                              onChange={(e) => setRiffName(e.target.value)}
+                              placeholder={generateRiffName()}
+                              className="w-full bg-stone-800/80 border border-stone-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-600 transition-colors"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Show saved or existing riff name */}
+                        {(saveSuccess || existingRiff) && (
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-700/50 to-orange-800/50 flex items-center justify-center border border-amber-700/30">
+                              <FlaskConical className="w-6 h-6 text-amber-300" />
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-bold text-white">
+                                {savedRiff?.name || existingRiff?.name}
+                              </h4>
+                              <p className="text-xs text-stone-400">
+                                Riff of {selectedRecipe?.name}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Ingredients List */}
+                        <div>
+                          <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Ingredients</p>
+                          <div className="bg-stone-800/50 rounded-xl p-3 space-y-1.5">
+                            {getModifiedIngredients().map((ing, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                <span className="text-stone-300">{ing}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Flavor Profile Preview */}
+                        {labResult?.predictedProfile && (
+                          <div>
+                            <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Predicted Flavor Profile</p>
+                            <div className="grid grid-cols-4 gap-2">
+                              {Object.entries(labResult.predictedProfile).map(([dim, value]) => (
+                                <div key={dim} className="text-center">
+                                  <div className="h-1.5 bg-stone-700 rounded-full overflow-hidden mb-1">
+                                    <div 
+                                      className="h-full bg-gradient-to-r from-amber-600 to-orange-500"
+                                      style={{ width: `${(Number(value) / 10) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-stone-400">{dim}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Substitutions Applied */}
+                        <div>
+                          <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Modifications Made</p>
+                          <div className="space-y-1.5">
+                            {getAppliedSubstitutions().map((sub, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs bg-stone-800/50 rounded-lg px-2 py-1.5">
+                                <span className="text-red-400 line-through">{sub.original}</span>
+                                <ArrowRight className="w-3 h-3 text-stone-500" />
+                                <span className="text-green-400 font-medium">{sub.replacement}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Existing Riff Message */}
+                        {existingRiff && (
+                          <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-3">
+                            <p className="text-sm text-blue-300 mb-2">
+                              This riff already exists in your collection!
+                            </p>
+                            <p className="text-xs text-stone-400">
+                              {existingRiff.description || `A variation of ${existingRiff.parentRecipeName} with similar ingredients.`}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Save Button */}
+                        {!saveSuccess && !existingRiff && (
+                          <button
+                            onClick={saveRiff}
+                            disabled={isSavingRiff}
+                            className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+                          >
+                            {isSavingRiff ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Saving Riff...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4" />
+                                Save Riff to Collection
+                              </>
+                            )}
+                          </button>
+                        )}
+                        
+                        {/* Success Message */}
+                        {saveSuccess && savedRiff && (
+                          <div className="bg-green-950/30 border border-green-800/50 rounded-xl p-3 text-center">
+                            <p className="text-sm text-green-300 mb-1">
+                              Your riff has been saved and added to the cocktail family tree!
+                            </p>
+                            <p className="text-xs text-stone-400">
+                              Find it in your Barmulary under Lab Riffs.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {!selectedRecipe && (
+            <div className="bg-stone-900/50 rounded-2xl border border-stone-800 p-8 text-center">
+              <FlaskConical className="w-12 h-12 text-stone-600 mx-auto mb-3" />
+              <p className="text-stone-400 text-sm">Select a cocktail to start experimenting</p>
             </div>
           )}
         </>
-      )}
+      ) : (
+        <>
+          <div className="bg-surface rounded-2xl border border-stone-700 overflow-hidden">
+            <button
+              onClick={() => setShowIngredientPicker(!showIngredientPicker)}
+              className="w-full p-4 flex items-center justify-between hover:bg-stone-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Plus className="w-5 h-5 text-accent" />
+                <div className="text-left">
+                  <p className="text-xs text-stone-500 uppercase tracking-wider">Your Ingredients</p>
+                  <p className="text-white font-bold">
+                    {selectedIngredients.length > 0 
+                      ? `${selectedIngredients.length} selected` 
+                      : 'Pick ingredients to start...'}
+                  </p>
+                </div>
+              </div>
+              {showIngredientPicker ? (
+                <ChevronUp className="w-5 h-5 text-stone-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-stone-400" />
+              )}
+            </button>
 
-      {!selectedRecipe && (
-        <div className="bg-stone-900/50 rounded-2xl border border-stone-800 p-8 text-center">
-          <FlaskConical className="w-12 h-12 text-stone-600 mx-auto mb-3" />
-          <p className="text-stone-400 text-sm">Select a cocktail to start experimenting</p>
-        </div>
+            {selectedIngredients.length > 0 && !showIngredientPicker && (
+              <div className="border-t border-stone-700 p-3">
+                <div className="flex flex-wrap gap-2">
+                  {selectedIngredients.map((ing) => (
+                    <span
+                      key={ing.id}
+                      className="inline-flex items-center gap-1.5 bg-accent/20 text-accent border border-accent/30 px-2.5 py-1 rounded-full text-xs font-medium"
+                    >
+                      {ing.name}
+                      <button
+                        onClick={() => handleRemoveIngredient(ing.id)}
+                        className="hover:text-white transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {showIngredientPicker && (
+              <div className="border-t border-stone-700 p-3 max-h-72 overflow-y-auto">
+                <input
+                  type="text"
+                  value={ingredientSearchQuery}
+                  onChange={(e) => setIngredientSearchQuery(e.target.value)}
+                  placeholder="Search ingredients..."
+                  className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm text-white mb-3 outline-none focus:border-accent"
+                />
+
+                {selectedIngredients.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] uppercase tracking-wider text-stone-500 mb-2">Selected</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedIngredients.map((ing) => (
+                        <span
+                          key={ing.id}
+                          className="inline-flex items-center gap-1 bg-accent/20 text-accent border border-accent/30 px-2 py-0.5 rounded-full text-xs"
+                        >
+                          {ing.name}
+                          <button onClick={() => handleRemoveIngredient(ing.id)}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {Object.entries(ingredientsByCategory).map(([category, ingredients]) => (
+                    <div key={category}>
+                      <p className="text-[10px] uppercase tracking-wider text-stone-500 mb-1.5">{category}</p>
+                      <div className="space-y-1">
+                        {ingredients.map((ing) => {
+                          const isSelected = selectedIngredients.some(s => s.id === ing.id);
+                          return (
+                            <button
+                              key={ing.id}
+                              onClick={() => isSelected ? handleRemoveIngredient(ing.id) : handleAddIngredient(ing)}
+                              className={`w-full text-left p-2 rounded-lg transition-colors flex items-center justify-between ${
+                                isSelected 
+                                  ? 'bg-accent/20 border border-accent/30' 
+                                  : 'hover:bg-stone-800'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-white">{ing.name}</p>
+                                {ing.flavorNotes && (
+                                  <p className="text-[10px] text-stone-500 line-clamp-1">{ing.flavorNotes}</p>
+                                )}
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-accent" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {selectedIngredients.length > 0 && (
+            <>
+              <div className="bg-surface rounded-2xl border border-stone-700 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-accent" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Target Flavor Profile</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-stone-800 rounded-lg p-0.5 border border-stone-700">
+                      <button
+                        onClick={() => setEditorMode('wheel')}
+                        className={`p-1.5 rounded transition-colors ${editorMode === 'wheel' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
+                        title="Wheel View"
+                      >
+                        <Disc className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEditorMode('sliders')}
+                        className={`p-1.5 rounded transition-colors ${editorMode === 'sliders' ? 'bg-stone-700 text-white' : 'text-stone-400 hover:text-white'}`}
+                        title="Sliders View"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setTargetProfile({ ...DEFAULT_PROFILE })}
+                      className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                {editorMode === 'wheel' ? (
+                  <EditableFlavorWheel
+                    flavorProfile={targetProfile}
+                    onChange={setTargetProfile}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {Object.values(FlavorDimension).map((dim) => (
+                      <div key={dim} className="flex items-center gap-3">
+                        <span className="text-xs text-stone-400 w-16">{dim}</span>
+                        <div className="flex-1 flex items-center gap-2">
+                          <button
+                            onClick={() => adjustFlavor(dim, -1)}
+                            className="p-1 hover:bg-stone-700 rounded transition-colors"
+                          >
+                            <Minus className="w-3 h-3 text-stone-400" />
+                          </button>
+                          <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-accent to-purple-500 transition-all"
+                              style={{ width: `${(targetProfile[dim] / 10) * 100}%` }}
+                            />
+                          </div>
+                          <button
+                            onClick={() => adjustFlavor(dim, 1)}
+                            className="p-1 hover:bg-stone-700 rounded transition-colors"
+                          >
+                            <Plus className="w-3 h-3 text-stone-400" />
+                          </button>
+                          <span className="text-xs text-white w-6 text-center">{targetProfile[dim]}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={buildCocktail}
+                disabled={isBuilding || selectedIngredients.length === 0}
+                className="w-full bg-gradient-to-r from-accent to-purple-600 hover:from-accent hover:to-purple-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg"
+              >
+                {isBuilding ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating Your Cocktail...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Create Cocktail
+                  </>
+                )}
+              </button>
+            </>
+          )}
+
+          {errorMessage && (
+            <div className="bg-red-950/30 border border-red-800/50 rounded-xl p-3 text-center">
+              <p className="text-sm text-red-300">{errorMessage}</p>
+            </div>
+          )}
+
+          {buildResult && (
+            <div className="bg-surface rounded-2xl border border-stone-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-accent/20 to-purple-900/20 p-4 border-b border-stone-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center">
+                    <Wine className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{buildResult.name}</h3>
+                    <p className="text-xs text-stone-400">{buildResult.description}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                <div>
+                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Ingredients</p>
+                  <ul className="space-y-1.5">
+                    {buildResult.ingredients.map((ing, idx) => (
+                      <li key={idx} className="text-sm text-white flex items-start gap-2">
+                        <span className="text-accent mt-0.5">•</span>
+                        {ing}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Instructions</p>
+                  <ol className="space-y-2">
+                    {buildResult.instructions.map((step, idx) => (
+                      <li key={idx} className="text-sm text-stone-300 flex gap-2">
+                        <span className="text-accent font-bold">{idx + 1}.</span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div>
+                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Why This Works</p>
+                  <p className="text-xs text-stone-400 leading-relaxed">{buildResult.rationale}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Predicted Flavor Profile</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {Object.entries(buildResult.predictedProfile).map(([dim, value]) => (
+                      <div key={dim} className="text-center">
+                        <div className="h-1.5 bg-stone-700 rounded-full overflow-hidden mb-1">
+                          <div 
+                            className="h-full bg-gradient-to-r from-accent to-purple-500"
+                            style={{ width: `${(Number(value) / 10) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-stone-400">{dim}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedIngredients.length === 0 && (
+            <div className="bg-stone-900/50 rounded-2xl border border-stone-800 p-8 text-center">
+              <Plus className="w-12 h-12 text-stone-600 mx-auto mb-3" />
+              <p className="text-stone-400 text-sm">Pick some ingredients to get started</p>
+              <p className="text-stone-500 text-xs mt-1">Select spirits, liqueurs, or other ingredients and AI will create a cocktail for you</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
