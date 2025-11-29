@@ -690,7 +690,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       setTargetProfile(profile);
                       setTargetNoteProfile(noteProfile);
                     }}
-                    size={280}
+                    responsive={true}
                   />
                 </div>
                 <div className={editorMode === 'sliders' ? 'grid grid-cols-2 gap-3' : 'hidden'}>
@@ -1248,7 +1248,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       setTargetProfile(profile);
                       setTargetNoteProfile(noteProfile);
                     }}
-                    size={280}
+                    responsive={true}
                   />
                 ) : (
                   <div className="space-y-3">

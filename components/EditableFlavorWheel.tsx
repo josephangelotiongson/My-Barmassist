@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { FlavorProfile, FlavorDimension } from '../types';
 import { FLAVOR_TAXONOMY, FlavorCategory, FlavorSubcategory, FlavorNote } from '../shared/flavorTaxonomy';
 
@@ -13,6 +13,7 @@ interface Props {
   noteProfile?: NoteProfile;
   onProfileChange: (profile: FlavorProfile, noteProfile?: NoteProfile) => void;
   size?: number;
+  responsive?: boolean;
   readOnly?: boolean;
 }
 
@@ -102,17 +103,51 @@ const EditableFlavorWheel: React.FC<Props> = ({
   currentProfile,
   noteProfile: externalNoteProfile,
   onProfileChange,
-  size = 320,
+  size: propSize = 320,
+  responsive = true,
   readOnly = false
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(propSize);
+
+  useEffect(() => {
+    if (!responsive) return;
+    if (typeof ResizeObserver === 'undefined') return;
+    
+    const measureContainer = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        if (width > 0) {
+          setContainerWidth(Math.min(width, 420));
+        }
+      }
+    };
+
+    measureContainer();
+    
+    const resizeObserver = new ResizeObserver(measureContainer);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [responsive]);
+
+  const size = responsive ? containerWidth : propSize;
   const center = size / 2;
-  const innerRingInner = 40;
-  const innerRingOuter = 65;
-  const middleRingInner = 68;
-  const middleRingOuter = 95;
-  const outerRingInner = 98;
-  const outerRingOuter = size / 2 - 55;
-  const labelRadius = size / 2 - 45;
+  const scale = size / 320;
+  
+  const innerRingInner = 0.13 * size;
+  const innerRingOuter = 0.21 * size;
+  const middleRingInner = 0.225 * size;
+  const middleRingOuter = 0.32 * size;
+  const outerRingInner = 0.335 * size;
+  const outerRingOuter = 0.42 * size;
+  const labelRadius = 0.47 * size;
+  
+  const categoryFontSize = Math.max(7, Math.min(12, 9 * scale));
+  const subcategoryFontSize = Math.max(6.5, Math.min(10, 8 * scale));
+  const noteFontSize = Math.max(6, Math.min(9, 7 * scale));
   
   const categoryCount = FLAVOR_TAXONOMY.length;
   const categoryAngle = 360 / categoryCount;
@@ -401,8 +436,8 @@ const EditableFlavorWheel: React.FC<Props> = ({
     .slice(0, 4);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative" style={{ width: size, height: size }}>
+    <div ref={containerRef} className="flex flex-col items-center w-full">
+      <div className="relative w-full" style={{ maxWidth: size, aspectRatio: '1/1' }}>
         <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
           <defs>
             {segments.map((cat) => (
@@ -455,7 +490,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
                               textAnchor={isRightSide ? "start" : "end"}
                               dominantBaseline="middle"
                               fill={note.value > 5 ? cat.color : '#78716c'}
-                              fontSize="6.5"
+                              fontSize={noteFontSize}
                               fontWeight={note.value > 5 ? '600' : '400'}
                               className="pointer-events-none select-none transition-all duration-300"
                               style={{ opacity: Math.max(0.5, note.intensity.opacity) }}
@@ -509,7 +544,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill={sub.value > 5 ? '#1c1917' : '#a8a29e'}
-                      fontSize="7"
+                      fontSize={subcategoryFontSize}
                       fontWeight="600"
                       className="pointer-events-none select-none transition-all duration-300"
                       style={{ opacity: Math.max(0.5, sub.intensity.opacity) }}
@@ -560,7 +595,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill={cat.value > 5 ? '#1c1917' : '#a8a29e'}
-                  fontSize="8"
+                  fontSize={categoryFontSize}
                   fontWeight="700"
                   className="pointer-events-none select-none transition-all duration-300"
                   style={{ opacity: Math.max(0.6, cat.intensity.opacity) }}
