@@ -289,6 +289,54 @@ export const cocktailRelationships = pgTable("cocktail_relationships", {
   index("idx_relationships_type").on(table.relationshipType),
 ]);
 
+// Flavor Categories - The 8 broad flavor dimensions (Sweet, Sour, Bitter, etc.)
+export const flavorCategories = pgTable("flavor_categories", {
+  id: varchar("id").primaryKey(), // e.g., 'sweet', 'sour', 'bitter'
+  label: varchar("label").notNull(), // Display name: 'Sweet', 'Sour', 'Bitter'
+  color: varchar("color").notNull(), // Hex color for UI
+  sortOrder: integer("sort_order").notNull().default(0),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Flavor Notes - Specific flavor notes within each category
+export const flavorNotes = pgTable("flavor_notes", {
+  id: varchar("id").primaryKey(), // e.g., 'sweet.honey', 'sweet.caramel'
+  categoryId: varchar("category_id").notNull().references(() => flavorCategories.id, { onDelete: "cascade" }),
+  label: varchar("label").notNull(), // Display name: 'Honey', 'Caramel'
+  sortOrder: integer("sort_order").notNull().default(0),
+  description: text("description"),
+  keywords: jsonb("keywords").$type<string[]>(), // Alternative terms for AI matching
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_flavor_notes_category").on(table.categoryId),
+]);
+
+// Ingredient Flavor Mappings - Links ingredients to their flavor notes
+export const ingredientFlavorMappings = pgTable("ingredient_flavor_mappings", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  ingredientKeyword: varchar("ingredient_keyword").notNull(), // e.g., 'bourbon', 'angostura bitters'
+  noteId: varchar("note_id").notNull().references(() => flavorNotes.id, { onDelete: "cascade" }),
+  intensity: integer("intensity").default(5), // 1-10 scale for how strongly this ingredient exhibits this flavor
+  isPrimary: boolean("is_primary").default(false), // Is this the dominant flavor?
+  source: varchar("source"), // 'system', 'ai', 'user_verified'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_ingredient_flavor_keyword").on(table.ingredientKeyword),
+  index("idx_ingredient_flavor_note").on(table.noteId),
+]);
+
+// Flavor Data Version - For cache invalidation
+export const flavorDataVersion = pgTable("flavor_data_version", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  version: varchar("version").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UserRecipe = typeof userRecipes.$inferSelect;
@@ -311,3 +359,10 @@ export type CocktailRelationship = typeof cocktailRelationships.$inferSelect;
 export type InsertCocktailRelationship = typeof cocktailRelationships.$inferInsert;
 export type LabRiff = typeof labRiffs.$inferSelect;
 export type InsertLabRiff = typeof labRiffs.$inferInsert;
+export type FlavorCategory = typeof flavorCategories.$inferSelect;
+export type InsertFlavorCategory = typeof flavorCategories.$inferInsert;
+export type FlavorNote = typeof flavorNotes.$inferSelect;
+export type InsertFlavorNote = typeof flavorNotes.$inferInsert;
+export type IngredientFlavorMapping = typeof ingredientFlavorMappings.$inferSelect;
+export type InsertIngredientFlavorMapping = typeof ingredientFlavorMappings.$inferInsert;
+export type FlavorDataVersion = typeof flavorDataVersion.$inferSelect;
