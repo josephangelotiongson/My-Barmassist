@@ -51,6 +51,15 @@ None set yet - will be documented as user expresses preferences during developme
   - "From Database" indicator when displaying cached lineage data
   - Refresh button to regenerate with AI and update the database
   - Auto-assigns new recipes to cocktail families when created/imported
+- **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation feature in the Rx tab:
+  - Select any cocktail as a starting point for experimentation
+  - Interactive editable flavor profile with 8 dimensions (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky)
+  - Visual radar chart comparing Original, Target, and Predicted flavor profiles
+  - AI suggests ingredient substitutions to achieve target flavor goals
+  - Toggle individual substitutions to preview modified recipe
+  - Handles recipes without flavor profiles gracefully with default profiles
+  - Clear error messaging when AI analysis fails
+  - Indicator for recipes lacking flavor data in recipe selector
 - **Privacy-First Approach**: User email is never stored in the database; only user ID, display name, and profile picture are retained
 
 ### Database Schema
