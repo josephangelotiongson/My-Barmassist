@@ -84,27 +84,39 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
     };
   };
 
-  const saveLineageToDatabase = async (data: FamilyTreeData) => {
+  const saveLineageToDatabase = async (data: FamilyTreeData): Promise<FamilyTreeData | null> => {
     try {
-      const familySlug = data.rootTemplate.name.toLowerCase().replace(/\s+/g, '-');
+      // Safely get family slug with fallback
+      const templateName = data.rootTemplate?.name || 'daiquiri';
+      const familySlug = templateName.toLowerCase().replace(/\s+/g, '-');
       
-      await fetch('/api/lineage', {
+      const response = await fetch('/api/lineage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipeName: cocktail.name,
           familySlug,
-          relationship: data.targetDrink.relationship,
-          keyModifications: data.targetDrink.keyModifications,
-          evolutionNarrative: data.evolutionNarrative,
-          ancestors: data.ancestors,
-          siblings: data.siblings,
-          descendants: data.descendants,
-          flavorBridges: data.flavorBridge
+          relationship: data.targetDrink?.relationship || '',
+          keyModifications: data.targetDrink?.keyModifications || [],
+          evolutionNarrative: data.evolutionNarrative || '',
+          ancestors: data.ancestors || [],
+          siblings: data.siblings || [],
+          descendants: data.descendants || [],
+          flavorBridges: data.flavorBridge || []
         })
       });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          // Return validated data from server (only includes DB-verified cocktails)
+          return convertDbToFamilyTree(result.data);
+        }
+      }
+      return null;
     } catch (err) {
       console.warn('Failed to save lineage to database:', err);
+      return null;
     }
   };
 
@@ -113,6 +125,7 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
       setIsLoading(true);
       setError(null);
       setIsFromDatabase(false);
+      setFamilyTree(null); // Clear any previous data before fetching new
       
       try {
         setLoadingStatus('checking');
@@ -134,10 +147,18 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
           cocktail.ingredients,
           recipeNames
         );
-        setFamilyTree(result);
 
         setLoadingStatus('saving');
-        await saveLineageToDatabase(result);
+        const validatedData = await saveLineageToDatabase(result);
+        
+        if (validatedData) {
+          // Only show validated data from server (filtered to only DB-verified cocktails)
+          setFamilyTree(validatedData);
+          setIsFromDatabase(true);
+        } else {
+          // Save failed - show error instead of unvalidated data
+          setError('Failed to validate lineage data. Please try again.');
+        }
         
       } catch (err) {
         console.error('Family tree analysis failed:', err);
@@ -154,6 +175,7 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
     setIsLoading(true);
     setError(null);
     setIsFromDatabase(false);
+    setFamilyTree(null); // Clear previous data before refreshing
     setLoadingStatus('generating');
     
     try {
@@ -163,10 +185,18 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
         cocktail.ingredients,
         recipeNames
       );
-      setFamilyTree(result);
 
       setLoadingStatus('saving');
-      await saveLineageToDatabase(result);
+      const validatedData = await saveLineageToDatabase(result);
+      
+      if (validatedData) {
+        // Only show validated data from server (filtered to only DB-verified cocktails)
+        setFamilyTree(validatedData);
+        setIsFromDatabase(true);
+      } else {
+        // Save failed - show error instead of unvalidated data
+        setError('Failed to validate lineage data. Please try again.');
+      }
     } catch (err) {
       console.error('Family tree refresh failed:', err);
       setError('Failed to refresh cocktail lineage. Please try again.');
@@ -292,17 +322,17 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
               {/* Root Template Card */}
               <div className="bg-gradient-to-br from-amber-950/30 to-stone-900 rounded-2xl p-5 border border-amber-800/30 relative overflow-hidden">
                 <div className="absolute top-0 right-0 text-6xl opacity-10 -rotate-12 translate-x-2 -translate-y-2">
-                  {getTemplateIcon(familyTree.rootTemplate.name)}
+                  {getTemplateIcon(familyTree.rootTemplate?.name || 'Daiquiri')}
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-xl bg-amber-900/50 border border-amber-700/50 flex items-center justify-center text-2xl flex-shrink-0">
-                    {getTemplateIcon(familyTree.rootTemplate.name)}
+                    {getTemplateIcon(familyTree.rootTemplate?.name || 'Daiquiri')}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mb-1">Root Template</p>
-                    <h2 className="text-xl font-bold text-white">{familyTree.rootTemplate.name}</h2>
-                    <p className="text-sm text-secondary font-mono mt-1">{familyTree.rootTemplate.formula}</p>
-                    <p className="text-xs text-stone-400 mt-2 leading-relaxed">{familyTree.rootTemplate.description}</p>
+                    <h2 className="text-xl font-bold text-white">{familyTree.rootTemplate?.name || 'Classic Template'}</h2>
+                    <p className="text-sm text-secondary font-mono mt-1">{familyTree.rootTemplate?.formula || 'Spirit + Modifier + Accent'}</p>
+                    <p className="text-xs text-stone-400 mt-2 leading-relaxed">{familyTree.rootTemplate?.description || 'A foundational cocktail structure'}</p>
                   </div>
                 </div>
               </div>
@@ -322,12 +352,12 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                     <Beaker className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-bold text-white">{familyTree.targetDrink.name}</h2>
-                    <p className="text-sm text-stone-400 mt-1">{familyTree.targetDrink.relationship}</p>
+                    <h2 className="text-xl font-bold text-white">{familyTree.targetDrink?.name || cocktail.name}</h2>
+                    <p className="text-sm text-stone-400 mt-1">{familyTree.targetDrink?.relationship || ''}</p>
                     
-                    {familyTree.targetDrink.keyModifications.length > 0 && (
+                    {(familyTree.targetDrink?.keyModifications?.length || 0) > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-3">
-                        {familyTree.targetDrink.keyModifications.map((mod, idx) => (
+                        {familyTree.targetDrink?.keyModifications?.map((mod, idx) => (
                           <span key={idx} className="text-[10px] bg-stone-800 text-stone-300 px-2 py-1 rounded border border-stone-700">
                             {mod}
                           </span>
@@ -345,27 +375,27 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSection === 'ancestors' ? 'bg-stone-700 text-white' : 'text-stone-500'}`}
                 >
                   <Clock className="w-3 h-3" />
-                  Ancestors ({familyTree.ancestors.length})
+                  Ancestors ({familyTree.ancestors?.length || 0})
                 </button>
                 <button 
                   onClick={() => setActiveSection('siblings')}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSection === 'siblings' ? 'bg-stone-700 text-white' : 'text-stone-500'}`}
                 >
                   <GitBranch className="w-3 h-3" />
-                  Siblings ({familyTree.siblings.length})
+                  Siblings ({familyTree.siblings?.length || 0})
                 </button>
                 <button 
                   onClick={() => setActiveSection('descendants')}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSection === 'descendants' ? 'bg-stone-700 text-white' : 'text-stone-500'}`}
                 >
                   <Zap className="w-3 h-3" />
-                  Riffs ({familyTree.descendants.length})
+                  Riffs ({familyTree.descendants?.length || 0})
                 </button>
               </div>
 
               {/* Section Content */}
               <div className="space-y-2">
-                {activeSection === 'ancestors' && familyTree.ancestors.map((ancestor, idx) => {
+                {activeSection === 'ancestors' && (familyTree.ancestors || []).map((ancestor, idx) => {
                   const eraStyle = getEraStyle(ancestor.era);
                   const clickable = isInDatabase(ancestor.name);
                   return (
@@ -392,7 +422,7 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                   );
                 })}
 
-                {activeSection === 'siblings' && familyTree.siblings.map((sibling, idx) => {
+                {activeSection === 'siblings' && (familyTree.siblings || []).map((sibling, idx) => {
                   const eraStyle = getEraStyle(sibling.era || 'Classic');
                   const clickable = isInDatabase(sibling.name);
                   return (
@@ -427,7 +457,7 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                   );
                 })}
 
-                {activeSection === 'descendants' && familyTree.descendants.map((desc, idx) => {
+                {activeSection === 'descendants' && (familyTree.descendants || []).map((desc, idx) => {
                   const eraStyle = getEraStyle(desc.era || 'Modern');
                   const clickable = isInDatabase(desc.name);
                   return (
@@ -462,26 +492,26 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                   );
                 })}
 
-                {activeSection === 'ancestors' && familyTree.ancestors.length === 0 && (
+                {activeSection === 'ancestors' && (familyTree.ancestors?.length || 0) === 0 && (
                   <p className="text-center text-stone-500 py-8 text-sm">No ancestors identified for this drink.</p>
                 )}
-                {activeSection === 'siblings' && familyTree.siblings.length === 0 && (
+                {activeSection === 'siblings' && (familyTree.siblings?.length || 0) === 0 && (
                   <p className="text-center text-stone-500 py-8 text-sm">No sibling cocktails identified.</p>
                 )}
-                {activeSection === 'descendants' && familyTree.descendants.length === 0 && (
+                {activeSection === 'descendants' && (familyTree.descendants?.length || 0) === 0 && (
                   <p className="text-center text-stone-500 py-8 text-sm">No modern riffs identified yet.</p>
                 )}
               </div>
 
               {/* Flavor Bridges */}
-              {familyTree.flavorBridge.length > 0 && (
+              {(familyTree.flavorBridge?.length || 0) > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center gap-2">
                     <ArrowRight className="w-3 h-3" />
                     Flavor Evolution
                   </h3>
                   <div className="space-y-2">
-                    {familyTree.flavorBridge.slice(0, 4).map((bridge, idx) => (
+                    {(familyTree.flavorBridge || []).slice(0, 4).map((bridge, idx) => (
                       <div key={idx} className="bg-stone-900/50 rounded-lg p-3 border border-stone-800 flex items-center gap-2 text-xs">
                         <span 
                           className={`font-bold ${isInDatabase(bridge.fromDrink) ? 'text-secondary cursor-pointer hover:underline' : 'text-stone-300'}`}

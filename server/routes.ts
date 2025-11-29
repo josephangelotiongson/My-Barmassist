@@ -744,6 +744,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Recipe name is required" });
       }
 
+      // Get all valid cocktail names from database for validation
+      const globalRecipes = await storage.getAllGlobalRecipes();
+      const validCocktailNames = new Set(
+        globalRecipes.map(r => r.name.toLowerCase())
+      );
+      
+      // Helper to check if a cocktail exists in the database (case-insensitive)
+      const isValidCocktail = (name: string) => {
+        return validCocktailNames.has(name.toLowerCase());
+      };
+
+      // Filter relationships to only include cocktails that exist in the database
+      const validAncestors = (ancestors || []).filter((a: any) => {
+        const isValid = isValidCocktail(a.name);
+        if (!isValid) {
+          console.log(`[Lineage] Filtering out invalid ancestor: "${a.name}" for ${recipeName}`);
+        }
+        return isValid;
+      });
+
+      const validSiblings = (siblings || []).filter((s: any) => {
+        const isValid = isValidCocktail(s.name);
+        if (!isValid) {
+          console.log(`[Lineage] Filtering out invalid sibling: "${s.name}" for ${recipeName}`);
+        }
+        return isValid;
+      });
+
+      const validDescendants = (descendants || []).filter((d: any) => {
+        const isValid = isValidCocktail(d.name);
+        if (!isValid) {
+          console.log(`[Lineage] Filtering out invalid descendant: "${d.name}" for ${recipeName}`);
+        }
+        return isValid;
+      });
+
+      const validFlavorBridges = (flavorBridges || []).filter((b: any) => {
+        const fromValid = isValidCocktail(b.fromDrink);
+        const toValid = isValidCocktail(b.toDrink);
+        if (!fromValid || !toValid) {
+          console.log(`[Lineage] Filtering out invalid flavor bridge: "${b.fromDrink}" -> "${b.toDrink}"`);
+        }
+        return fromValid && toValid;
+      });
+
       // Find or create family
       let familyId: number | undefined;
       if (familySlug) {
@@ -765,55 +810,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear existing relationships and add new ones
       await storage.deleteRelationshipsForRecipe(recipeName);
 
-      // Add ancestors
-      if (ancestors && Array.isArray(ancestors)) {
-        for (const ancestor of ancestors) {
-          await storage.upsertRelationship({
-            sourceRecipe: recipeName,
-            targetRecipe: ancestor.name,
-            relationshipType: 'ancestor',
-            era: ancestor.era,
-            description: ancestor.relationship
-          });
-        }
+      // Add validated ancestors
+      for (const ancestor of validAncestors) {
+        await storage.upsertRelationship({
+          sourceRecipe: recipeName,
+          targetRecipe: ancestor.name,
+          relationshipType: 'ancestor',
+          era: ancestor.era,
+          description: ancestor.relationship
+        });
       }
 
-      // Add siblings
-      if (siblings && Array.isArray(siblings)) {
-        for (const sibling of siblings) {
-          await storage.upsertRelationship({
-            sourceRecipe: recipeName,
-            targetRecipe: sibling.name,
-            relationshipType: 'sibling',
-            era: sibling.era,
-            description: sibling.sharedTrait
-          });
-        }
+      // Add validated siblings
+      for (const sibling of validSiblings) {
+        await storage.upsertRelationship({
+          sourceRecipe: recipeName,
+          targetRecipe: sibling.name,
+          relationshipType: 'sibling',
+          era: sibling.era,
+          description: sibling.sharedTrait
+        });
       }
 
-      // Add descendants
-      if (descendants && Array.isArray(descendants)) {
-        for (const desc of descendants) {
-          await storage.upsertRelationship({
-            sourceRecipe: recipeName,
-            targetRecipe: desc.name,
-            relationshipType: 'descendant',
-            era: desc.era,
-            description: desc.innovation
-          });
-        }
+      // Add validated descendants
+      for (const desc of validDescendants) {
+        await storage.upsertRelationship({
+          sourceRecipe: recipeName,
+          targetRecipe: desc.name,
+          relationshipType: 'descendant',
+          era: desc.era,
+          description: desc.innovation
+        });
       }
 
-      // Add flavor bridges
-      if (flavorBridges && Array.isArray(flavorBridges)) {
-        for (const bridge of flavorBridges) {
-          await storage.upsertRelationship({
-            sourceRecipe: bridge.fromDrink,
-            targetRecipe: bridge.toDrink,
-            relationshipType: 'flavor_bridge',
-            description: bridge.connection
-          });
-        }
+      // Add validated flavor bridges
+      for (const bridge of validFlavorBridges) {
+        await storage.upsertRelationship({
+          sourceRecipe: bridge.fromDrink,
+          targetRecipe: bridge.toDrink,
+          relationshipType: 'flavor_bridge',
+          description: bridge.connection
+        });
       }
 
       // Return full lineage data
