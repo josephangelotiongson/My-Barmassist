@@ -7,6 +7,7 @@ interface Props {
   initialCategories?: string[];
   initialNotes?: string[];
   baseProfile?: Record<string, number>;
+  currentProfile?: Record<string, number>;
   onSelectionChange: (selection: { categories: string[]; notes: string[]; profile: FlavorProfile }) => void;
   size?: number;
 }
@@ -40,6 +41,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
   initialCategories = [],
   initialNotes = [],
   baseProfile,
+  currentProfile,
   onSelectionChange,
   size = 320 
 }) => {
@@ -67,16 +69,48 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const [selection, setSelection] = useState<FlavorSelection>(buildInitialSelection);
   const [initialCategorySet, setInitialCategorySet] = useState<Set<string>>(() => new Set(initialCategories));
   const lastRecipeId = useRef(recipeId);
+  const isInternalChange = useRef(false);
+  const lastExternalProfile = useRef<string>(JSON.stringify(currentProfile));
 
   useEffect(() => {
     if (recipeId !== lastRecipeId.current) {
       lastRecipeId.current = recipeId;
       setSelection(buildInitialSelection());
       setInitialCategorySet(new Set(initialCategories));
+      lastExternalProfile.current = JSON.stringify(currentProfile);
     }
   }, [recipeId, initialCategories, initialNotes]);
 
+  useEffect(() => {
+    if (!currentProfile || !baseProfile) return;
+    
+    const currentProfileStr = JSON.stringify(currentProfile);
+    if (isInternalChange.current) {
+      isInternalChange.current = false;
+      lastExternalProfile.current = currentProfileStr;
+      return;
+    }
+    
+    if (currentProfileStr === lastExternalProfile.current) return;
+    lastExternalProfile.current = currentProfileStr;
+    
+    const newSelection = createEmptySelection();
+    FLAVOR_TAXONOMY.forEach(cat => {
+      const currentValue = currentProfile[cat.label] || 0;
+      const baseValue = baseProfile[cat.label] || 0;
+      
+      if (currentValue > baseValue) {
+        newSelection.categories.add(cat.id);
+      } else if (currentValue >= 4) {
+        newSelection.categories.add(cat.id);
+      }
+    });
+    
+    setSelection(newSelection);
+  }, [currentProfile, baseProfile]);
+
   const notifyChange = (newSelection: FlavorSelection) => {
+    isInternalChange.current = true;
     const profile = selectionToFlavorProfile(newSelection, baseProfile, initialCategorySet);
     const noteLabels: string[] = [];
     FLAVOR_TAXONOMY.forEach(cat => {

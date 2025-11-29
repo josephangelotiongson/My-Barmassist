@@ -688,64 +688,64 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   </div>
                 )}
                 
-                {editorMode === 'wheel' ? (
+                <div className={editorMode === 'wheel' ? 'block' : 'hidden'}>
                   <EditableFlavorWheel
                     key={`wheel-${selectedRecipe?.id || 'none'}-${wheelKeyRef.current}`}
                     recipeId={selectedRecipe?.id}
                     initialCategories={derivedCategories}
                     initialNotes={derivedNotes}
                     baseProfile={originalProfile as unknown as Record<string, number>}
+                    currentProfile={targetProfile as unknown as Record<string, number>}
                     onSelectionChange={({ notes, profile }) => {
                       setTargetProfile(profile);
                       setTargetNotes(notes);
                     }}
                     size={280}
                   />
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    {Object.values(FlavorDimension).map((dim) => {
-                      const original = originalProfile[dim];
-                      const target = targetProfile[dim];
-                      const diff = target - original;
-                      
-                      return (
-                        <div key={dim} className="bg-stone-800/50 rounded-lg p-2.5">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-medium text-stone-300">{dim}</span>
-                            <div className="flex items-center gap-1">
-                              {diff !== 0 && (
-                                <span className={`text-[10px] font-bold ${diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                  {diff > 0 ? '+' : ''}{diff}
-                                </span>
-                              )}
-                              <span className="text-xs font-bold text-white w-4 text-center">{target}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => adjustFlavor(dim, -1)}
-                              className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
-                            >
-                              <Minus className="w-3 h-3 text-stone-300" />
-                            </button>
-                            <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
-                                style={{ width: `${(target / 10) * 100}%` }}
-                              />
-                            </div>
-                            <button
-                              onClick={() => adjustFlavor(dim, 1)}
-                              className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
-                            >
-                              <Plus className="w-3 h-3 text-stone-300" />
-                            </button>
+                </div>
+                <div className={editorMode === 'sliders' ? 'grid grid-cols-2 gap-3' : 'hidden'}>
+                  {Object.values(FlavorDimension).map((dim) => {
+                    const original = originalProfile[dim];
+                    const target = targetProfile[dim];
+                    const diff = target - original;
+                    
+                    return (
+                      <div key={dim} className="bg-stone-800/50 rounded-lg p-2.5">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-medium text-stone-300">{dim}</span>
+                          <div className="flex items-center gap-1">
+                            {diff !== 0 && (
+                              <span className={`text-[10px] font-bold ${diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {diff > 0 ? '+' : ''}{diff}
+                              </span>
+                            )}
+                            <span className="text-xs font-bold text-white w-4 text-center">{target}</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => adjustFlavor(dim, -1)}
+                            className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
+                          >
+                            <Minus className="w-3 h-3 text-stone-300" />
+                          </button>
+                          <div className="flex-1 h-2 bg-stone-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-amber-600 to-orange-500 transition-all duration-200"
+                              style={{ width: `${(target / 10) * 100}%` }}
+                            />
+                          </div>
+                          <button
+                            onClick={() => adjustFlavor(dim, 1)}
+                            className="w-7 h-7 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center transition-colors"
+                          >
+                            <Plus className="w-3 h-3 text-stone-300" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="bg-surface rounded-2xl border border-stone-700 p-4">
