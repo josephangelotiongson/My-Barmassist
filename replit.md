@@ -8,6 +8,15 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 
 ## Recent Changes (November 29, 2025)
 
+- **Enhanced Social Media URL Handling**: Robust system for extracting recipes from TikTok, Instagram, and YouTube links
+  - `services/socialMediaUtils.ts` - Comprehensive URL cleaning and metadata extraction
+  - Removes tracking parameters (ttclid, is_from_webapp, sender_device, utm_*, web_id, etc.)
+  - Extracts creator usernames and video IDs from various URL formats
+  - Server-side short link resolution for TikTok (vm.tiktok.com, vt.tiktok.com)
+  - `POST /api/resolve-url` - API endpoint to expand short links by following redirects
+  - AI receives clean URLs with search hints for better recipe extraction
+  - Platform-specific prompts guide AI to search for video captions, transcripts, and comments
+
 - **Global Recipes Database Migration**: All cocktail recipes now loaded from PostgreSQL database
   - Created `global_recipes` table with comprehensive fields for flavor profiles, nutrition, and enrichment tracking
   - Migrated 73 hardcoded recipes from `initialData.ts` to database
