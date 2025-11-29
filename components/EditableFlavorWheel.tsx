@@ -9,15 +9,15 @@ interface Props {
   size?: number;
 }
 
-const FLAVOR_COLORS: Record<FlavorDimension, { base: string; active: string; mid: string }> = {
-  [FlavorDimension.SWEET]: { base: '#1c1917', mid: '#57534e', active: '#d97706' },
-  [FlavorDimension.SOUR]: { base: '#1c1917', mid: '#57534e', active: '#65a30d' },
-  [FlavorDimension.BITTER]: { base: '#1c1917', mid: '#57534e', active: '#0d9488' },
-  [FlavorDimension.BOOZY]: { base: '#1c1917', mid: '#57534e', active: '#7c3aed' },
-  [FlavorDimension.HERBAL]: { base: '#1c1917', mid: '#57534e', active: '#059669' },
-  [FlavorDimension.FRUITY]: { base: '#1c1917', mid: '#57534e', active: '#db2777' },
-  [FlavorDimension.SPICY]: { base: '#1c1917', mid: '#57534e', active: '#ea580c' },
-  [FlavorDimension.SMOKY]: { base: '#1c1917', mid: '#57534e', active: '#78716c' },
+const FLAVOR_COLORS: Record<FlavorDimension, { base: string; low: string; mid: string; high: string }> = {
+  [FlavorDimension.SWEET]: { base: '#292524', low: '#78350f', mid: '#b45309', high: '#f59e0b' },
+  [FlavorDimension.SOUR]: { base: '#292524', low: '#365314', mid: '#4d7c0f', high: '#84cc16' },
+  [FlavorDimension.BITTER]: { base: '#292524', low: '#134e4a', mid: '#0f766e', high: '#14b8a6' },
+  [FlavorDimension.BOOZY]: { base: '#292524', low: '#4c1d95', mid: '#6d28d9', high: '#a78bfa' },
+  [FlavorDimension.HERBAL]: { base: '#292524', low: '#14532d', mid: '#15803d', high: '#22c55e' },
+  [FlavorDimension.FRUITY]: { base: '#292524', low: '#831843', mid: '#be185d', high: '#ec4899' },
+  [FlavorDimension.SPICY]: { base: '#292524', low: '#7c2d12', mid: '#c2410c', high: '#f97316' },
+  [FlavorDimension.SMOKY]: { base: '#292524', low: '#44403c', mid: '#78716c', high: '#a8a29e' },
 };
 
 const DIMENSION_ORDER = [
@@ -69,10 +69,10 @@ const EditableFlavorWheel: React.FC<Props> = ({
 
   const interpolateColor = (dim: FlavorDimension, value: number) => {
     const colors = FLAVOR_COLORS[dim];
-    const ratio = Math.min(Math.max(value / 10, 0), 1);
-    if (ratio <= 0.2) return colors.base;
-    if (ratio <= 0.5) return colors.mid;
-    return colors.active;
+    if (value <= 0) return colors.base;
+    if (value <= 3) return colors.low;
+    if (value <= 6) return colors.mid;
+    return colors.high;
   };
 
   const adjustValue = (dim: FlavorDimension, delta: number) => {
