@@ -11,6 +11,8 @@ import { enrichPendingIngredients } from "./ingredientEnrichment";
 import { seedModernRecipes } from "./seedModernRecipes";
 import { assignCocktailFamily, simulateFlavorSubstitutions } from "../services/geminiService";
 import { orchestrateFullLineage } from "./lineageOrchestrator";
+import { getFlavorTaxonomy, deriveFlavorNotesFromIngredients, getFlavorDataForAI, invalidateCache } from "./flavorDataService";
+import { seedFlavorData } from "./seedFlavorData";
 
 const objectStorageService = new ObjectStorageService();
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
@@ -273,6 +275,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error enriching ingredients:", error);
       res.status(500).json({ message: "Failed to enrich ingredients" });
+    }
+  });
+
+  // ===== FLAVOR DATA ENDPOINTS =====
+  
+  app.get('/api/flavor-taxonomy', async (req, res) => {
+    try {
+      const taxonomy = await getFlavorTaxonomy();
+      res.json(taxonomy);
+    } catch (error) {
+      console.error("Error fetching flavor taxonomy:", error);
+      res.status(500).json({ message: "Failed to fetch flavor taxonomy" });
+    }
+  });
+
+  app.post('/api/flavor-taxonomy/derive', async (req, res) => {
+    try {
+      const { ingredients } = req.body;
+      if (!ingredients || !Array.isArray(ingredients)) {
+        return res.status(400).json({ message: "ingredients array is required" });
+      }
+      const result = await deriveFlavorNotesFromIngredients(ingredients);
+      res.json(result);
+    } catch (error) {
+      console.error("Error deriving flavor notes:", error);
+      res.status(500).json({ message: "Failed to derive flavor notes" });
+    }
+  });
+
+  app.get('/api/flavor-taxonomy/ai-prompt', async (req, res) => {
+    try {
+      const prompt = await getFlavorDataForAI();
+      res.json({ prompt });
+    } catch (error) {
+      console.error("Error generating AI prompt:", error);
+      res.status(500).json({ message: "Failed to generate AI prompt" });
+    }
+  });
+
+  app.post('/api/admin/seed-flavor-data', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const result = await seedFlavorData();
+      if (result.success) {
+        await invalidateCache();
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error seeding flavor data:", error);
+      res.status(500).json({ message: "Failed to seed flavor data" });
     }
   });
 
