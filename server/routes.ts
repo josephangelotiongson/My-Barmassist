@@ -9,7 +9,7 @@ import { enrichRecipeData } from "./recipeEnrichment";
 import { seedMasterIngredients } from "./seedIngredients";
 import { enrichPendingIngredients } from "./ingredientEnrichment";
 import { seedModernRecipes } from "./seedModernRecipes";
-import { assignCocktailFamily } from "../services/geminiService";
+import { assignCocktailFamily, simulateFlavorSubstitutions } from "../services/geminiService";
 import { orchestrateFullLineage } from "./lineageOrchestrator";
 
 const objectStorageService = new ObjectStorageService();
@@ -974,6 +974,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: "Failed to generate lineage",
+        error: error.message 
+      });
+    }
+  });
+
+  // Cocktail Laboratory - AI-powered flavor substitution simulation
+  app.post('/api/lab/simulate', async (req, res) => {
+    try {
+      const { baseRecipe, targetProfile } = req.body;
+      
+      if (!baseRecipe || !targetProfile) {
+        return res.status(400).json({ 
+          message: "Missing required fields: baseRecipe and targetProfile" 
+        });
+      }
+      
+      if (!baseRecipe.name || !baseRecipe.ingredients || !baseRecipe.flavorProfile) {
+        return res.status(400).json({ 
+          message: "baseRecipe must include name, ingredients, and flavorProfile" 
+        });
+      }
+      
+      console.log(`[Lab] Simulating substitutions for "${baseRecipe.name}"`);
+      
+      const result = await simulateFlavorSubstitutions(baseRecipe, targetProfile);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error simulating flavor substitutions:", error);
+      res.status(500).json({ 
+        message: "Failed to simulate flavor substitutions",
         error: error.message 
       });
     }

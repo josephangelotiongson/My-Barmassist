@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow, LogIn, LogOut } from 'lucide-react';
+import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow, LogIn, LogOut, FlaskConical } from 'lucide-react';
 import { useAuth } from './client/src/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import FlavorRadar from './components/RadarChart';
@@ -13,6 +13,7 @@ import ShoppingListAddModal from './components/ShoppingListAddModal';
 import HowItWorksModal from './components/HowItWorksModal';
 import AuthModal from './components/AuthModal';
 import DrinkFamilyTree from './components/DrinkFamilyTree';
+import CocktailLab from './components/CocktailLab';
 import { Cocktail, Ingredient, FlavorProfile, FlavorDimension, Recommendation, ShoppingListItem, MasterIngredient, AppSettings, Nutrition } from './types';
 import { getRecommendations, generateCocktailImage, enrichIngredientDetails, recommendFromMenu, getBarOrderSuggestion, deduceRecipe } from './services/geminiService';
 import { INITIAL_MASTER_DATA, INITIAL_RECIPES_DATA } from './initialData';
@@ -564,7 +565,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'palate' | 'recipes' | 'bar' | 'recommend'>('palate');
   const [palateView, setPalateView] = useState<'diagnosis' | 'wheel'>('diagnosis');
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
-  const [rxView, setRxView] = useState<'recommend' | 'history'>('recommend');
+  const [rxView, setRxView] = useState<'recommend' | 'history' | 'lab'>('recommend');
   const [barView, setBarView] = useState<'shopping' | 'pantry' | 'makeIt'>('shopping');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   
@@ -2551,17 +2552,24 @@ export default function App() {
                   <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setRxView('recommend')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${rxView === 'recommend' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'recommend' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
                    >
                       <ChefHat className="w-4 h-4" />
                       Recommend
                    </button>
                    <button 
+                      onClick={() => setRxView('lab')}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'lab' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                   >
+                      <FlaskConical className="w-4 h-4" />
+                      Flavor Lab
+                   </button>
+                   <button 
                       onClick={() => setRxView('history')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${rxView === 'history' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'history' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
                    >
                       <History className="w-4 h-4" />
-                      Rx History
+                      History
                    </button>
                 </div>
                 
@@ -2766,6 +2774,12 @@ export default function App() {
                             </div>
                         ))}
                     </div>
+                )}
+                
+                {rxView === 'lab' && (
+                    <CocktailLab 
+                      allRecipes={history}
+                    />
                 )}
             </div>
         </div>

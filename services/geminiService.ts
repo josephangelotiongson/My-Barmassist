@@ -999,3 +999,114 @@ export const assignCocktailFamily = async (
     return null;
   }
 };
+
+export interface LabSubstitution {
+  original: string;
+  replacement: string;
+  rationale: string;
+}
+
+export interface LabSimulationResult {
+  substitutions: LabSubstitution[];
+  predictedProfile: FlavorProfile;
+  rationale: string;
+  newIngredients: string[];
+}
+
+const labSimulationSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    substitutions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          original: { type: Type.STRING, description: "The original ingredient to replace (just the ingredient name, not the full measurement)" },
+          replacement: { type: Type.STRING, description: "The recommended replacement ingredient" },
+          rationale: { type: Type.STRING, description: "Brief explanation of why this substitution helps achieve the target flavor" }
+        },
+        required: ['original', 'replacement', 'rationale']
+      }
+    },
+    predictedProfile: flavorProfileSchema,
+    rationale: { type: Type.STRING, description: "Overall explanation of how these changes will affect the drink's flavor" },
+    newIngredients: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "The complete modified ingredients list with measurements"
+    }
+  },
+  required: ['substitutions', 'predictedProfile', 'rationale', 'newIngredients']
+};
+
+export const simulateFlavorSubstitutions = async (
+  baseRecipe: { name: string; ingredients: string[]; flavorProfile: FlavorProfile },
+  targetProfile: FlavorProfile
+): Promise<LabSimulationResult> => {
+  try {
+    const profileDiff = Object.values(FlavorDimension).map(dim => {
+      const diff = targetProfile[dim] - baseRecipe.flavorProfile[dim];
+      if (diff === 0) return null;
+      return `${dim}: ${diff > 0 ? '+' : ''}${diff} (from ${baseRecipe.flavorProfile[dim]} to ${targetProfile[dim]})`;
+    }).filter(Boolean).join(', ');
+
+    const prompt = `
+      You are a Master Mixologist and Flavor Expert.
+      
+      BASE RECIPE: "${baseRecipe.name}"
+      INGREDIENTS: ${JSON.stringify(baseRecipe.ingredients)}
+      CURRENT FLAVOR PROFILE: ${JSON.stringify(baseRecipe.flavorProfile)}
+      
+      TARGET FLAVOR PROFILE: ${JSON.stringify(targetProfile)}
+      FLAVOR ADJUSTMENTS NEEDED: ${profileDiff || 'None - profiles are identical'}
+      
+      ${FLAVOR_RUBRIC}
+      
+      TASK:
+      Recommend ingredient substitutions that will transform the base recipe's flavor profile 
+      to match the target profile as closely as possible.
+      
+      RULES:
+      1. Only suggest substitutions that will meaningfully move the flavor profile toward the target.
+      2. Keep the spirit/core of the original cocktail intact when possible.
+      3. Each substitution should explain HOW it affects the flavor dimensions.
+      4. If no substitutions are needed (profiles already match), return an empty substitutions array.
+      5. Provide the complete predicted flavor profile after all substitutions.
+      6. Generate the complete new ingredients list with all substitutions applied.
+      
+      COMMON SUBSTITUTION PATTERNS:
+      - To increase SWEET: Add simple syrup, honey, agave, liqueurs
+      - To increase SOUR: Add more citrus, shrubs, vinegar
+      - To increase BITTER: Add Campari, Aperol, amaro, bitters
+      - To increase BOOZY: Use overproof spirits, reduce mixers
+      - To increase HERBAL: Add Chartreuse, Benedictine, absinthe, herbs
+      - To increase FRUITY: Add fruit liqueurs, juices, purees
+      - To increase SPICY: Add ginger, chili, spiced syrup
+      - To increase SMOKY: Use mezcal, peated scotch, smoked ingredients
+      
+      Return your analysis as JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_FLASH,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: labSimulationSchema,
+        temperature: 0.6,
+      }
+    });
+
+    const data = JSON.parse(response.text || '{}');
+    
+    return {
+      substitutions: data.substitutions || [],
+      predictedProfile: data.predictedProfile || targetProfile,
+      rationale: data.rationale || 'No changes recommended.',
+      newIngredients: data.newIngredients || baseRecipe.ingredients
+    };
+  } catch (error) {
+    console.error("Error simulating flavor substitutions:", error);
+    throw error;
+  }
+};
