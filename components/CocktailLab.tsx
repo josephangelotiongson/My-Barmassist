@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Cocktail, FlavorProfile, FlavorDimension } from '../types';
 import { calculateTotalVolume, formatVolumeForDisplay, calculateVolumeOverage } from '../shared/volumeUtils';
+import { FLAVOR_TAXONOMY } from '../shared/flavorTaxonomy';
 import VolumeLever from './VolumeLever';
 import {
   Radar,
@@ -86,12 +87,68 @@ interface BuildResult {
   rationale: string;
 }
 
+const CATEGORY_ID_TO_DIMENSION: Record<string, FlavorDimension> = {
+  'sweet': FlavorDimension.SWEET,
+  'fruity': FlavorDimension.FRUITY,
+  'floral': FlavorDimension.FLORAL,
+  'herbal': FlavorDimension.HERBAL,
+  'spicy': FlavorDimension.SPICY,
+  'earthy': FlavorDimension.EARTHY,
+  'sour': FlavorDimension.SOUR,
+  'boozy': FlavorDimension.BOOZY,
+};
+
+const deriveNoteProfileFromCategories = (categoryProfile: FlavorProfile): NoteProfile => {
+  const noteProfile: NoteProfile = {};
+  FLAVOR_TAXONOMY.forEach(category => {
+    const dimension = CATEGORY_ID_TO_DIMENSION[category.id];
+    const categoryValue = dimension ? categoryProfile[dimension] || 0 : 0;
+    category.subcategories?.forEach(subcategory => {
+      subcategory.notes?.forEach(note => {
+        noteProfile[note.id] = categoryValue;
+      });
+    });
+  });
+  return noteProfile;
+};
+
+const extractModifiedNotes = (
+  currentNoteProfile: NoteProfile | undefined,
+  baseNoteProfile: NoteProfile | undefined
+): string[] => {
+  if (!currentNoteProfile) return [];
+  
+  const modifiedNotes: string[] = [];
+  const noteIdToLabel = new Map<string, string>();
+  
+  FLAVOR_TAXONOMY.forEach(category => {
+    category.subcategories?.forEach(subcategory => {
+      subcategory.notes?.forEach(note => {
+        noteIdToLabel.set(note.id, note.label);
+      });
+    });
+  });
+  
+  Object.entries(currentNoteProfile).forEach(([noteId, currentValue]) => {
+    const baseValue = baseNoteProfile?.[noteId] ?? 0;
+    if (currentValue > baseValue) {
+      const label = noteIdToLabel.get(noteId);
+      if (label) {
+        modifiedNotes.push(label);
+      }
+    }
+  });
+  
+  return modifiedNotes;
+};
+
 const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe }) => {
   const [labMode, setLabMode] = useState<'recipe' | 'build'>('recipe');
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
   const [targetNoteProfile, setTargetNoteProfile] = useState<NoteProfile | undefined>(undefined);
+  const [baseNoteProfile, setBaseNoteProfile] = useState<NoteProfile | undefined>(undefined);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [labResult, setLabResult] = useState<LabResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -134,6 +191,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
         : { ...DEFAULT_PROFILE };
       setTargetProfile(profile);
       setTargetNoteProfile(undefined);
+      setBaseNoteProfile(deriveNoteProfileFromCategories(profile));
       setLabResult(null);
       setErrorMessage(null);
       setAppliedSubs(new Set());
@@ -264,9 +322,11 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   }, [allRecipes, searchQuery]);
 
   const handleSelectRecipe = (recipe: Cocktail) => {
+    const recipeProfile = getRecipeProfile(recipe);
     setSelectedRecipe(recipe);
-    setTargetProfile({ ...getRecipeProfile(recipe) });
+    setTargetProfile({ ...recipeProfile });
     setTargetNoteProfile(undefined);
+    setBaseNoteProfile(deriveNoteProfileFromCategories(recipeProfile));
     setShowRecipeSelector(false);
     setLabResult(null);
     setErrorMessage(null);
@@ -289,6 +349,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     setLabResult(null);
     setErrorMessage(null);
     
+    const specificNotes = extractModifiedNotes(targetNoteProfile, baseNoteProfile);
+    
     try {
       const response = await fetch('/api/lab/simulate', {
         method: 'POST',
@@ -301,7 +363,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
             flavorProfile: getRecipeProfile(selectedRecipe),
             targetVolume: selectedRecipe.targetVolume
           },
-          targetProfile
+          targetProfile,
+          targetNotes: specificNotes.length > 0 ? specificNotes : undefined
         })
       });
       
@@ -694,6 +757,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       onClick={() => {
                         setTargetProfile({ ...originalProfile });
                         setTargetNoteProfile(undefined);
+                        setBaseNoteProfile(deriveNoteProfileFromCategories(originalProfile));
                         wheelKeyRef.current += 1;
                       }}
                       className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
@@ -1293,6 +1357,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       onClick={() => {
                         setTargetProfile({ ...DEFAULT_PROFILE });
                         setTargetNoteProfile(undefined);
+                        setBaseNoteProfile(deriveNoteProfileFromCategories(DEFAULT_PROFILE));
                       }}
                       className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
                     >

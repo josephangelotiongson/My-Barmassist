@@ -12,6 +12,7 @@ interface Props {
   currentProfile?: Record<string, number>;
   noteProfile?: NoteProfile;
   onProfileChange: (profile: FlavorProfile, noteProfile?: NoteProfile) => void;
+  onInitialize?: (noteProfile: NoteProfile) => void;
   size?: number;
   responsive?: boolean;
   readOnly?: boolean;
@@ -103,6 +104,7 @@ const EditableFlavorWheel: React.FC<Props> = ({
   currentProfile,
   noteProfile: externalNoteProfile,
   onProfileChange,
+  onInitialize,
   size: propSize = 320,
   responsive = true,
   readOnly = false
@@ -174,6 +176,14 @@ const EditableFlavorWheel: React.FC<Props> = ({
     });
     return derived;
   }, [externalNoteProfile, profile]);
+
+  const initCalledRef = useRef(false);
+  useEffect(() => {
+    if (onInitialize && !initCalledRef.current && Object.keys(noteProfile).length > 0) {
+      initCalledRef.current = true;
+      onInitialize({ ...noteProfile });
+    }
+  }, [onInitialize, noteProfile]);
 
   const getNoteValue = useCallback((noteId: string): number => {
     return noteProfile[noteId] || 0;
