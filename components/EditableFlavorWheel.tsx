@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { FlavorProfile, FlavorDimension } from '../types';
-import { Plus, Minus } from 'lucide-react';
 
 interface Props {
   profile: FlavorProfile;
@@ -9,15 +8,15 @@ interface Props {
   size?: number;
 }
 
-const FLAVOR_COLORS: Record<FlavorDimension, { base: string; low: string; mid: string; high: string }> = {
-  [FlavorDimension.SWEET]: { base: '#292524', low: '#78350f', mid: '#b45309', high: '#f59e0b' },
-  [FlavorDimension.SOUR]: { base: '#292524', low: '#365314', mid: '#4d7c0f', high: '#84cc16' },
-  [FlavorDimension.BITTER]: { base: '#292524', low: '#134e4a', mid: '#0f766e', high: '#14b8a6' },
-  [FlavorDimension.BOOZY]: { base: '#292524', low: '#4c1d95', mid: '#6d28d9', high: '#a78bfa' },
-  [FlavorDimension.HERBAL]: { base: '#292524', low: '#14532d', mid: '#15803d', high: '#22c55e' },
-  [FlavorDimension.FRUITY]: { base: '#292524', low: '#831843', mid: '#be185d', high: '#ec4899' },
-  [FlavorDimension.SPICY]: { base: '#292524', low: '#7c2d12', mid: '#c2410c', high: '#f97316' },
-  [FlavorDimension.SMOKY]: { base: '#292524', low: '#44403c', mid: '#78716c', high: '#a8a29e' },
+const FLAVOR_COLORS: Record<FlavorDimension, string> = {
+  [FlavorDimension.SWEET]: '#f59e0b',
+  [FlavorDimension.SOUR]: '#84cc16',
+  [FlavorDimension.BITTER]: '#14b8a6',
+  [FlavorDimension.BOOZY]: '#a78bfa',
+  [FlavorDimension.HERBAL]: '#22c55e',
+  [FlavorDimension.FRUITY]: '#ec4899',
+  [FlavorDimension.SPICY]: '#f97316',
+  [FlavorDimension.SMOKY]: '#78716c',
 };
 
 const DIMENSION_ORDER = [
@@ -62,21 +61,14 @@ const EditableFlavorWheel: React.FC<Props> = ({
   size = 280 
 }) => {
   const center = size / 2;
-  const innerRadius = 45;
+  const innerRadius = 50;
   const outerRadius = size / 2 - 10;
   const segmentAngle = 360 / 8;
   const gap = 2;
 
-  const interpolateColor = (dim: FlavorDimension, value: number) => {
-    const colors = FLAVOR_COLORS[dim];
-    if (value <= 0) return colors.base;
-    if (value <= 3) return colors.low;
-    if (value <= 6) return colors.mid;
-    return colors.high;
-  };
-
-  const adjustValue = (dim: FlavorDimension, delta: number) => {
-    const newValue = Math.max(0, Math.min(10, profile[dim] + delta));
+  const toggleFlavor = (dim: FlavorDimension) => {
+    const currentValue = profile[dim] || 0;
+    const newValue = currentValue > 0 ? 0 : 7;
     onProfileChange({
       ...profile,
       [dim]: newValue
@@ -90,16 +82,9 @@ const EditableFlavorWheel: React.FC<Props> = ({
       const midAngle = startAngle + (segmentAngle - gap) / 2;
       
       const value = profile[dim] || 0;
-      const originalValue = originalProfile?.[dim] || 0;
-      const diff = value - originalValue;
+      const isSelected = value > 0;
       
-      const valueRadius = innerRadius + ((outerRadius - innerRadius) * (value / 10));
       const labelPos = polarToCartesian(center, center, (innerRadius + outerRadius) / 2, midAngle);
-      const valuePos = polarToCartesian(center, center, outerRadius + 15, midAngle);
-      
-      const buttonRadius = 12;
-      const plusPos = polarToCartesian(center, center, outerRadius - 20, midAngle);
-      const minusPos = polarToCartesian(center, center, innerRadius + 20, midAngle);
 
       return {
         dim,
@@ -107,19 +92,14 @@ const EditableFlavorWheel: React.FC<Props> = ({
         endAngle,
         midAngle,
         value,
-        originalValue,
-        diff,
-        valueRadius,
+        isSelected,
         labelPos,
-        valuePos,
-        plusPos,
-        minusPos,
-        buttonRadius,
-        fillColor: interpolateColor(dim, value),
-        baseColor: FLAVOR_COLORS[dim].base,
+        color: FLAVOR_COLORS[dim],
       };
     });
-  }, [profile, originalProfile, center, innerRadius, outerRadius, segmentAngle]);
+  }, [profile, center, innerRadius, outerRadius, segmentAngle]);
+
+  const selectedCount = segments.filter(s => s.isSelected).length;
 
   return (
     <div className="flex flex-col items-center">
@@ -128,21 +108,17 @@ const EditableFlavorWheel: React.FC<Props> = ({
           <circle cx={center} cy={center} r={outerRadius} fill="#1c1917" />
           
           {segments.map((seg) => (
-            <g key={seg.dim}>
+            <g key={seg.dim} className="cursor-pointer" onClick={() => toggleFlavor(seg.dim)}>
               <path
                 d={describeArc(center, center, innerRadius, outerRadius, seg.startAngle, seg.endAngle)}
-                fill={seg.baseColor}
+                fill={seg.isSelected ? seg.color : '#292524'}
                 stroke="#0c0a09"
-                strokeWidth="1"
-                className="transition-all duration-300"
-              />
-              
-              <path
-                d={describeArc(center, center, innerRadius, seg.valueRadius, seg.startAngle, seg.endAngle)}
-                fill={seg.fillColor}
-                stroke="none"
-                className="transition-all duration-300"
-                style={{ filter: 'brightness(1.1)' }}
+                strokeWidth="1.5"
+                className="transition-all duration-200 hover:brightness-110"
+                style={{ 
+                  opacity: seg.isSelected ? 1 : 0.6,
+                  filter: seg.isSelected ? 'saturate(1.2)' : 'none'
+                }}
               />
               
               <text
@@ -150,59 +126,13 @@ const EditableFlavorWheel: React.FC<Props> = ({
                 y={seg.labelPos.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="#e5e5e5"
-                fontSize="9"
-                fontWeight="600"
-                className="pointer-events-none select-none"
+                fill={seg.isSelected ? '#1c1917' : '#a8a29e'}
+                fontSize="10"
+                fontWeight={seg.isSelected ? '700' : '500'}
+                className="pointer-events-none select-none transition-all duration-200"
                 transform={`rotate(${seg.midAngle > 90 && seg.midAngle < 270 ? seg.midAngle + 180 : seg.midAngle}, ${seg.labelPos.x}, ${seg.labelPos.y})`}
               >
                 {seg.dim}
-              </text>
-              
-              <circle
-                cx={seg.plusPos.x}
-                cy={seg.plusPos.y}
-                r={seg.buttonRadius}
-                fill="#292524"
-                stroke="#44403c"
-                strokeWidth="1"
-                className="cursor-pointer hover:fill-stone-700 transition-colors"
-                onClick={() => adjustValue(seg.dim, 1)}
-              />
-              <text
-                x={seg.plusPos.x}
-                y={seg.plusPos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#a8a29e"
-                fontSize="14"
-                fontWeight="bold"
-                className="pointer-events-none select-none"
-              >
-                +
-              </text>
-              
-              <circle
-                cx={seg.minusPos.x}
-                cy={seg.minusPos.y}
-                r={seg.buttonRadius}
-                fill="#292524"
-                stroke="#44403c"
-                strokeWidth="1"
-                className="cursor-pointer hover:fill-stone-700 transition-colors"
-                onClick={() => adjustValue(seg.dim, -1)}
-              />
-              <text
-                x={seg.minusPos.x}
-                y={seg.minusPos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#a8a29e"
-                fontSize="14"
-                fontWeight="bold"
-                className="pointer-events-none select-none"
-              >
-                -
               </text>
             </g>
           ))}
@@ -233,32 +163,25 @@ const EditableFlavorWheel: React.FC<Props> = ({
             Profile
           </text>
         </svg>
-        
-        {segments.map((seg) => (
-          <div
-            key={`val-${seg.dim}`}
-            className="absolute flex items-center justify-center"
-            style={{
-              left: seg.valuePos.x - 12,
-              top: seg.valuePos.y - 10,
-              width: 24,
-              height: 20,
-            }}
+      </div>
+      
+      <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+        {segments.filter(s => s.isSelected).map(seg => (
+          <span 
+            key={seg.dim}
+            className="px-2 py-0.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: seg.color, color: '#1c1917' }}
           >
-            <span className="text-[10px] font-bold text-white bg-stone-800/80 px-1.5 py-0.5 rounded border border-stone-700">
-              {seg.value}
-              {seg.diff !== 0 && (
-                <span className={`ml-0.5 ${seg.diff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {seg.diff > 0 ? '+' : ''}{seg.diff}
-                </span>
-              )}
-            </span>
-          </div>
+            {seg.dim}
+          </span>
         ))}
+        {selectedCount === 0 && (
+          <span className="text-xs text-stone-500">Tap flavors to select</span>
+        )}
       </div>
       
       <p className="text-xs text-stone-500 mt-2 text-center">
-        Use +/- buttons to adjust each flavor dimension
+        Tap segments to select desired flavors
       </p>
     </div>
   );
