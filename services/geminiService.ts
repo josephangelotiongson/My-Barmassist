@@ -782,3 +782,83 @@ export const analyzeDrinkFamilyTree = async (
     };
   }
 };
+
+// Lightweight family assignment - determines which of the 6 root templates a cocktail belongs to
+const familyAssignmentSchema = {
+  type: Type.OBJECT,
+  properties: {
+    familySlug: { type: Type.STRING, description: "The slug of the family: old-fashioned, martini, daiquiri, sidecar, whiskey-highball, or flip" },
+    confidence: { type: Type.NUMBER, description: "Confidence score from 0 to 1" },
+    reasoning: { type: Type.STRING, description: "Brief explanation of why this family was chosen" }
+  },
+  required: ['familySlug', 'confidence', 'reasoning']
+};
+
+export interface FamilyAssignment {
+  familySlug: string;
+  confidence: number;
+  reasoning: string;
+}
+
+export const assignCocktailFamily = async (
+  cocktailName: string,
+  ingredients: string[]
+): Promise<FamilyAssignment | null> => {
+  try {
+    // Clean ingredients: trim whitespace and remove any surrounding quotes
+    const cleanIngredients = ingredients
+      .map(ing => ing.replace(/^["']|["']$/g, '').trim())
+      .filter(ing => ing.length > 0);
+    
+    // Format ingredients as a readable list instead of JSON
+    const ingredientList = cleanIngredients.join('\n- ');
+    
+    const prompt = `
+      TASK: Quickly classify this cocktail into one of the 6 Cocktail Codex families.
+      
+      Cocktail: ${cocktailName}
+      Ingredients:
+      - ${ingredientList}
+      
+      FAMILIES (choose ONE slug):
+      - "old-fashioned": Spirit + Sugar + Bitters (e.g., Old Fashioned, Sazerac, Improved Cocktail)
+      - "martini": Spirit + Aromatized Wine/Vermouth (e.g., Martini, Manhattan, Negroni)
+      - "daiquiri": Spirit + Citrus + Sugar (e.g., Daiquiri, Margarita, Whiskey Sour, Mojito)
+      - "sidecar": Spirit + Citrus + Liqueur (e.g., Sidecar, Cosmopolitan, Last Word)
+      - "whiskey-highball": Spirit + Carbonation (e.g., Gin & Tonic, Moscow Mule, Collins)
+      - "flip": Spirit + Egg + Sugar (e.g., Eggnog, White Russian, Ramos Gin Fizz)
+      
+      CLASSIFICATION RULES:
+      - If it has citrus AND sugar/simple syrup → likely "daiquiri"
+      - If it has citrus AND liqueur → likely "sidecar"
+      - If it has bitters AND sugar but NO citrus → likely "old-fashioned"
+      - If it has vermouth/aromatized wine → likely "martini"
+      - If it has carbonation/soda → likely "whiskey-highball"
+      - If it has egg/cream → likely "flip"
+      
+      Return the single best-matching family slug.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_FLASH,
+      contents: prompt,
+      config: {
+        responseSchema: familyAssignmentSchema,
+        temperature: 0.1
+      }
+    });
+
+    const data = JSON.parse(response.text || '{}');
+    
+    // Validate the response has required fields
+    if (!data.familySlug || typeof data.familySlug !== 'string') {
+      console.warn(`[Family Assignment] Invalid AI response for "${cocktailName}":`, data);
+      return null;
+    }
+    
+    return data as FamilyAssignment;
+  } catch (error) {
+    console.error("Error assigning cocktail family:", error);
+    return null;
+  }
+};

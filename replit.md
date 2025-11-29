@@ -38,15 +38,19 @@ None set yet - will be documented as user expresses preferences during developme
   - Expiration tracking with warnings for items expiring within 7 days
   - Freshness notifications for recently made batches (within 3 days)
   - Memoized status map for consistent status display across views
-- **Cocktail Lineage / Family Tree**: AI-powered drink genealogy feature inspired by Cocktail Codex:
-  - Analyzes any preloaded recipe and maps its evolutionary relationships
-  - Identifies the root template (Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip)
+- **Cocktail Lineage / Family Tree**: AI-powered drink genealogy feature inspired by Cocktail Codex with database persistence:
+  - Analyzes any recipe and maps its evolutionary relationships
+  - Database-first approach: checks for existing lineage data before generating with AI
+  - Six root templates based on Cocktail Codex: Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip
   - Shows Ancestors (historical drinks that influenced the cocktail)
   - Shows Siblings (drinks at the same evolutionary level)
   - Shows Descendants/Riffs (modern variations inspired by the cocktail)
   - Flavor Bridges showing how tastes evolved through the family
   - Evolution Narrative telling the drink's story in cocktail history
-  - Clickable drinks navigate to recipes in your library
+  - Clickable drinks navigate to recipes in your library with "In Library" badges
+  - "From Database" indicator when displaying cached lineage data
+  - Refresh button to regenerate with AI and update the database
+  - Auto-assigns new recipes to cocktail families when created/imported
 - **Privacy-First Approach**: User email is never stored in the database; only user ID, display name, and profile picture are retained
 
 ### Database Schema
@@ -59,15 +63,30 @@ None set yet - will be documented as user expresses preferences during developme
 - **user_shopping_list**: User's personalized shopping list items.
 - **user_settings**: User preferences and application settings.
 - **recipe_images**: Stores cocktail images, shared globally or user-specific.
+- **cocktail_families**: The 6 root cocktail templates (Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip).
+- **cocktail_lineage**: Stores AI-generated family tree data for each drink (family assignment, relationship, key modifications, evolution narrative).
+- **cocktail_relationships**: Stores connections between drinks (ancestors, siblings, descendants, flavor bridges).
+
+### Lineage API Endpoints
+- `GET /api/cocktail-families` - Lists all 6 root cocktail templates
+- `GET /api/lineage/:recipeName` - Retrieves cached lineage data from the database
+- `POST /api/lineage` - Saves AI-generated lineage for future retrieval
+- `GET /api/lineages` - Lists all stored lineages (for admin/stats)
+- `POST /api/cocktail-families/seed` (admin) - Seeds the 6 root family templates
 
 ### UI/UX Decisions
 - Uses custom components and Lucide React for a consistent interface.
 - Radar charts (Recharts) visualize flavor profiles.
 - Mobile-first approach with optimized navigation for smaller screens.
 - "AI Generated" badge for object-stored images.
+- DrinkFamilyTree component shows database icon when data is from cache.
 
 ## External Dependencies
-- **Google Gemini AI**: Used for intelligent recipe recommendations, ingredient analysis, social media URL processing, and automatic recipe/ingredient enrichment.
-- **PostgreSQL**: Primary database for all persistent data storage.
+- **Google Gemini AI**: Used for intelligent recipe recommendations, ingredient analysis, social media URL processing, automatic recipe/ingredient enrichment, and cocktail lineage analysis.
+- **PostgreSQL**: Primary database for all persistent data storage including lineage caching.
 - **Replit Auth**: Authentication service providing social logins (Google, GitHub, X, Apple) and email/password options.
 - **Replit App Storage (Object Storage)**: Used for storing and serving cocktail images.
+
+## Admin Configuration
+- **ADMIN_USER_ID**: Environment variable to set the admin user ID (currently: "50346831")
+- Admin users can access seeding endpoints for recipes, ingredients, and cocktail families

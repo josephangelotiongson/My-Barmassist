@@ -9,6 +9,7 @@ import { enrichRecipeData } from "./recipeEnrichment";
 import { seedMasterIngredients } from "./seedIngredients";
 import { enrichPendingIngredients } from "./ingredientEnrichment";
 import { seedModernRecipes } from "./seedModernRecipes";
+import { assignCocktailFamily } from "../services/geminiService";
 
 const objectStorageService = new ObjectStorageService();
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
@@ -324,6 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(recipe);
       
+      // Background enrichment for flavor profile and nutrition
       if (recipe.enrichmentStatus === 'pending' && recipe.ingredients?.length > 0) {
         console.log(`Starting background enrichment for user recipe "${recipe.name}"...`);
         enrichRecipeData(recipe.name, recipe.ingredients, recipe.instructions)
@@ -346,6 +348,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .catch((error) => {
             console.error(`Error enriching recipe "${recipe.name}":`, error);
           });
+      }
+
+      // Background family assignment for cocktail lineage
+      // Database stores ingredients as string[] like ["2 oz Rye Whiskey", "0.25 oz Simple Syrup", ...]
+      if (Array.isArray(recipe.ingredients) && recipe.ingredients.length >= 2) {
+        // Verify all ingredients are valid strings
+        const validIngredients = recipe.ingredients.filter(
+          (ing: any) => typeof ing === 'string' && ing.trim().length > 2
+        );
+        
+        if (validIngredients.length >= 2) {
+          console.log(`[Family Assignment] "${recipe.name}" with ingredients:`, validIngredients.slice(0, 3));
+          assignCocktailFamily(recipe.name, validIngredients)
+            .then(async (assignment) => {
+              try {
+                if (assignment && assignment.familySlug) {
+                  const family = await storage.getCocktailFamilyBySlug(assignment.familySlug);
+                  if (family) {
+                    await storage.upsertLineage({
+                      recipeName: recipe.name,
+                      familyId: family.id,
+                      relationship: assignment.reasoning,
+                      keyModifications: [],
+                      evolutionNarrative: `${recipe.name} belongs to the ${family.name} family.`
+                    });
+                    console.log(`[Family Assignment] "${recipe.name}" -> ${family.name} (${(assignment.confidence * 100).toFixed(0)}%)`);
+                  } else {
+                    console.warn(`[Family Assignment] Family "${assignment.familySlug}" not found for "${recipe.name}"`);
+                  }
+                } else {
+                  console.warn(`[Family Assignment] No family assigned for "${recipe.name}"`);
+                }
+              } catch (innerError) {
+                console.error(`[Family Assignment] Error saving for "${recipe.name}":`, innerError);
+              }
+            })
+            .catch((error) => {
+              console.error(`[Family Assignment] AI error for "${recipe.name}":`, error);
+            });
+        } else {
+          console.warn(`[Family Assignment] Skipped "${recipe.name}" - insufficient valid string ingredients`);
+        }
       }
     } catch (error) {
       console.error("Error creating recipe:", error);
