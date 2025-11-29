@@ -64,7 +64,11 @@ export interface Ingredient {
   name: string;
   category: 'Spirit' | 'Mixer' | 'Garnish' | 'Other';
   volume?: string; 
-  flavorNotes?: string; 
+  flavorNotes?: string;
+  isDiy?: boolean; // True if this is a homemade ingredient
+  diyRecipeId?: string; // Reference to the DIY recipe used
+  createdDate?: string; // ISO date when ingredient was made/added
+  expiresDate?: string; // ISO date when ingredient expires
 }
 
 export interface ShoppingListItem {
