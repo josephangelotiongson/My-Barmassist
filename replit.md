@@ -2,16 +2,12 @@
 
 ## Overview
 
-This is a sophisticated cocktail/bar assistant application built with React, TypeScript, Express, and PostgreSQL. It leverages Google's Gemini AI to provide intelligent recipe recommendations, ingredient scanning, flavor profiling, and cocktail creation assistance. The application includes Replit Auth for authentication (supporting Google, GitHub, Apple, and email login) and persistent storage for user preferences, recipes, and ratings.
+This is a sophisticated cocktail/bar assistant application built with React, TypeScript, Express, and PostgreSQL. It leverages Google's Gemini AI to provide intelligent recipe recommendations, ingredient scanning, flavor profiling, and cocktail creation assistance. The application includes custom email/password authentication and persistent storage for user preferences, recipes, and ratings.
 
-**Current State**: Full-stack application running in the Replit environment on port 5000 with Replit Auth.
+**Current State**: Full-stack application running in the Replit environment on port 5000 with email/password authentication.
 
 ## Recent Changes (November 29, 2025)
 
-- **Added Replit Auth** - Replaced custom email/password auth with Replit OpenID Connect authentication
-  - Supports login via Google, GitHub, Apple, and email
-  - Login/logout redirects through `/api/login` and `/api/logout` routes
-  - User profile stored in database with upsert on login
 - Implemented guest/authenticated user dual-mode system
 - Guests can use the app with all preloaded recipes (no login required)
 - Authenticated users get their personal data (ratings, custom recipes) merged with preloaded recipes
@@ -25,10 +21,12 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 ## Recent Changes (November 28, 2025)
 
 - Converted from frontend-only to full-stack architecture
+- Added custom email/password authentication (signup and login with any email)
 - Set up PostgreSQL database with Drizzle ORM for data persistence
 - Created database schema for users, sessions, recipes, ratings, shopping lists, and settings
 - Added React Query for API state management
 - Updated deployment configuration for full-stack app (autoscale)
+- Added login/logout UI with modal-based authentication forms
 
 ## Project Architecture
 
@@ -37,7 +35,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 - **Backend Framework**: Express.js with TypeScript
 - **Build Tool**: Vite 6.2.0
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Replit Auth (OpenID Connect) - supports Google, GitHub, Apple, email login
+- **Authentication**: Custom email/password auth with bcrypt
 - **Session Storage**: PostgreSQL-backed sessions (connect-pg-simple)
 - **UI Components**: Custom components with Lucide React icons
 - **Charts**: Recharts for flavor profile visualization
@@ -50,7 +48,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 ├── server/              # Backend server code
 │   ├── index.ts         # Express server entry point
 │   ├── routes.ts        # API route definitions
-│   ├── replitAuth.ts    # Replit Auth OpenID Connect configuration
+│   ├── auth.ts          # Email/password auth configuration
 │   ├── storage.ts       # Database storage methods
 │   ├── db.ts            # Database connection
 │   └── vite.ts          # Vite middleware for development
@@ -63,6 +61,7 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 │       └── lib/
 │           └── queryClient.ts  # React Query client
 ├── components/          # React components
+│   ├── AuthModal.tsx    # Login/Signup modal
 │   ├── FlavorWheel.tsx
 │   ├── HistoryInput.tsx
 │   ├── HowItWorksModal.tsx
