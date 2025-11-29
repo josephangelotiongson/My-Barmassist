@@ -30,8 +30,15 @@ interface Substitution {
   rationale: string;
 }
 
+interface Addition {
+  ingredient: string;
+  amount: string;
+  rationale: string;
+}
+
 interface LabResult {
   substitutions: Substitution[];
+  additions: Addition[];
   predictedProfile: FlavorProfile;
   rationale: string;
   newIngredients: string[];
@@ -82,11 +89,13 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
+  const [targetNotes, setTargetNotes] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [labResult, setLabResult] = useState<LabResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSubs, setAppliedSubs] = useState<Set<number>>(new Set());
+  const [appliedAdds, setAppliedAdds] = useState<Set<number>>(new Set());
   const [editorMode, setEditorMode] = useState<'wheel' | 'sliders'>('wheel');
   
   // Build mode states
@@ -276,7 +285,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
             ingredients: selectedRecipe.ingredients,
             flavorProfile: getRecipeProfile(selectedRecipe)
           },
-          targetProfile
+          targetProfile,
+          targetNotes: targetNotes.length > 0 ? targetNotes : undefined
         })
       });
       
@@ -284,9 +294,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
         const data = await response.json();
         setLabResult(data);
         setAppliedSubs(new Set());
+        setAppliedAdds(new Set());
       } else {
         const errorData = await response.json().catch(() => ({}));
-        setErrorMessage(errorData.error || 'Failed to analyze substitutions. Please try again.');
+        setErrorMessage(errorData.error || 'Failed to analyze. Please try again.');
       }
     } catch (error) {
       setErrorMessage('Network error. Please check your connection and try again.');
@@ -297,6 +308,18 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
   const toggleSubstitution = (idx: number) => {
     setAppliedSubs(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
+
+  const toggleAddition = (idx: number) => {
+    setAppliedAdds(prev => {
       const next = new Set(prev);
       if (next.has(idx)) {
         next.delete(idx);
@@ -324,6 +347,14 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
         });
       }
     });
+    
+    if (labResult.additions) {
+      labResult.additions.forEach((add, idx) => {
+        if (appliedAdds.has(idx)) {
+          ingredients.push(`${add.amount} ${add.ingredient}`);
+        }
+      });
+    }
     
     return ingredients;
   };
@@ -380,7 +411,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
   // Save the riff to the database
   const saveRiff = async () => {
-    if (!selectedRecipe || appliedSubs.size === 0) return;
+    if (!selectedRecipe || (appliedSubs.size === 0 && appliedAdds.size === 0)) return;
     
     const name = riffName || generateRiffName();
     const parentSlug = selectedRecipe.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
@@ -432,20 +463,25 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     setSaveSuccess(false);
     setSavedRiff(null);
     setExistingRiff(null);
-  }, [appliedSubs.size, selectedRecipe?.name]);
+  }, [appliedSubs.size, appliedAdds.size, selectedRecipe?.name]);
 
-  // Generate default riff name when substitutions are applied
+  // Generate default riff name when modifications are applied
   React.useEffect(() => {
-    if (appliedSubs.size > 0 && selectedRecipe && labResult) {
+    if ((appliedSubs.size > 0 || appliedAdds.size > 0) && selectedRecipe && labResult) {
       const subs = labResult.substitutions.filter((_, idx) => appliedSubs.has(idx));
+      const adds = labResult.additions?.filter((_, idx) => appliedAdds.has(idx)) || [];
+      
       if (subs.length > 0) {
         const mainSub = subs[0];
         setRiffName(`${selectedRecipe.name} (${mainSub.replacement} Riff)`);
+      } else if (adds.length > 0) {
+        const mainAdd = adds[0];
+        setRiffName(`${selectedRecipe.name} (with ${mainAdd.ingredient})`);
       } else {
         setRiffName(`${selectedRecipe.name} Riff`);
       }
     }
-  }, [appliedSubs.size, selectedRecipe?.name, labResult?.substitutions]);
+  }, [appliedSubs.size, appliedAdds.size, selectedRecipe?.name, labResult?.substitutions, labResult?.additions]);
 
   const originalProfile = useMemo(() => {
     return selectedRecipe ? getRecipeProfile(selectedRecipe) : DEFAULT_PROFILE;
@@ -627,6 +663,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     profile={targetProfile}
                     originalProfile={originalProfile}
                     onProfileChange={setTargetProfile}
+                    onNotesChange={setTargetNotes}
                     size={280}
                   />
                 ) : (
@@ -747,18 +784,18 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
               <button
                 onClick={analyzeSubstitutions}
-                disabled={isAnalyzing || !hasChanges}
+                disabled={isAnalyzing || (!hasChanges && targetNotes.length === 0)}
                 className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-stone-700 disabled:to-stone-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    AI Analyzing Substitutions...
+                    AI Analyzing Modifications...
                   </>
                 ) : (
                   <>
                     <Shuffle className="w-5 h-5" />
-                    {hasChanges ? 'Get AI Substitution Recommendations' : 'Adjust Target Profile First'}
+                    {hasChanges || targetNotes.length > 0 ? 'Get AI Recommendations' : 'Adjust Target Profile First'}
                   </>
                 )}
               </button>
@@ -790,36 +827,75 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                       {labResult.rationale}
                     </p>
                     
-                    {labResult.substitutions.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Suggested Substitutions</p>
-                        {labResult.substitutions.map((sub, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => toggleSubstitution(idx)}
-                            className={`w-full text-left p-3 rounded-xl border transition-all ${
-                              appliedSubs.has(idx)
-                                ? 'bg-secondary/10 border-secondary/50'
-                                : 'bg-stone-800/50 border-stone-700 hover:border-secondary/50'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-stone-500 line-through">{sub.original}</span>
-                                <ArrowRight className="w-3 h-3 text-stone-500" />
-                                <span className="text-sm text-secondary font-medium">{sub.replacement}</span>
-                              </div>
-                              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                                appliedSubs.has(idx)
-                                  ? 'bg-secondary border-secondary'
-                                  : 'border-stone-600'
-                              }`}>
-                                {appliedSubs.has(idx) && <Check className="w-3 h-3 text-stone-900" />}
-                              </div>
-                            </div>
-                            <p className="text-xs text-stone-400">{sub.rationale}</p>
-                          </button>
-                        ))}
+                    {(labResult.substitutions.length > 0 || (labResult.additions && labResult.additions.length > 0)) ? (
+                      <div className="space-y-4">
+                        {labResult.substitutions.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Swap Ingredients</p>
+                            {labResult.substitutions.map((sub, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => toggleSubstitution(idx)}
+                                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                                  appliedSubs.has(idx)
+                                    ? 'bg-secondary/10 border-secondary/50'
+                                    : 'bg-stone-800/50 border-stone-700 hover:border-secondary/50'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-stone-500 line-through">{sub.original}</span>
+                                    <ArrowRight className="w-3 h-3 text-stone-500" />
+                                    <span className="text-sm text-secondary font-medium">{sub.replacement}</span>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                                    appliedSubs.has(idx)
+                                      ? 'bg-secondary border-secondary'
+                                      : 'border-stone-600'
+                                  }`}>
+                                    {appliedSubs.has(idx) && <Check className="w-3 h-3 text-stone-900" />}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-stone-400">{sub.rationale}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {labResult.additions && labResult.additions.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-stone-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                              <Plus className="w-3 h-3" />
+                              Add Ingredients
+                            </p>
+                            {labResult.additions.map((add, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => toggleAddition(idx)}
+                                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                                  appliedAdds.has(idx)
+                                    ? 'bg-green-900/20 border-green-700/50'
+                                    : 'bg-stone-800/50 border-stone-700 hover:border-green-700/50'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <Plus className="w-3 h-3 text-green-500" />
+                                    <span className="text-sm text-green-400 font-medium">{add.amount} {add.ingredient}</span>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                                    appliedAdds.has(idx)
+                                      ? 'bg-green-600 border-green-600'
+                                      : 'border-stone-600'
+                                  }`}>
+                                    {appliedAdds.has(idx) && <Check className="w-3 h-3 text-white" />}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-stone-400">{add.rationale}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-4 text-stone-500 text-sm">
@@ -828,7 +904,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     )}
                   </div>
 
-                  {appliedSubs.size > 0 && (
+                  {(appliedSubs.size > 0 || appliedAdds.size > 0) && (
                     <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-2xl border border-amber-800/30 overflow-hidden">
                       <div className="bg-gradient-to-r from-amber-900/40 to-orange-900/30 px-4 py-3 border-b border-amber-800/30">
                         <div className="flex items-center justify-between">
@@ -1138,6 +1214,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   <EditableFlavorWheel
                     profile={targetProfile}
                     onProfileChange={setTargetProfile}
+                    onNotesChange={setTargetNotes}
                   />
                 ) : (
                   <div className="space-y-3">

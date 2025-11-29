@@ -1117,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cocktail Laboratory - AI-powered flavor substitution simulation
   app.post('/api/lab/simulate', async (req, res) => {
     try {
-      const { baseRecipe, targetProfile } = req.body;
+      const { baseRecipe, targetProfile, targetNotes } = req.body;
       
       if (!baseRecipe || !targetProfile) {
         return res.status(400).json({ 
@@ -1131,9 +1131,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`[Lab] Simulating substitutions for "${baseRecipe.name}"`);
+      console.log(`[Lab] Simulating modifications for "${baseRecipe.name}"${targetNotes?.length ? ` with notes: ${targetNotes.join(', ')}` : ''}`);
       
-      const result = await simulateFlavorSubstitutions(baseRecipe, targetProfile);
+      const result = await simulateFlavorSubstitutions(baseRecipe, targetProfile, targetNotes);
       
       res.json(result);
     } catch (error: any) {

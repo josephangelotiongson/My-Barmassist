@@ -21,6 +21,7 @@ interface Props {
   profile: FlavorProfile;
   originalProfile?: FlavorProfile;
   onProfileChange: (profile: FlavorProfile) => void;
+  onNotesChange?: (notes: string[]) => void;
   size?: number;
 }
 
@@ -50,7 +51,8 @@ function describeArc(x: number, y: number, innerRadius: number, outerRadius: num
 
 const EditableFlavorWheel: React.FC<Props> = ({ 
   profile, 
-  onProfileChange, 
+  onProfileChange,
+  onNotesChange,
   size = 320 
 }) => {
   const center = size / 2;
@@ -69,10 +71,25 @@ const EditableFlavorWheel: React.FC<Props> = ({
     setSelection(profileToSelection(profile));
   }, [profile]);
 
+  const getNoteLabelsList = (sel: FlavorSelection): string[] => {
+    const noteLabels: string[] = [];
+    FLAVOR_TAXONOMY.forEach(cat => {
+      cat.notes.forEach(note => {
+        if (sel.notes.has(note.id)) {
+          noteLabels.push(note.label);
+        }
+      });
+    });
+    return noteLabels;
+  };
+
   const updateProfile = (newSelection: FlavorSelection) => {
     setSelection(newSelection);
     const newProfile = selectionToFlavorProfile(newSelection);
     onProfileChange(newProfile as unknown as FlavorProfile);
+    if (onNotesChange) {
+      onNotesChange(getNoteLabelsList(newSelection));
+    }
   };
 
   const toggleCategory = (categoryId: string) => {

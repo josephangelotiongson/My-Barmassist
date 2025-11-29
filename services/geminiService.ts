@@ -1006,8 +1006,15 @@ export interface LabSubstitution {
   rationale: string;
 }
 
+export interface LabAddition {
+  ingredient: string;
+  amount: string;
+  rationale: string;
+}
+
 export interface LabSimulationResult {
   substitutions: LabSubstitution[];
+  additions: LabAddition[];
   predictedProfile: FlavorProfile;
   rationale: string;
   newIngredients: string[];
@@ -1028,20 +1035,33 @@ const labSimulationSchema: Schema = {
         required: ['original', 'replacement', 'rationale']
       }
     },
+    additions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          ingredient: { type: Type.STRING, description: "The new ingredient to add to the recipe" },
+          amount: { type: Type.STRING, description: "The recommended amount (e.g., '0.25 oz', '2 dashes', '1 barspoon')" },
+          rationale: { type: Type.STRING, description: "Brief explanation of why this addition helps achieve the target flavor" }
+        },
+        required: ['ingredient', 'amount', 'rationale']
+      }
+    },
     predictedProfile: flavorProfileSchema,
     rationale: { type: Type.STRING, description: "Overall explanation of how these changes will affect the drink's flavor" },
     newIngredients: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "The complete modified ingredients list with measurements"
+      description: "The complete modified ingredients list with measurements (including both substitutions and additions)"
     }
   },
-  required: ['substitutions', 'predictedProfile', 'rationale', 'newIngredients']
+  required: ['substitutions', 'additions', 'predictedProfile', 'rationale', 'newIngredients']
 };
 
 export const simulateFlavorSubstitutions = async (
   baseRecipe: { name: string; ingredients: string[]; flavorProfile: FlavorProfile },
-  targetProfile: FlavorProfile
+  targetProfile: FlavorProfile,
+  targetNotes?: string[]
 ): Promise<LabSimulationResult> => {
   try {
     const profileDiff = Object.values(FlavorDimension).map(dim => {
@@ -1049,6 +1069,10 @@ export const simulateFlavorSubstitutions = async (
       if (diff === 0) return null;
       return `${dim}: ${diff > 0 ? '+' : ''}${diff} (from ${baseRecipe.flavorProfile[dim]} to ${targetProfile[dim]})`;
     }).filter(Boolean).join(', ');
+
+    const notesSection = targetNotes && targetNotes.length > 0 
+      ? `\nSPECIFIC FLAVOR NOTES REQUESTED: ${targetNotes.join(', ')}\nThese specific flavor notes are HIGH PRIORITY. Choose ingredients that specifically deliver these flavor characteristics.`
+      : '';
 
     const prompt = `
       You are a Master Mixologist and Flavor Expert.
@@ -1059,30 +1083,39 @@ export const simulateFlavorSubstitutions = async (
       
       TARGET FLAVOR PROFILE: ${JSON.stringify(targetProfile)}
       FLAVOR ADJUSTMENTS NEEDED: ${profileDiff || 'None - profiles are identical'}
+      ${notesSection}
       
       ${FLAVOR_RUBRIC}
       
       TASK:
-      Recommend ingredient substitutions that will transform the base recipe's flavor profile 
-      to match the target profile as closely as possible.
+      Recommend modifications to transform the base recipe's flavor profile to match the target.
+      You may suggest BOTH substitutions (replacing existing ingredients) AND additions (new ingredients to add).
+      
+      MODIFICATION TYPES:
+      1. SUBSTITUTIONS: Replace one ingredient with another (e.g., swap bourbon for rye)
+      2. ADDITIONS: Add new ingredients to enhance or introduce flavors (e.g., add 2 dashes of bitters, add 0.25 oz of a liqueur)
       
       RULES:
-      1. Only suggest substitutions that will meaningfully move the flavor profile toward the target.
-      2. Keep the spirit/core of the original cocktail intact when possible.
-      3. Each substitution should explain HOW it affects the flavor dimensions.
-      4. If no substitutions are needed (profiles already match), return an empty substitutions array.
-      5. Provide the complete predicted flavor profile after all substitutions.
-      6. Generate the complete new ingredients list with all substitutions applied.
+      1. Prioritize achieving the requested specific flavor notes if provided.
+      2. Keep the spirit/core of the original cocktail recognizable.
+      3. Each modification should explain HOW it affects the flavor.
+      4. Additions should use reasonable bar measurements (dashes, barspoons, rinses, small amounts).
+      5. Include BOTH substitutions array AND additions array in your response.
+      6. The newIngredients list should include all original ingredients with substitutions applied PLUS any additions.
       
-      COMMON SUBSTITUTION PATTERNS:
-      - To increase SWEET: Add simple syrup, honey, agave, liqueurs
-      - To increase SOUR: Add more citrus, shrubs, vinegar
-      - To increase BITTER: Add Campari, Aperol, amaro, bitters
-      - To increase BOOZY: Use overproof spirits, reduce mixers
-      - To increase HERBAL: Add Chartreuse, Benedictine, absinthe, herbs
-      - To increase FRUITY: Add fruit liqueurs, juices, purees
-      - To increase SPICY: Add ginger, chili, spiced syrup
-      - To increase SMOKY: Use mezcal, peated scotch, smoked ingredients
+      SPECIFIC FLAVOR NOTE INGREDIENTS:
+      - Honey notes: Honey syrup, mead, aged rum
+      - Caramel notes: Demerara syrup, aged spirits, butterscotch liqueur
+      - Vanilla notes: Vanilla extract, Licor 43, aged bourbon
+      - Citrus notes: Fresh citrus juice, citrus bitters, limoncello
+      - Berry notes: Crème de cassis, raspberry liqueur, fresh berries
+      - Tropical notes: Pineapple, coconut, passion fruit, falernum
+      - Mint notes: Fresh mint, crème de menthe, Fernet Branca
+      - Ginger notes: Fresh ginger, ginger syrup, ginger beer
+      - Coffee notes: Coffee liqueur, cold brew, espresso
+      - Chocolate notes: Crème de cacao, chocolate bitters
+      - Peat/Smoke notes: Islay scotch, mezcal, smoked salt
+      - Cinnamon notes: Cinnamon syrup, allspice dram
       
       Return your analysis as JSON.
     `;
@@ -1101,6 +1134,7 @@ export const simulateFlavorSubstitutions = async (
     
     return {
       substitutions: data.substitutions || [],
+      additions: data.additions || [],
       predictedProfile: data.predictedProfile || targetProfile,
       rationale: data.rationale || 'No changes recommended.',
       newIngredients: data.newIngredients || baseRecipe.ingredients
