@@ -1401,8 +1401,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                           instructions: buildResult.instructions,
                           flavorProfile: buildResult.predictedProfile,
                           category: 'Lab Creation',
-                          dateAdded: new Date().toISOString(),
-                          nutrition: { calories: 0, carbs: 0, abv: 0 }
+                          dateAdded: new Date().toISOString()
                         };
                         await onSaveExperiment(newCocktail);
                         setBuildSaveSuccess(true);

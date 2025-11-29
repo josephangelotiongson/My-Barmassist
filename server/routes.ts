@@ -1514,7 +1514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper: Enrich lab riff with AI data
+  // Helper: Enrich lab riff with AI data (uses same enrichment as regular recipes)
   async function enrichLabRiff(
     riffId: number, 
     name: string, 
@@ -1525,35 +1525,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`[Lab] Starting enrichment for riff ${riffId}: "${name}"`);
       
-      // Use existing enrichRecipeData function or create specific riff enrichment
-      const enrichmentPrompt = `
-        Analyze this cocktail riff:
-        
-        NAME: "${name}"
-        PARENT COCKTAIL: "${parentName}"
-        INGREDIENTS: ${JSON.stringify(ingredients)}
-        SUBSTITUTIONS MADE: ${JSON.stringify(substitutions)}
-        
-        Provide:
-        1. A brief description (2-3 sentences) explaining what makes this riff unique
-        2. The cocktail category (e.g., "Sours", "Old Fashioned Riffs", "Tiki", "Contemporary")
-        3. Recommended glass type
-        4. Garnish suggestion
-        5. A brief history/story of how this riff relates to its parent
-        6. Estimated nutrition (calories, sugar grams, ABV percent)
-        
-        Return as JSON with keys: description, category, glassType, garnish, history, nutrition (object with calories, sugarGrams, abvPercent)
-      `;
+      // Build instructions from substitutions for richer AI context
+      const instructions = `A riff on ${parentName}. ${substitutions.map(s => 
+        `Substitute ${s.original} with ${s.replacement} (${s.rationale})`
+      ).join('. ')}.`;
       
-      // For now, use simpler enrichment - update with AI later
-      await storage.updateLabRiffEnrichment(riffId, {
-        category: 'Lab Riff',
-        description: `A creative variation of ${parentName} featuring ${substitutions.map(s => s.replacement).join(', ')}.`,
-        enrichmentStatus: 'complete',
-        enrichedAt: new Date()
-      });
+      // Use the same enrichment as regular recipes to get flavor profile AND nutrition
+      const enrichment = await enrichRecipeData(name, ingredients, instructions);
       
-      console.log(`[Lab] Enrichment complete for riff ${riffId}`);
+      if (enrichment) {
+        const description = `A creative variation of ${parentName} featuring ${substitutions.map(s => s.replacement).join(', ')}.`;
+        
+        await storage.updateLabRiffEnrichment(riffId, {
+          category: 'Lab Creation',
+          description,
+          flavorProfile: enrichment.flavorProfile,
+          nutrition: enrichment.nutrition,
+          enrichmentStatus: 'complete',
+          enrichedAt: new Date()
+        });
+        
+        console.log(`[Lab] Enrichment complete for riff ${riffId} - ABV: ${enrichment.nutrition?.abvPercent || 0}%`);
+      } else {
+        // AI enrichment failed, try to at least set a description
+        await storage.updateLabRiffEnrichment(riffId, {
+          category: 'Lab Creation',
+          description: `A creative variation of ${parentName} featuring ${substitutions.map(s => s.replacement).join(', ')}.`,
+          enrichmentStatus: 'failed'
+        });
+        console.warn(`[Lab] AI enrichment returned null for riff ${riffId}`);
+      }
     } catch (error) {
       console.error(`[Lab] Enrichment failed for riff ${riffId}:`, error);
       await storage.updateLabRiffEnrichment(riffId, {

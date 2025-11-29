@@ -703,7 +703,11 @@ function MainApp() {
             ingredients: r.ingredients || [],
             instructions: Array.isArray(r.instructions) ? r.instructions : [r.instructions || ''],
             flavorProfile: r.flavorProfile || {},
-            nutrition: { calories: 0, carbs: 0, abv: 0 },
+            nutrition: r.nutrition ? {
+              calories: r.nutrition.calories || 0,
+              carbs: r.nutrition.sugarGrams || 0,
+              abv: r.nutrition.abvPercent || 0
+            } : undefined,
             category: r.category || 'Custom',
             imageUrl: r.imageUrl || globalImageMap.get(r.name),
             isUserCreated: true,
@@ -1765,7 +1769,11 @@ function MainApp() {
                   ingredients: dbRecipe.ingredients || [],
                   instructions: dbRecipe.instructions || [],
                   flavorProfile: dbRecipe.flavorProfile || {},
-                  nutrition: dbRecipe.nutrition || { calories: 0, carbs: 0, abv: 0 },
+                  nutrition: dbRecipe.nutrition ? {
+                    calories: dbRecipe.nutrition.calories || 0,
+                    carbs: dbRecipe.nutrition.sugarGrams || 0,
+                    abv: dbRecipe.nutrition.abvPercent || 0
+                  } : undefined,
                   category: dbRecipe.category || 'Uncategorized',
                   history: dbRecipe.history,
                   glassType: dbRecipe.glassType,
