@@ -10,6 +10,7 @@ import { seedMasterIngredients } from "./seedIngredients";
 import { enrichPendingIngredients } from "./ingredientEnrichment";
 import { seedModernRecipes } from "./seedModernRecipes";
 import { assignCocktailFamily } from "../services/geminiService";
+import { orchestrateFullLineage } from "./lineageOrchestrator";
 
 const objectStorageService = new ObjectStorageService();
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || '';
@@ -943,6 +944,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching all lineages:", error);
       res.status(500).json({ message: "Failed to fetch lineages" });
+    }
+  });
+
+  // Admin endpoint to generate holistic lineage for all cocktails
+  app.post('/api/admin/generate-lineage', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('[Admin] Starting holistic lineage generation...');
+      const result = await orchestrateFullLineage();
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error generating lineage:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to generate lineage",
+        error: error.message 
+      });
+    }
+  });
+
+  // Public endpoint to trigger lineage generation (for testing without admin)
+  app.post('/api/generate-lineage', async (req, res) => {
+    try {
+      console.log('[Public] Starting holistic lineage generation...');
+      const result = await orchestrateFullLineage();
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error generating lineage:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to generate lineage",
+        error: error.message 
+      });
     }
   });
 
