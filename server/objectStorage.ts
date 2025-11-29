@@ -101,16 +101,24 @@ export class ObjectStorageService {
     }
   }
 
-  async uploadCocktailImage(recipeName: string, base64Data: string): Promise<string> {
+  async uploadCocktailImage(recipeName: string, base64Data: string, creatorId?: string | null): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error("PRIVATE_OBJECT_DIR not set");
     }
 
-    // Use consistent naming based only on recipe name (no UUID)
-    // This ensures one image per recipe and allows easy lookup/overwrite
+    // Consistent naming: recipe name for classics, recipe-name-by-creatorId for variations
     const sanitizedName = recipeName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    const objectId = sanitizedName;
+    
+    // Include creatorId in filename for user variations to differentiate from classics
+    let objectId: string;
+    if (creatorId) {
+      const sanitizedCreator = creatorId.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      objectId = `${sanitizedName}-by-${sanitizedCreator}`;
+    } else {
+      objectId = sanitizedName;
+    }
+    
     const fullPath = `${privateObjectDir}/cocktail-images/${objectId}.png`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
     

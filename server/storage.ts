@@ -17,12 +17,13 @@ import {
   type InsertUserSettings,
 } from "../shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 // Type for global recipe images
 export type RecipeImage = {
   id: number;
   recipeName: string;
+  creatorId: string | null;
   imageUrl: string;
   createdAt: Date | null;
 };
@@ -60,9 +61,10 @@ export interface IStorage {
   upsertUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
   
   // Global recipe images (no auth required)
+  // Supports both classic recipes (creatorId = null) and user variations (creatorId = user id)
   getAllRecipeImages(): Promise<RecipeImage[]>;
-  getRecipeImage(recipeName: string): Promise<RecipeImage | undefined>;
-  upsertRecipeImage(recipeName: string, imageUrl: string): Promise<RecipeImage>;
+  getRecipeImage(recipeName: string, creatorId?: string | null): Promise<RecipeImage | undefined>;
+  upsertRecipeImage(recipeName: string, imageUrl: string, creatorId?: string | null): Promise<RecipeImage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -235,25 +237,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Global recipe images (no auth required)
+  // Supports both classic recipes (creatorId = null) and user variations (creatorId = user id)
   async getAllRecipeImages(): Promise<RecipeImage[]> {
     return await db.select().from(recipeImages);
   }
 
-  async getRecipeImage(recipeName: string): Promise<RecipeImage | undefined> {
-    const [result] = await db.select().from(recipeImages).where(eq(recipeImages.recipeName, recipeName));
+  async getRecipeImage(recipeName: string, creatorId?: string | null): Promise<RecipeImage | undefined> {
+    // First try to find user-specific image if creatorId is provided
+    if (creatorId) {
+      const [userImage] = await db.select().from(recipeImages)
+        .where(and(eq(recipeImages.recipeName, recipeName), eq(recipeImages.creatorId, creatorId)));
+      if (userImage) return userImage;
+    }
+    
+    // Fall back to classic/global image (creatorId is null)
+    const [result] = await db.select().from(recipeImages)
+      .where(and(eq(recipeImages.recipeName, recipeName), isNull(recipeImages.creatorId)));
     return result;
   }
 
-  async upsertRecipeImage(recipeName: string, imageUrl: string): Promise<RecipeImage> {
-    const [result] = await db
-      .insert(recipeImages)
-      .values({ recipeName, imageUrl })
-      .onConflictDoUpdate({
-        target: recipeImages.recipeName,
-        set: { imageUrl },
-      })
-      .returning();
-    return result;
+  async upsertRecipeImage(recipeName: string, imageUrl: string, creatorId?: string | null): Promise<RecipeImage> {
+    // Check if image already exists for this recipe + creator combination
+    const existing = await this.getRecipeImageExact(recipeName, creatorId || null);
+    
+    if (existing) {
+      // Update existing
+      const [result] = await db
+        .update(recipeImages)
+        .set({ imageUrl })
+        .where(eq(recipeImages.id, existing.id))
+        .returning();
+      return result;
+    } else {
+      // Insert new
+      const [result] = await db
+        .insert(recipeImages)
+        .values({ recipeName, imageUrl, creatorId: creatorId || null })
+        .returning();
+      return result;
+    }
+  }
+
+  // Helper to find exact match (for upsert logic)
+  private async getRecipeImageExact(recipeName: string, creatorId: string | null): Promise<RecipeImage | undefined> {
+    if (creatorId) {
+      const [result] = await db.select().from(recipeImages)
+        .where(and(eq(recipeImages.recipeName, recipeName), eq(recipeImages.creatorId, creatorId)));
+      return result;
+    } else {
+      const [result] = await db.select().from(recipeImages)
+        .where(and(eq(recipeImages.recipeName, recipeName), isNull(recipeImages.creatorId)));
+      return result;
+    }
   }
 }
 

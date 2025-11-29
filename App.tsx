@@ -631,30 +631,41 @@ export default function App() {
       
       setGeneratingImages(prev => new Set(prev).add(cocktail.id));
       
+      // Determine if this is a user variation (has creator) or classic recipe
+      // User variations get their own images, classic recipes share globally
+      const isUserVariation = cocktail.creator && cocktail.creator !== 'AI Bartender';
+      const creatorId = isUserVariation ? (user?.id || cocktail.creator) : null;
+      
       try {
-          // First, check if an image already exists for this recipe name (from any user)
-          const checkResponse = await fetch(`/api/recipe-images/${encodeURIComponent(cocktail.name)}`);
+          // Build check URL with optional creatorId for user variations
+          let checkUrl = `/api/recipe-images/${encodeURIComponent(cocktail.name)}`;
+          if (creatorId) {
+            checkUrl += `?creatorId=${encodeURIComponent(creatorId)}`;
+          }
+          
+          const checkResponse = await fetch(checkUrl);
           if (checkResponse.ok) {
             const checkResult = await checkResponse.json();
             if (checkResult.exists && checkResult.imageUrl) {
-              // Use the existing shared image instead of generating a new one
-              console.log(`Using existing shared image for "${cocktail.name}"`);
+              // Use the existing image (user-specific or classic fallback)
+              console.log(`Using existing ${checkResult.creatorId ? 'variation' : 'classic'} image for "${cocktail.name}"`);
               setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: checkResult.imageUrl } : c));
               return;
             }
           }
           
           // No existing image found - generate a new one
-          console.log(`Generating new image for "${cocktail.name}"`);
+          console.log(`Generating new ${creatorId ? 'variation' : 'classic'} image for "${cocktail.name}"`);
           const imageData = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
           if (imageData) {
-              // Upload to Object Storage and get the path
+              // Upload to Object Storage with optional creatorId for variations
               const response = await fetch('/api/recipe-images', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   recipeName: cocktail.name,
-                  imageData: imageData
+                  imageData: imageData,
+                  creatorId: creatorId
                 })
               });
               

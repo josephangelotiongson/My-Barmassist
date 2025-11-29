@@ -119,12 +119,16 @@ export const masterIngredients = pgTable("master_ingredients", {
 });
 
 // Global recipe images (shared across all users - no authentication required)
+// Supports both classic recipes (creatorId = null) and user variations (creatorId = user id)
 export const recipeImages = pgTable("recipe_images", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  recipeName: varchar("recipe_name").notNull().unique(),
+  recipeName: varchar("recipe_name").notNull(),
+  creatorId: varchar("creator_id"),
   imageUrl: text("image_url").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_recipe_images_lookup").on(table.recipeName, table.creatorId),
+]);
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;

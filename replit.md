@@ -10,12 +10,17 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
 
 - **Shared Image Storage System**: Smart image management using App Storage (Object Storage)
   - Images are stored globally and shared across ALL users (prevents storage flooding)
-  - When any user requests an image, the system first checks if one already exists for that recipe name
-  - If an image exists, it's reused instantly - no duplicate generation
-  - If no image exists, a new one is generated and saved for everyone
-  - One image per recipe name (stored by normalized recipe name in database)
+  - **Classic Recipes**: Shared globally by recipe name (e.g., `margarita.png`)
+  - **User Variations/Riffs**: Stored separately with creator ID (e.g., `margarita-by-user123.png`)
+  - When any user requests an image:
+    - First checks for user-specific variation image
+    - Falls back to classic/global image if no variation exists
+  - If no image exists at all, a new one is generated and saved
   - Images served via `/cocktail-images/:filename` endpoint
-  - API endpoints: `GET /api/recipe-images/:recipeName` to check if image exists
+  - API endpoints:
+    - `GET /api/recipe-images/:recipeName` - Check for classic image
+    - `GET /api/recipe-images/:recipeName?creatorId=xxx` - Check for user variation
+    - `POST /api/recipe-images` with `{ recipeName, imageData, creatorId? }` - Save image
 - **Migrated to Replit Auth**: Replaced custom email/password authentication with Replit Auth
   - Users can now log in via Google, GitHub, X, Apple, and email/password
   - Login: Navigate to `/api/login`

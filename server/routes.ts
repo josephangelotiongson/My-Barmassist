@@ -266,13 +266,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check if an image exists for a specific recipe (by name)
+  // Check if an image exists for a specific recipe (by name and optional creatorId)
+  // Query params: ?creatorId=xxx for user variations
   app.get('/api/recipe-images/:recipeName', async (req, res) => {
     try {
       const recipeName = decodeURIComponent(req.params.recipeName);
-      const image = await storage.getRecipeImage(recipeName);
+      const creatorId = req.query.creatorId as string | undefined;
+      
+      // First check for user-specific image, then fall back to classic
+      const image = await storage.getRecipeImage(recipeName, creatorId);
       if (image) {
-        res.json({ exists: true, imageUrl: image.imageUrl });
+        res.json({ exists: true, imageUrl: image.imageUrl, creatorId: image.creatorId });
       } else {
         res.json({ exists: false });
       }
@@ -282,18 +286,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Save a recipe image (supports both classic recipes and user variations)
   app.post('/api/recipe-images', async (req, res) => {
     try {
-      const { recipeName, imageData } = req.body;
+      const { recipeName, imageData, creatorId } = req.body;
       if (!recipeName || !imageData) {
         return res.status(400).json({ message: "Recipe name and image data are required" });
       }
       
-      // Upload image to Object Storage and get the path
-      const imagePath = await objectStorageService.uploadCocktailImage(recipeName, imageData);
+      // Upload image to Object Storage with optional creatorId in filename
+      const imagePath = await objectStorageService.uploadCocktailImage(recipeName, imageData, creatorId);
       
-      // Store the path in the database
-      const result = await storage.upsertRecipeImage(recipeName, imagePath);
+      // Store the path in the database with creatorId
+      const result = await storage.upsertRecipeImage(recipeName, imagePath, creatorId);
       res.json(result);
     } catch (error) {
       console.error("Error saving recipe image:", error);
