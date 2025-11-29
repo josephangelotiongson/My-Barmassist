@@ -272,12 +272,18 @@ async function resolveShortUrlIfNeeded(url: string): Promise<{ resolvedUrl: stri
   return { resolvedUrl: url, wasExpanded: false };
 }
 
-export const analyzeDrinkText = async (text: string): Promise<any> => {
+interface ImageData {
+  base64: string;
+  mimeType: string;
+}
+
+export const analyzeDrinkText = async (text: string, imageData?: ImageData): Promise<any> => {
   try {
     const isUrl = /(https?:\/\/[^\s]+)/g.test(text);
     let tools = undefined;
     let enrichedContext = text;
     let linkInfo: SocialMediaLinkInfo | null = null;
+    const hasImage = !!imageData;
     
     // Social Media / URL Logic with enhanced URL cleaning
     if (isUrl) {
@@ -311,15 +317,25 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
     }
 
     // Using gemini-3-pro-preview for advanced reasoning on search results (TikTok/IG)
+    const hasTextInput = text && text.trim().length > 0;
+    const imageOnlyMode = hasImage && !hasTextInput;
+    
+    const imageContext = hasImage ? `\n\nIMPORTANT: An image/screenshot has been provided. Analyze the image carefully to extract:
+      - Any visible cocktail name, menu text, or recipe information
+      - Ingredient lists, measurements, and instructions shown in the image
+      - Visual cues about the drink's appearance for flavor profile estimation
+      - Any text overlays, captions, or annotations visible in the screenshot
+      ${imageOnlyMode ? '\nNOTE: This is an IMAGE-ONLY analysis. Extract ALL cocktail information exclusively from the provided image. If the image shows a recipe, menu, or cocktail photo, identify and extract all relevant details.' : ''}` : '';
+
     const prompt = `
       You are an Expert Mixologist Agent and Nutritionist AI.
       
-      Input Context: "${enrichedContext}"
+      ${hasTextInput ? `Input Context: "${enrichedContext}"` : 'Analyze the provided image to extract cocktail information.'}${imageContext}
 
       ${FLAVOR_RUBRIC}
 
       TASK: 
-      1. Extract recipe data (ingredients with volumes, instructions).
+      1. Extract recipe data (ingredients with volumes, instructions).${hasImage ? ' Use both the text input AND the image content to gather information.' : ''}
       2. Classify the Family.
       3. Generate a Flavor Profile.
       4. ESTIMATE NUTRITION: Calculate total calories and grams of carbohydrates. 
@@ -381,13 +397,23 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
     `;
 
     try {
-      // Switch to MODEL_PRO for better search synthesis
+      // Build content parts - include image if provided
+      let contentParts: any[] = [{ text: prompt }];
+      if (hasImage && imageData) {
+        contentParts = [
+          { inlineData: { mimeType: imageData.mimeType, data: imageData.base64 } },
+          { text: prompt }
+        ];
+      }
+
+      // Switch to MODEL_PRO for better search synthesis (or MODEL_FLASH for image analysis without search)
+      const modelToUse = hasImage && !isUrl ? MODEL_FLASH : MODEL_PRO;
       const response = await ai.models.generateContent({
-        model: MODEL_PRO,
-        contents: prompt,
+        model: modelToUse,
+        contents: hasImage ? [{ role: 'user' as const, parts: contentParts }] : prompt,
         config: {
           // responseSchema is not compatible with googleSearch tool, so we parse manually
-          tools: tools,
+          tools: hasImage ? undefined : tools, // Disable search tools when analyzing image
           temperature: 0.1, // Low temp for factual extraction
         }
       });

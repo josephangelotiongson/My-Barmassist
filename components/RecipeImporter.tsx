@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, ScanLine, Link, Mic, MicOff, Disc, Trash2, Tag, Activity, Droplets } from 'lucide-react';
+import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, ScanLine, Link, Mic, MicOff, Disc, Trash2, Tag, Activity, Droplets, Camera } from 'lucide-react';
 import { analyzeDrinkText, generateCocktailImage, transcribeAudio } from '../services/geminiService';
 import { Cocktail, FlavorProfile, Nutrition } from '../types';
 import FlavorWheel from './FlavorWheel';
@@ -28,6 +28,12 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
 
   // Refs for file inputs
   const menuInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
+
+  // Screenshot state for AI interpretation
+  const [screenshotBase64, setScreenshotBase64] = useState<string>('');
+  const [screenshotPreview, setScreenshotPreview] = useState<string>('');
+  const [screenshotMimeType, setScreenshotMimeType] = useState<string>('image/jpeg');
 
   // Editing State
   const [entryType, setEntryType] = useState<'Recipe' | 'Order'>('Recipe');
@@ -119,17 +125,51 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
     }
   };
 
+  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!supportedTypes.includes(file.type)) {
+      alert('Please upload a JPEG, PNG, WebP, or GIF image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setScreenshotPreview(result);
+      setScreenshotBase64(result.split(',')[1]);
+      setScreenshotMimeType(file.type);
+    };
+    reader.onerror = () => {
+      alert('Failed to read image file. Please try again.');
+    };
+    reader.readAsDataURL(file);
+    
+    if (e.target) e.target.value = '';
+  };
+
+  const clearScreenshot = () => {
+    setScreenshotBase64('');
+    setScreenshotPreview('');
+    setScreenshotMimeType('image/jpeg');
+    if (screenshotInputRef.current) screenshotInputRef.current.value = '';
+  };
+
   const handleAnalyzeText = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && !screenshotBase64) return;
 
     setIsLoading(true);
     const hasLink = input.includes('http') || input.includes('tiktok.com');
-    setLoadingStep(hasLink ? 'Agent watching video...' : 'Mixologist Agent Analyzing...');
+    const hasImage = !!screenshotBase64;
+    setLoadingStep(hasImage ? 'Reading screenshot...' : (hasLink ? 'Agent watching video...' : 'Mixologist Agent Analyzing...'));
     
     try {
-      // 1. Scrape / Analyze Text
-      const data = await analyzeDrinkText(input);
+      // 1. Scrape / Analyze Text (and optionally image)
+      const imageData = hasImage ? { base64: screenshotBase64, mimeType: screenshotMimeType } : undefined;
+      const data = await analyzeDrinkText(input, imageData);
       
       // Extract URL if present in input for the 'source' field
       const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -161,6 +201,8 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
         links: foundUrls,
         creator: data.creator
       });
+      
+      clearScreenshot();
       
     } catch (error) {
       console.error(error);
@@ -263,6 +305,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
     setDraftRating(0);
     setDraftImageUrl('');
     setDraftNutrition({ calories: 0, carbs: 0, abv: 0 });
+    clearScreenshot();
   };
 
   const addIngredient = () => {
@@ -361,43 +404,86 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                             <div className="w-full border-t border-stone-800"></div>
                         </div>
                         <div className="relative flex justify-center">
-                            <span className="bg-surface px-2 text-xs text-stone-500 uppercase font-bold tracking-widest">Describe, Link, or Dictate</span>
+                            <span className="bg-surface px-2 text-xs text-stone-500 uppercase font-bold tracking-widest">Describe, Link, Screenshot, or Dictate</span>
                         </div>
                     </div>
 
-                    <form onSubmit={handleAnalyzeText} className="relative">
-                        <textarea
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder="e.g. 'I had a fantastic Mezcal cocktail with agave and lime...' or paste a TikTok/Instagram link..."
-                            className="w-full bg-background text-stone-200 p-4 rounded-xl border border-stone-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[120px] resize-none font-mono text-sm"
-                        />
-                        
-                        {/* Mic Button */}
-                        <div className="absolute bottom-3 left-3">
-                            <button
-                                type="button"
-                                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                                className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-600 animate-pulse text-white' : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700'}`}
-                            >
-                                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                            </button>
-                        </div>
-
-                        {isLoading && (
-                            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center rounded-xl backdrop-blur-[1px] z-10">
-                                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                                <span className="text-xs font-bold text-primary animate-pulse uppercase">{loadingStep}</span>
+                    <form onSubmit={handleAnalyzeText} className="relative space-y-3">
+                        {/* Screenshot Preview */}
+                        {screenshotPreview && (
+                            <div className="relative bg-stone-900 rounded-xl border border-primary/50 overflow-hidden">
+                                <img 
+                                    src={screenshotPreview} 
+                                    alt="Screenshot preview" 
+                                    className="w-full max-h-40 object-contain"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={clearScreenshot}
+                                    className="absolute top-2 right-2 p-1.5 bg-stone-900/80 hover:bg-red-600 rounded-full text-stone-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                                <div className="absolute bottom-2 left-2 bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded backdrop-blur-md flex items-center gap-1 text-[10px] font-bold uppercase">
+                                    <Camera className="w-3 h-3" /> Screenshot attached
+                                </div>
                             </div>
                         )}
+
+                        <div className="relative">
+                            <textarea
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder={screenshotPreview 
+                                    ? "Add optional context about the screenshot..." 
+                                    : "e.g. 'I had a fantastic Mezcal cocktail with agave and lime...' or paste a TikTok/Instagram link..."}
+                                className="w-full bg-background text-stone-200 p-4 rounded-xl border border-stone-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none min-h-[120px] resize-none font-mono text-sm"
+                            />
+                            
+                            {/* Input Action Buttons */}
+                            <div className="absolute bottom-3 left-3 flex gap-2">
+                                {/* Mic Button */}
+                                <button
+                                    type="button"
+                                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                    className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-600 animate-pulse text-white' : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700'}`}
+                                >
+                                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                </button>
+                                
+                                {/* Screenshot Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => screenshotInputRef.current?.click()}
+                                    className={`p-2 rounded-full transition-all ${screenshotPreview ? 'bg-primary/20 text-primary' : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700'}`}
+                                    title="Upload screenshot"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                </button>
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    ref={screenshotInputRef}
+                                    className="hidden"
+                                    onChange={handleScreenshotUpload}
+                                />
+                            </div>
+
+                            {isLoading && (
+                                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center rounded-xl backdrop-blur-[1px] z-10">
+                                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                                    <span className="text-xs font-bold text-primary animate-pulse uppercase">{loadingStep}</span>
+                                </div>
+                            )}
+                        </div>
                         
-                        <div className="flex justify-end mt-2">
+                        <div className="flex justify-end">
                             <button 
                                 onClick={handleAnalyzeText}
-                                disabled={isLoading || !input.trim()}
+                                disabled={isLoading || (!input.trim() && !screenshotBase64)}
                                 className="bg-stone-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-stone-700 disabled:opacity-50 transition-colors flex items-center gap-2 text-xs"
                             >
-                                Analyze Input <Send className="w-3 h-3" />
+                                {screenshotBase64 ? 'Analyze Screenshot' : 'Analyze Input'} <Send className="w-3 h-3" />
                             </button>
                         </div>
                     </form>

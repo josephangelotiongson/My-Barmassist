@@ -24,7 +24,12 @@ None set yet - will be documented as user expresses preferences during developme
 - **AI-Powered Recommendations**: Suggestions based on ingredients and flavor preferences.
 - **Ingredient Scanning**: AI-driven inventory management (future: image recognition).
 - **Flavor Profiling**: Visual representation of 8 flavor dimensions (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy).
-- **Recipe Management**: Create, import (including from social media URLs), and manage custom recipes.
+- **Recipe Management**: Create, import (including from social media URLs and screenshots), and manage custom recipes.
+- **Screenshot AI Analysis**: Upload screenshots of cocktail recipes for AI interpretation:
+  - Camera button next to mic in new entry modal
+  - Supports JPEG, PNG, WebP, and GIF images
+  - AI extracts recipe name, ingredients, instructions, and flavor profile from images
+  - Works with text input for additional context or standalone
 - **Shopping List**: Track ingredients and manage inventory.
 - **Nutrition Estimation**: Calculates calories, carbs, and ABV for cocktails.
 - **Automatic Recipe Enrichment**: New and global recipes are automatically analyzed by AI for flavor profiles and nutritional data.
