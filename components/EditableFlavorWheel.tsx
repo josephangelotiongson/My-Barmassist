@@ -97,8 +97,8 @@ const EditableFlavorWheel: React.FC<Props> = ({
   const innerRingInner = 55;
   const innerRingOuter = 95;
   const outerRingInner = 100;
-  const outerRingOuter = size / 2 - 35;
-  const labelRadius = size / 2 - 8;
+  const outerRingOuter = size / 2 - 50;
+  const labelRadius = size / 2 - 42;
   
   const categoryCount = FLAVOR_TAXONOMY.length;
   const categoryAngle = 360 / categoryCount;
@@ -326,36 +326,48 @@ const EditableFlavorWheel: React.FC<Props> = ({
                     }}
                   />
                   
-                  <text
-                    x={note.labelPos.x}
-                    y={note.labelPos.y}
-                    textAnchor={note.midAngle > 180 ? "end" : note.midAngle < 180 && note.midAngle > 0 ? "start" : "middle"}
-                    dominantBaseline="middle"
-                    fill={note.value > 5 ? cat.color : '#78716c'}
-                    fontSize="8"
-                    fontWeight={note.value > 5 ? '700' : '500'}
-                    className="pointer-events-none select-none transition-all duration-300"
-                    style={{ opacity: Math.max(0.6, note.intensity.opacity) }}
-                    transform={`rotate(${note.midAngle > 90 && note.midAngle < 270 ? note.midAngle + 180 : note.midAngle}, ${note.labelPos.x}, ${note.labelPos.y})`}
-                  >
-                    {note.label}
-                  </text>
-                  
-                  {hoveredNote === note.id && (
-                    <text
-                      x={note.labelPos.x}
-                      y={note.labelPos.y + 10}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill="#fbbf24"
-                      fontSize="7"
-                      fontWeight="700"
-                      className="pointer-events-none select-none"
-                      transform={`rotate(${note.midAngle > 90 && note.midAngle < 270 ? note.midAngle + 180 : note.midAngle}, ${note.labelPos.x}, ${note.labelPos.y + 10})`}
-                    >
-                      {note.value.toFixed(1)}
-                    </text>
-                  )}
+                  {(() => {
+                    const isRightSide = note.midAngle < 90 || note.midAngle > 270;
+                    const isBottomHalf = note.midAngle > 0 && note.midAngle < 180;
+                    const rotationAngle = note.midAngle - 90;
+                    const adjustedRotation = isRightSide ? rotationAngle : rotationAngle + 180;
+                    
+                    return (
+                      <>
+                        <text
+                          x={note.labelPos.x}
+                          y={note.labelPos.y}
+                          textAnchor={isRightSide ? "start" : "end"}
+                          dominantBaseline="middle"
+                          fill={note.value > 5 ? cat.color : '#78716c'}
+                          fontSize="8"
+                          fontWeight={note.value > 5 ? '700' : '500'}
+                          className="pointer-events-none select-none transition-all duration-300"
+                          style={{ opacity: Math.max(0.6, note.intensity.opacity) }}
+                          transform={`rotate(${adjustedRotation}, ${note.labelPos.x}, ${note.labelPos.y})`}
+                        >
+                          {note.label}
+                        </text>
+                        
+                        {hoveredNote === note.id && (
+                          <text
+                            x={note.labelPos.x}
+                            y={note.labelPos.y}
+                            textAnchor={isRightSide ? "start" : "end"}
+                            dominantBaseline="middle"
+                            fill="#fbbf24"
+                            fontSize="7"
+                            fontWeight="700"
+                            className="pointer-events-none select-none"
+                            dx={isRightSide ? "45" : "-45"}
+                            transform={`rotate(${adjustedRotation}, ${note.labelPos.x}, ${note.labelPos.y})`}
+                          >
+                            {note.value.toFixed(1)}
+                          </text>
+                        )}
+                      </>
+                    );
+                  })()}
                 </g>
               ))}
               
