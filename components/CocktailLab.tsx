@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FlaskConical, Sparkles, ChevronDown, ChevronUp, ArrowRight, 
   Loader2, RefreshCw, Beaker, Target, Lightbulb, Check, X,
@@ -20,6 +20,8 @@ import EditableFlavorWheel from './EditableFlavorWheel';
 interface Props {
   allRecipes: Cocktail[];
   onSaveExperiment?: (recipe: Cocktail) => void;
+  initialRecipe?: Cocktail | null;
+  onClearInitialRecipe?: () => void;
 }
 
 interface Substitution {
@@ -56,8 +58,8 @@ interface ExistingRiff {
   parentRecipeName: string;
 }
 
-const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
-  const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(null);
+const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe }) => {
+  const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -74,6 +76,19 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment }) => {
   const [isCheckingRiff, setIsCheckingRiff] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [savedRiff, setSavedRiff] = useState<ExistingRiff | null>(null);
+
+  useEffect(() => {
+    if (initialRecipe) {
+      setSelectedRecipe(initialRecipe);
+      setTargetProfile(initialRecipe.flavorProfile && Object.keys(initialRecipe.flavorProfile).length > 0 
+        ? { ...initialRecipe.flavorProfile } 
+        : { ...DEFAULT_PROFILE });
+      setLabResult(null);
+      setErrorMessage(null);
+      setAppliedSubs(new Set());
+      onClearInitialRecipe?.();
+    }
+  }, [initialRecipe?.id]);
 
   const getRecipeProfile = (recipe: Cocktail): FlavorProfile => {
     return recipe.flavorProfile && Object.keys(recipe.flavorProfile).length > 0 

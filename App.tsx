@@ -568,6 +568,7 @@ function MainApp() {
   const [palateView, setPalateView] = useState<'diagnosis' | 'wheel'>('diagnosis');
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
   const [rxView, setRxView] = useState<'recommend' | 'history' | 'lab'>('recommend');
+  const [labRecipe, setLabRecipe] = useState<Cocktail | null>(null);
   const [barView, setBarView] = useState<'shopping' | 'pantry' | 'makeIt'>('shopping');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   
@@ -1145,6 +1146,13 @@ function MainApp() {
       }
   };
   
+  const handleSendToLab = (e: React.MouseEvent, drink: Cocktail) => {
+    e.stopPropagation();
+    setLabRecipe(drink);
+    setActiveTab('recommend');
+    setRxView('lab');
+  };
+
   const handleResetRatings = () => {
     setHistory(prev => prev.map(c => ({ ...c, rating: undefined })));
     
@@ -2011,6 +2019,13 @@ function MainApp() {
                                                                         </button>
                                                                     ))}
                                                                 </div>
+                                                                <button
+                                                                    onClick={(e) => handleSendToLab(e, drink)}
+                                                                    className="p-1.5 hover:bg-stone-700 rounded-lg transition-colors group"
+                                                                    title="Send to Flavor Lab"
+                                                                >
+                                                                    <FlaskConical className="w-4 h-4 text-stone-500 group-hover:text-accent transition-colors" />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                         <div className="w-28 bg-stone-900 relative shrink-0 border-l border-stone-700 group h-full">
@@ -2781,6 +2796,8 @@ function MainApp() {
                 {rxView === 'lab' && (
                     <CocktailLab 
                       allRecipes={history}
+                      initialRecipe={labRecipe}
+                      onClearInitialRecipe={() => setLabRecipe(null)}
                     />
                 )}
             </div>
