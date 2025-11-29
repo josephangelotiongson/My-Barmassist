@@ -2798,6 +2798,7 @@ function MainApp() {
                       allRecipes={history}
                       initialRecipe={labRecipe}
                       onClearInitialRecipe={() => setLabRecipe(null)}
+                      onSaveExperiment={handleAddCocktail}
                     />
                 )}
             </div>
