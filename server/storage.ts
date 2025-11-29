@@ -35,6 +35,7 @@ export interface IStorage {
   getUserRatings(userId: string): Promise<UserRating[]>;
   createRating(rating: InsertUserRating): Promise<UserRating>;
   upsertRating(userId: string, recipeName: string, rating: number): Promise<UserRating>;
+  updateRatingImage(userId: string, recipeName: string, imageUrl: string): Promise<UserRating>;
   deleteRating(id: number, userId: string): Promise<boolean>;
   resetAllRatings(userId: string): Promise<boolean>;
   
@@ -143,6 +144,30 @@ export class DatabaseStorage implements IStorage {
   async resetAllRatings(userId: string): Promise<boolean> {
     await db.delete(userRatings).where(eq(userRatings.userId, userId));
     return true;
+  }
+
+  async updateRatingImage(userId: string, recipeName: string, imageUrl: string): Promise<UserRating> {
+    // Check if a rating exists for this recipe
+    const existing = await db.select().from(userRatings).where(
+      and(eq(userRatings.userId, userId), eq(userRatings.recipeName, recipeName))
+    );
+    
+    if (existing.length > 0) {
+      // Update existing rating with image
+      const [updated] = await db
+        .update(userRatings)
+        .set({ imageUrl })
+        .where(and(eq(userRatings.userId, userId), eq(userRatings.recipeName, recipeName)))
+        .returning();
+      return updated;
+    } else {
+      // Create a new rating record with default rating of 0 to store the image
+      const [newRating] = await db
+        .insert(userRatings)
+        .values({ userId, recipeName, rating: 0, imageUrl })
+        .returning();
+      return newRating;
+    }
   }
 
   // Shopping list operations

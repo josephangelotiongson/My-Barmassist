@@ -214,10 +214,14 @@ export default function App() {
           const recipes: any[] = recipesRes.ok ? await recipesRes.json() : [];
           const ratings: any[] = ratingsRes.ok ? await ratingsRes.json() : [];
           
-          // Create rating lookup map
+          // Create rating and image lookup maps
           const ratingMap = new Map<string, number>();
+          const imageMap = new Map<string, string>();
           ratings.forEach((r: any) => {
             ratingMap.set(r.recipeName, r.rating);
+            if (r.imageUrl) {
+              imageMap.set(r.recipeName, r.imageUrl);
+            }
           });
           
           // Build custom recipes with ratings applied
@@ -236,11 +240,16 @@ export default function App() {
             dateAdded: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString()
           }));
           
-          // Apply ratings to preloaded recipes and merge with custom recipes
+          // Apply ratings and saved images to preloaded recipes and merge with custom recipes
           setHistory(prev => {
             const updatedPreloaded = prev.map(recipe => {
               const rating = ratingMap.get(recipe.name);
-              return rating !== undefined ? { ...recipe, rating } : recipe;
+              const savedImage = imageMap.get(recipe.name);
+              return { 
+                ...recipe, 
+                ...(rating !== undefined && { rating }),
+                ...(savedImage && { imageUrl: savedImage })
+              };
             });
             return [...customRecipes, ...updatedPreloaded];
           });
@@ -596,6 +605,19 @@ export default function App() {
           const imageUrl = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
           if (imageUrl) {
               setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl } : c));
+              
+              // Save the image URL to the database for logged-in users
+              if (isAuthenticated) {
+                fetch('/api/ratings/image', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    recipeName: cocktail.name,
+                    imageUrl: imageUrl
+                  })
+                }).catch(() => {});
+              }
           } else {
              // Set fallback if undefined returned
              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));

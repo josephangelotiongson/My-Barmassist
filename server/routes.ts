@@ -137,6 +137,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update rating image URL
+  app.put('/api/ratings/image', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { recipeName, imageUrl } = req.body;
+      const result = await storage.updateRatingImage(userId, recipeName, imageUrl);
+      res.json(result || { success: true });
+    } catch (error) {
+      console.error("Error updating rating image:", error);
+      res.status(500).json({ message: "Failed to update rating image" });
+    }
+  });
+
   // Shopping list routes
   app.get('/api/shopping-list', isAuthenticated, async (req: any, res) => {
     try {
