@@ -68,6 +68,7 @@ export const userRatings = pgTable("user_ratings", {
   rating: integer("rating").notNull(),
   notes: text("notes"),
   orderedAt: varchar("ordered_at"),
+  imageUrl: text("image_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
