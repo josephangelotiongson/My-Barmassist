@@ -396,16 +396,10 @@ export default function App() {
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
   
   // Use refs for image tracking to persist across hot reloads and avoid render loops
-  // Initialize from localStorage immediately (synchronously) to survive HMR and page reloads
-  const attemptedRecipesRef = useRef<Set<string>>(() => {
-    // This runs synchronously during component initialization
-    try {
-      const saved = localStorage.getItem('attemptedRecipes');
-      if (saved) return new Set(JSON.parse(saved));
-    } catch {}
-    return new Set();
-  });
+  // Start fresh - clear any previous failed attempts on app load
+  const attemptedRecipesRef = useRef<Set<string>>(new Set());
   const storedImagesRef = useRef<Map<string, string>>(() => {
+    // Only load stored images cache (not failed attempts)
     try {
       const saved = localStorage.getItem('storedImages');
       if (saved) return new Map(JSON.parse(saved));
@@ -414,23 +408,18 @@ export default function App() {
   });
   
   // Execute the initializer functions if refs contain functions (first render)
-  if (typeof attemptedRecipesRef.current === 'function') {
-    attemptedRecipesRef.current = (attemptedRecipesRef.current as unknown as () => Set<string>)();
-  }
   if (typeof storedImagesRef.current === 'function') {
     storedImagesRef.current = (storedImagesRef.current as unknown as () => Map<string, string>)();
   }
   
-  // Rate limit tracking - if we hit 429, pause all image generation for longer
-  const [rateLimitPaused, setRateLimitPaused] = useState<boolean>(() => {
-    try {
-      const pauseUntil = localStorage.getItem('rateLimitPauseUntil');
-      if (pauseUntil && Date.now() < parseInt(pauseUntil)) {
-        return true;
-      }
-      return false;
-    } catch { return false; }
-  });
+  // Clear old tracking data on fresh load to allow retries
+  useEffect(() => {
+    localStorage.removeItem('attemptedRecipes');
+    localStorage.removeItem('rateLimitPauseUntil');
+  }, []);
+  
+  // Rate limit tracking - start fresh (not paused)
+  const [rateLimitPaused, setRateLimitPaused] = useState<boolean>(false);
   
   // Helper to save attempt tracking to localStorage
   const saveAttemptedRecipes = () => {
