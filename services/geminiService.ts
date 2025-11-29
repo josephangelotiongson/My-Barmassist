@@ -1,7 +1,45 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { FlavorProfile, FlavorDimension, Recommendation, Ingredient } from '../types';
 import { analyzeSocialMediaLink, generateSearchSystemPrompt, sanitizeSocialMediaUrl, SocialMediaLinkInfo } from './socialMediaUtils';
-import { getFlavorDataForAI, getIngredientFlavorContext } from '../server/flavorDataService';
+
+// Dynamically import server-side flavor data functions to prevent client bundling
+// These functions are only used in server-side contexts
+let flavorDataModule: {
+  getFlavorDataForAI: () => Promise<string>;
+  getIngredientFlavorContext: (ingredientNames: string[]) => Promise<string>;
+} | null = null;
+
+async function getFlavorDataForAI(): Promise<string> {
+  if (typeof window !== 'undefined') {
+    // Client-side - return empty string, flavor data will come from API
+    return '';
+  }
+  if (!flavorDataModule) {
+    try {
+      flavorDataModule = await import('../server/flavorDataService');
+    } catch (e) {
+      console.warn('Could not load flavorDataService, continuing without');
+      return '';
+    }
+  }
+  return flavorDataModule.getFlavorDataForAI();
+}
+
+async function getIngredientFlavorContext(ingredientNames: string[]): Promise<string> {
+  if (typeof window !== 'undefined') {
+    // Client-side - return empty string
+    return '';
+  }
+  if (!flavorDataModule) {
+    try {
+      flavorDataModule = await import('../server/flavorDataService');
+    } catch (e) {
+      console.warn('Could not load flavorDataService, continuing without');
+      return '';
+    }
+  }
+  return flavorDataModule.getIngredientFlavorContext(ingredientNames);
+}
 
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
