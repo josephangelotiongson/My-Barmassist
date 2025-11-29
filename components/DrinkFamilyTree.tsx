@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, GitBranch, Sparkles, ChevronRight, Clock, Beaker, ArrowRight, Loader2, Network, Zap, Database, RefreshCw } from 'lucide-react';
+import { X, GitBranch, Sparkles, ChevronRight, Clock, Beaker, ArrowRight, Loader2, Network, Zap, Database, Search } from 'lucide-react';
 import { Cocktail } from '../types';
 import { analyzeDrinkFamilyTree, DrinkFamilyTree as FamilyTreeData } from '../services/geminiService';
 
@@ -271,10 +271,11 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
               {!isLoading && familyTree && (
                 <button 
                   onClick={handleRefresh}
-                  className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-secondary transition-colors"
-                  title="Regenerate with AI"
+                  className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-stone-800 rounded-full text-stone-400 hover:text-secondary transition-colors text-xs font-medium"
+                  title="Reinvestigate lineage with AI"
                 >
-                  <RefreshCw className="w-5 h-5" />
+                  <Search className="w-4 h-4" />
+                  <span className="hidden sm:inline">Reinvestigate</span>
                 </button>
               )}
               <button 
