@@ -90,7 +90,13 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                <span className="text-xs">No Visualization</span>
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/50 to-transparent"></div>
+          {cocktail.imageUrl?.startsWith('/cocktail-images/') && (
+            <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span className="text-[10px] font-bold text-white/90 uppercase tracking-wide">AI Generated</span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/50 to-transparent pointer-events-none"></div>
           
           <button 
             onClick={onClose}

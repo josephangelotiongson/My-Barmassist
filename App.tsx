@@ -1218,7 +1218,7 @@ export default function App() {
                                                                         }}
                                                                     />
                                                                     <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent"></div>
-                                                                    {drink.creator === 'AI Bartender' && (
+                                                                    {drink.imageUrl?.startsWith('/cocktail-images/') && (
                                                                         <div className="absolute bottom-1 right-1 text-[8px] text-primary/90 font-bold uppercase flex items-center gap-0.5 bg-black/40 px-1 py-0.5 rounded backdrop-blur-sm">
                                                                             <Sparkles className="w-2 h-2" /> AI Generated
                                                                         </div>
