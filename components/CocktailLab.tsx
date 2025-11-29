@@ -104,6 +104,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [isCheckingRiff, setIsCheckingRiff] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [savedRiff, setSavedRiff] = useState<ExistingRiff | null>(null);
+  
+  // Build mode save states
+  const [isSavingBuild, setIsSavingBuild] = useState(false);
+  const [buildSaveSuccess, setBuildSaveSuccess] = useState(false);
 
   useEffect(() => {
     if (initialRecipe) {
@@ -169,6 +173,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     
     setIsBuilding(true);
     setBuildResult(null);
+    setBuildSaveSuccess(false);
     setErrorMessage(null);
     
     try {
@@ -208,8 +213,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
       setSelectedRecipe(null);
       setAppliedSubs(new Set());
       setBuildResult(null);
+      setBuildSaveSuccess(false);
     } else {
       setBuildResult(null);
+      setBuildSaveSuccess(false);
       setSelectedIngredients([]);
     }
     setLabMode(mode);
@@ -1269,27 +1276,56 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                 </div>
 
                 <button
-                  onClick={() => {
-                    if (onSaveExperiment && buildResult) {
-                      const newCocktail: Cocktail = {
-                        id: `lab-${Date.now()}`,
-                        name: buildResult.name,
-                        creator: 'Lab Creation',
-                        description: buildResult.description,
-                        ingredients: buildResult.ingredients,
-                        instructions: buildResult.instructions,
-                        flavorProfile: buildResult.predictedProfile,
-                        category: 'Lab Creation',
-                        dateAdded: new Date().toISOString(),
-                        nutrition: { calories: 0, carbs: 0, abv: 0 }
-                      };
-                      onSaveExperiment(newCocktail);
+                  onClick={async () => {
+                    if (onSaveExperiment && buildResult && !isSavingBuild && !buildSaveSuccess) {
+                      setIsSavingBuild(true);
+                      try {
+                        const newCocktail: Cocktail = {
+                          id: `lab-${Date.now()}`,
+                          name: buildResult.name,
+                          creator: 'Lab Creation',
+                          description: buildResult.description,
+                          ingredients: buildResult.ingredients,
+                          instructions: buildResult.instructions,
+                          flavorProfile: buildResult.predictedProfile,
+                          category: 'Lab Creation',
+                          dateAdded: new Date().toISOString(),
+                          nutrition: { calories: 0, carbs: 0, abv: 0 }
+                        };
+                        await onSaveExperiment(newCocktail);
+                        setBuildSaveSuccess(true);
+                      } catch (err) {
+                        console.error('Failed to save cocktail:', err);
+                      } finally {
+                        setIsSavingBuild(false);
+                      }
                     }
                   }}
-                  className="w-full bg-primary hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-primary/20"
+                  disabled={isSavingBuild || buildSaveSuccess}
+                  className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg ${
+                    buildSaveSuccess 
+                      ? 'bg-accent text-white cursor-default shadow-accent/20' 
+                      : isSavingBuild 
+                        ? 'bg-stone-600 text-stone-400 cursor-wait' 
+                        : 'bg-primary hover:bg-red-700 text-white shadow-primary/20'
+                  }`}
                 >
-                  <Save className="w-5 h-5" />
-                  Save to Barmulary
+                  {isSavingBuild ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : buildSaveSuccess ? (
+                    <>
+                      <Check className="w-5 h-5" />
+                      Saved to Barmulary!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      Save to Barmulary
+                    </>
+                  )}
                 </button>
               </div>
             </div>
