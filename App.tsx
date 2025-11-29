@@ -2134,6 +2134,21 @@ function MainApp() {
                 </div>
                 
                 {barView === 'shopping' && (
+                    <>
+                    <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+                            <ShoppingCart className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h2 className="text-lg font-bold text-white">Shopping List</h2>
+                            <p className="text-xs text-stone-400">Track ingredients you need to buy</p>
+                          </div>
+                        </div>
+                        <p className="text-sm text-stone-300 leading-relaxed">
+                          Add missing ingredients from recipes or manually. Check items off as you shop, then move them to your Pantry.
+                        </p>
+                    </div>
                     <div className="bg-surface rounded-2xl p-4 border border-stone-700 relative overflow-hidden animate-in fade-in duration-300">
                          <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -2194,6 +2209,7 @@ function MainApp() {
                             <Plus className="w-6 h-6" />
                         </button>
                     </div>
+                    </>
                 )}
 
                 {barView === 'pantry' && (
@@ -2204,6 +2220,21 @@ function MainApp() {
                         >
                             <Plus className="w-6 h-6" />
                         </button>
+                        
+                        <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+                                <Wine className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <h2 className="text-lg font-bold text-white">Your Pantry</h2>
+                                <p className="text-xs text-stone-400">Track what's in your bar</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-stone-300 leading-relaxed">
+                              Scan bottles or manually add ingredients. AI estimates volume and identifies flavor profiles to power recommendations.
+                            </p>
+                        </div>
                         
                         <div className="bg-surface rounded-2xl p-4 border border-stone-700">
                              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -2338,14 +2369,18 @@ function MainApp() {
 
                 {barView === 'makeIt' && (
                     <div className="space-y-4 animate-in fade-in duration-300">
-                        {/* Header */}
-                        <div className="bg-surface rounded-2xl p-4 border border-stone-700">
-                            <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                                <Beaker className="w-5 h-5 text-secondary" />
-                                DIY Bar Ingredients
-                            </h2>
-                            <p className="text-xs text-stone-400">
-                                Make your own syrups, cordials, and bar essentials. Tap any item to see the recipe with a scaling calculator.
+                        <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+                                <Beaker className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <h2 className="text-lg font-bold text-white">DIY Bar Ingredients</h2>
+                                <p className="text-xs text-stone-400">Make your own syrups and essentials</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-stone-300 leading-relaxed">
+                              Tap any recipe to see ingredients with a scaling calculator. Mark items as made to track freshness and expiration in your Pantry.
                             </p>
                         </div>
 
@@ -2618,6 +2653,20 @@ function MainApp() {
                 
                  {rxView === 'recommend' ? (
                 <>
+                <div className="bg-gradient-to-br from-red-950/40 to-stone-900 rounded-2xl p-4 border border-red-800/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center">
+                        <ChefHat className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Cocktail Recommendations</h2>
+                        <p className="text-xs text-stone-400">AI-powered drink suggestions</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-stone-300 leading-relaxed">
+                      Get personalized cocktails based on your Pantry, scan a bar menu for what to order, or ask the Bar Assist for help.
+                    </p>
+                </div>
                 <div className="grid grid-cols-3 gap-3">
                     <button 
                         onClick={generateRecs}
@@ -2733,8 +2782,22 @@ function MainApp() {
                     ))}
                 </div>
                 </>
-                ) : (
+                ) : rxView === 'history' ? (
                     <div className="space-y-4">
+                        <div className="bg-gradient-to-br from-stone-800/60 to-stone-900 rounded-2xl p-4 border border-stone-700/50">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stone-600 to-stone-700 flex items-center justify-center">
+                                <History className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <h2 className="text-lg font-bold text-white">Order History</h2>
+                                <p className="text-xs text-stone-400">Track drinks from bars and restaurants</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-stone-300 leading-relaxed">
+                              Log what you order when you're out. Rate drinks to refine your palate profile, or add recipes to your Barmulary to recreate at home.
+                            </p>
+                        </div>
                          {history.filter(d => d.source === 'Order').sort((a,b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()).map(drink => (
                             <div 
                                 key={drink.id} 
@@ -2817,7 +2880,7 @@ function MainApp() {
                             </div>
                         ))}
                     </div>
-                )}
+                ) : null}
                 
                 {rxView === 'lab' && (
                     <CocktailLab 
