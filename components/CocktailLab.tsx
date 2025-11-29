@@ -6,7 +6,8 @@ import {
   ExternalLink, Database, GlassWater
 } from 'lucide-react';
 import { Cocktail, FlavorProfile, FlavorDimension } from '../types';
-import { calculateTotalVolume, formatVolumeForDisplay } from '../shared/volumeUtils';
+import { calculateTotalVolume, formatVolumeForDisplay, calculateVolumeOverage } from '../shared/volumeUtils';
+import VolumeLever from './VolumeLever';
 import {
   Radar,
   RadarChart,
@@ -119,6 +120,10 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   // Build mode save states
   const [isSavingBuild, setIsSavingBuild] = useState(false);
   const [buildSaveSuccess, setBuildSaveSuccess] = useState(false);
+  
+  // Volume lever states
+  const [volumeAdjustedIngredients, setVolumeAdjustedIngredients] = useState<string[] | null>(null);
+  const [showVolumeLever, setShowVolumeLever] = useState(false);
 
   useEffect(() => {
     if (initialRecipe) {
@@ -340,7 +345,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     });
   };
 
-  const getModifiedIngredients = (): string[] => {
+  const getRawModifiedIngredients = (): string[] => {
     if (!selectedRecipe || !labResult) return selectedRecipe?.ingredients || [];
     
     let ingredients = [...selectedRecipe.ingredients];
@@ -368,6 +373,34 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
     
     return ingredients;
   };
+  
+  const getModifiedIngredients = (): string[] => {
+    if (volumeAdjustedIngredients) {
+      return volumeAdjustedIngredients;
+    }
+    return getRawModifiedIngredients();
+  };
+  
+  const volumeOverage = useMemo(() => {
+    if (!selectedRecipe || !labResult) return null;
+    const effectiveIngredients = volumeAdjustedIngredients || getRawModifiedIngredients();
+    return calculateVolumeOverage(
+      selectedRecipe.ingredients,
+      effectiveIngredients,
+      selectedRecipe.targetVolume
+    );
+  }, [selectedRecipe, labResult, appliedSubs, appliedAdds, volumeAdjustedIngredients]);
+  
+  useEffect(() => {
+    if (volumeOverage?.requiresBalance && !volumeAdjustedIngredients) {
+      setShowVolumeLever(true);
+    }
+  }, [volumeOverage, volumeAdjustedIngredients]);
+  
+  useEffect(() => {
+    setVolumeAdjustedIngredients(null);
+    setShowVolumeLever(false);
+  }, [appliedSubs, appliedAdds]);
 
   // Get applied substitutions array
   const getAppliedSubstitutions = () => {
@@ -929,6 +962,20 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     )}
                   </div>
 
+                  {/* Volume Lever - shown when modifications exceed target volume */}
+                  {(appliedSubs.size > 0 || appliedAdds.size > 0) && volumeOverage?.requiresBalance && showVolumeLever && selectedRecipe && (
+                    <VolumeLever
+                      originalIngredients={selectedRecipe.ingredients}
+                      modifiedIngredients={getRawModifiedIngredients()}
+                      targetVolume={selectedRecipe.targetVolume}
+                      onReductionsApply={(adjusted) => {
+                        setVolumeAdjustedIngredients(adjusted);
+                        setShowVolumeLever(false);
+                      }}
+                      onCancel={() => setShowVolumeLever(false)}
+                    />
+                  )}
+
                   {(appliedSubs.size > 0 || appliedAdds.size > 0) && (
                     <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-2xl border border-amber-800/30 overflow-hidden">
                       <div className="bg-gradient-to-r from-amber-900/40 to-orange-900/30 px-4 py-3 border-b border-amber-800/30">
@@ -986,7 +1033,24 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                         
                         {/* Ingredients List */}
                         <div>
-                          <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Ingredients</p>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-stone-500 uppercase tracking-wider">Ingredients</p>
+                            {volumeAdjustedIngredients && (
+                              <span className="text-xs text-green-400 flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                Volume Balanced
+                              </span>
+                            )}
+                            {volumeOverage?.requiresBalance && !volumeAdjustedIngredients && !showVolumeLever && (
+                              <button
+                                onClick={() => setShowVolumeLever(true)}
+                                className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                              >
+                                <Sliders className="w-3 h-3" />
+                                Adjust Volume
+                              </button>
+                            )}
+                          </div>
                           <div className="bg-stone-800/50 rounded-xl p-3 space-y-1.5">
                             {getModifiedIngredients().map((ing, idx) => (
                               <div key={idx} className="flex items-center gap-2 text-sm">

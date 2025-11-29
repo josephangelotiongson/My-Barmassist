@@ -169,3 +169,171 @@ export function formatVolumeForDisplay(targetVolume: string | undefined, ingredi
   
   return 'Variable';
 }
+
+export interface VolumeOverageResult {
+  originalVolumeOz: number;
+  newVolumeOz: number;
+  targetVolumeOz: number;
+  overageOz: number;
+  requiresBalance: boolean;
+  tolerance: number;
+}
+
+export function calculateVolumeOverage(
+  originalIngredients: string[],
+  newIngredients: string[],
+  targetVolume?: string
+): VolumeOverageResult {
+  const TOLERANCE = 0.5;
+  
+  const originalVolumeOz = calculateTotalVolumeInOz(originalIngredients);
+  const newVolumeOz = calculateTotalVolumeInOz(newIngredients);
+  
+  let targetVolumeOz = originalVolumeOz;
+  if (targetVolume) {
+    const match = targetVolume.match(/([\d.]+)\s*(oz|ml)/i);
+    if (match) {
+      const amount = parseFloat(match[1]);
+      const unit = match[2].toLowerCase();
+      targetVolumeOz = unit === 'ml' ? amount / 29.5735 : amount;
+    }
+  }
+  
+  const overageOz = Math.round((newVolumeOz - targetVolumeOz) * 100) / 100;
+  const requiresBalance = overageOz >= 0.25;
+  
+  return {
+    originalVolumeOz: Math.round(originalVolumeOz * 100) / 100,
+    newVolumeOz: Math.round(newVolumeOz * 100) / 100,
+    targetVolumeOz: Math.round(targetVolumeOz * 100) / 100,
+    overageOz,
+    requiresBalance,
+    tolerance: TOLERANCE
+  };
+}
+
+export interface ReducibleIngredient {
+  index: number;
+  original: string;
+  label: string;
+  currentAmountOz: number;
+  minAmountOz: number;
+  reductionOz: number;
+  isReducible: boolean;
+  unit: string;
+}
+
+const NON_REDUCIBLE_PATTERNS = [
+  /garnish/i,
+  /twist/i,
+  /wheel/i,
+  /wedge/i,
+  /slice/i,
+  /cherry/i,
+  /olive/i,
+  /onion/i,
+  /leaf/i,
+  /leaves/i,
+  /sprig/i,
+  /peel/i,
+  /zest/i,
+  /rim/i,
+  /salt/i,
+  /sugar.*rim/i,
+  /expressed/i,
+];
+
+export function classifyReducibleIngredients(ingredients: string[]): ReducibleIngredient[] {
+  const result: ReducibleIngredient[] = [];
+  
+  for (let i = 0; i < ingredients.length; i++) {
+    const ingredient = ingredients[i];
+    const parsed = parseIngredientVolume(ingredient);
+    
+    const isGarnish = NON_REDUCIBLE_PATTERNS.some(pattern => pattern.test(ingredient));
+    
+    const label = ingredient.replace(/^[\d./\s]+(?:oz|ml|dash(?:es)?|tsp|tbsp|barspoon|drop(?:s)?|splash|rinse|float)?\s*/i, '').trim();
+    
+    if (!parsed || isGarnish) {
+      result.push({
+        index: i,
+        original: ingredient,
+        label,
+        currentAmountOz: 0,
+        minAmountOz: 0,
+        reductionOz: 0,
+        isReducible: false,
+        unit: 'unknown'
+      });
+      continue;
+    }
+    
+    let amountInOz = 0;
+    const mlConversion = UNIT_TO_ML[parsed.unit] || 0;
+    if (mlConversion > 0) {
+      amountInOz = (parsed.amount * mlConversion) / 29.5735;
+    }
+    
+    const isSmallMeasure = ['dash', 'drop', 'barspoon', 'rinse', 'splash', 'float'].includes(parsed.unit);
+    const isReducible = !isSmallMeasure && amountInOz >= 0.25;
+    
+    const minAmount = isReducible ? Math.max(0.25, amountInOz * 0.25) : amountInOz;
+    
+    result.push({
+      index: i,
+      original: ingredient,
+      label,
+      currentAmountOz: Math.round(amountInOz * 100) / 100,
+      minAmountOz: Math.round(minAmount * 100) / 100,
+      reductionOz: 0,
+      isReducible,
+      unit: parsed.unit
+    });
+  }
+  
+  return result;
+}
+
+export function applyReductions(
+  ingredients: string[],
+  reductions: Map<number, number>
+): string[] {
+  return ingredients.map((ingredient, index) => {
+    const reduction = reductions.get(index);
+    if (!reduction || reduction === 0) {
+      return ingredient;
+    }
+    
+    const parsed = parseIngredientVolume(ingredient);
+    if (!parsed) {
+      return ingredient;
+    }
+    
+    let currentOz = 0;
+    const mlConversion = UNIT_TO_ML[parsed.unit] || 0;
+    if (mlConversion > 0) {
+      currentOz = (parsed.amount * mlConversion) / 29.5735;
+    }
+    
+    const newOz = Math.max(0.25, currentOz - reduction);
+    const newOzRounded = Math.round(newOz * 4) / 4;
+    
+    const label = ingredient.replace(/^[\d./\s]+(?:oz|ml|dash(?:es)?|tsp|tbsp|barspoon|drop(?:s)?|splash|rinse|float)?\s*/i, '').trim();
+    
+    return `${newOzRounded} oz ${label}`;
+  });
+}
+
+export function formatOzAmount(oz: number): string {
+  if (oz === 0.25) return '1/4';
+  if (oz === 0.5) return '1/2';
+  if (oz === 0.75) return '3/4';
+  if (oz === 1.25) return '1 1/4';
+  if (oz === 1.5) return '1 1/2';
+  if (oz === 1.75) return '1 3/4';
+  if (oz === 2.25) return '2 1/4';
+  if (oz === 2.5) return '2 1/2';
+  if (oz === 2.75) return '2 3/4';
+  if (Number.isInteger(oz)) return oz.toString();
+  return oz.toFixed(2);
+}

@@ -69,6 +69,13 @@ None set yet - will be documented as user expresses preferences during developme
     - Volume displayed in recipe selector for quick reference
     - **Flexible Volume Balancing**: AI can reduce base ingredients (especially modifiers like syrups, juices, liqueurs) to accommodate additions while staying within ±0.5 oz tolerance
     - Prioritizes maintaining drink's backbone (base spirits) when making volume adjustments
+  - **Volume Lever UI**: Interactive volume balancing tool when AI suggestions exceed target volume:
+    - Automatically detects when modifications push volume over target (≥0.25 oz overage)
+    - Shows current vs target volume comparison with visual indicators
+    - Per-ingredient steppers to reduce amounts in 0.25 oz increments
+    - Only shows reducible ingredients (spirits, syrups, juices ≥0.25 oz) - excludes garnishes and small measures
+    - Must balance volume before confirming (prevents unbalanced riffs)
+    - "Volume Balanced" indicator and "Adjust Volume" button for re-editing
   - **Interactive Editable Flavor Wheel**: Hierarchical 3-tier design with granular control:
     - Inner ring: 8 main flavor categories (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy)
     - Middle ring: Subcategories for each flavor dimension
