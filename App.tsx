@@ -377,6 +377,42 @@ const DIY_RECIPES: DiyRecipe[] = [
   }
 ];
 
+// Helper to parse shelf life string into days
+const parseShelfLifeToDays = (shelfLife: string): number => {
+  const lower = shelfLife.toLowerCase();
+  
+  // Extract the first number (take the lower bound for safety)
+  const match = lower.match(/(\d+)/);
+  if (!match) return 14; // Default 2 weeks
+  
+  const num = parseInt(match[1]);
+  
+  if (lower.includes('month')) return num * 30;
+  if (lower.includes('week')) return num * 7;
+  if (lower.includes('day')) return num;
+  
+  return 14; // Default
+};
+
+// Helper to calculate days remaining until expiration
+const getDaysRemaining = (expiresDate: string | undefined): number | null => {
+  if (!expiresDate) return null;
+  const now = new Date();
+  const expires = new Date(expiresDate);
+  const diff = expires.getTime() - now.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
+// Helper to check if ingredient was made recently (within 3 days)
+const isMadeRecently = (createdDate: string | undefined): boolean => {
+  if (!createdDate) return false;
+  const now = new Date();
+  const created = new Date(createdDate);
+  const diff = now.getTime() - created.getTime();
+  const daysSinceMade = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return daysSinceMade <= 3;
+};
+
 // --- IMPROVED NUTRITION ESTIMATOR ---
 // Uses Master Data for lookup, calculating weighted estimates based on volume.
 // NOTE: Now accessible within component scope via MasterData state, but we define helper here for initialization
@@ -1366,6 +1402,102 @@ export default function App() {
     setMasterData(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
   };
 
+  // Handle "I Made This" for DIY ingredients
+  const handleMakeDiyIngredient = (recipe: DiyRecipe, volumeOz: number) => {
+    const now = new Date();
+    const shelfLifeDays = parseShelfLifeToDays(recipe.shelfLife);
+    const expiresDate = new Date(now.getTime() + shelfLifeDays * 24 * 60 * 60 * 1000);
+    
+    const newIngredient: Ingredient = {
+      id: `diy-${recipe.id}-${Date.now()}`,
+      name: recipe.name,
+      category: 'Mixer',
+      volume: `${volumeOz}oz (Homemade)`,
+      flavorNotes: recipe.description,
+      isDiy: true,
+      diyRecipeId: recipe.id,
+      createdDate: now.toISOString(),
+      expiresDate: expiresDate.toISOString()
+    };
+    
+    // Check if already in pantry and update, or add new
+    setPantry(prev => {
+      const existingIdx = prev.findIndex(p => 
+        p.name.toLowerCase() === recipe.name.toLowerCase() || 
+        p.diyRecipeId === recipe.id
+      );
+      
+      if (existingIdx >= 0) {
+        // Update existing - refresh dates and add volume
+        const existing = prev[existingIdx];
+        const updatedPantry = [...prev];
+        updatedPantry[existingIdx] = {
+          ...existing,
+          volume: `${volumeOz}oz (Fresh batch)`,
+          createdDate: now.toISOString(),
+          expiresDate: expiresDate.toISOString()
+        };
+        return updatedPantry;
+      }
+      
+      return [newIngredient, ...prev];
+    });
+  };
+
+  // Memoized DIY status map - computes status for all DIY recipes once per pantry change
+  const diyStatusMap = React.useMemo(() => {
+    const map: Record<string, {
+      inPantry: boolean;
+      item: Ingredient | null;
+      daysRemaining: number | null;
+      isRecent: boolean;
+      isExpiringSoon: boolean;
+      isExpired: boolean;
+    }> = {};
+    
+    for (const recipe of DIY_RECIPES) {
+      const pantryItem = pantry.find(p => 
+        p.diyRecipeId === recipe.id || 
+        p.name.toLowerCase() === recipe.name.toLowerCase()
+      );
+      
+      if (!pantryItem) {
+        map[recipe.id] = { inPantry: false, item: null, daysRemaining: null, isRecent: false, isExpiringSoon: false, isExpired: false };
+      } else {
+        const daysRemaining = getDaysRemaining(pantryItem.expiresDate);
+        const isRecent = isMadeRecently(pantryItem.createdDate);
+        const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 7;
+        const isExpired = daysRemaining !== null && daysRemaining <= 0;
+        map[recipe.id] = { inPantry: true, item: pantryItem, daysRemaining, isRecent, isExpiringSoon, isExpired };
+      }
+    }
+    
+    return map;
+  }, [pantry]);
+  
+  // Get DIY ingredient status from the memoized map
+  const getDiyIngredientStatus = (recipeId: string, recipeName: string) => {
+    if (diyStatusMap[recipeId]) {
+      return diyStatusMap[recipeId];
+    }
+    // Fallback for any recipes not in the DIY_RECIPES list
+    const pantryItem = pantry.find(p => 
+      p.diyRecipeId === recipeId || 
+      p.name.toLowerCase() === recipeName.toLowerCase()
+    );
+    
+    if (!pantryItem) {
+      return { inPantry: false, item: null, daysRemaining: null, isRecent: false, isExpiringSoon: false, isExpired: false };
+    }
+    
+    const daysRemaining = getDaysRemaining(pantryItem.expiresDate);
+    const isRecent = isMadeRecently(pantryItem.createdDate);
+    const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 7;
+    const isExpired = daysRemaining !== null && daysRemaining <= 0;
+    
+    return { inPantry: true, item: pantryItem, daysRemaining, isRecent, isExpiringSoon, isExpired };
+  };
+
   const generateRecs = async () => {
     if (pantry.length === 0 && history.length === 0) { alert("Please add some ingredients or log some drinks first!"); return; }
     setIsGeneratingRecs(true);
@@ -1983,58 +2115,119 @@ export default function App() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3">
-                                    {pantry.map(item => (
-                                        <div key={item.id} className="bg-background p-3 rounded-lg border border-stone-700 relative group">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1 mr-2">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                       <p className="text-sm font-bold text-white truncate">{item.name}</p>
-                                                       <span className="text-[10px] bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded uppercase">{item.category}</span>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        {editingIngredientId === item.id ? (
-                                                            <div className="flex items-center gap-1 bg-stone-800 rounded p-1">
-                                                                <input 
-                                                                    type="text"
-                                                                    value={editVolumeValue}
-                                                                    onChange={(e) => setEditVolumeValue(e.target.value)}
-                                                                    className="bg-stone-900 text-xs text-white px-2 py-1 rounded w-24 outline-none border border-stone-600 focus:border-primary"
-                                                                    autoFocus
-                                                                />
-                                                                <button 
-                                                                    onClick={() => saveEditingVolume(item.id)}
-                                                                    className="text-green-400 hover:bg-stone-700 p-1 rounded"
-                                                                >
-                                                                    <Check className="w-3 h-3" />
-                                                                </button>
+                                    {/* Expiring Soon Warning */}
+                                    {(() => {
+                                        const expiringItems = pantry.filter(item => {
+                                            const days = getDaysRemaining(item.expiresDate);
+                                            return days !== null && days <= 7 && days > 0;
+                                        });
+                                        const expiredItems = pantry.filter(item => {
+                                            const days = getDaysRemaining(item.expiresDate);
+                                            return days !== null && days <= 0;
+                                        });
+                                        
+                                        if (expiredItems.length > 0 || expiringItems.length > 0) {
+                                            return (
+                                                <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-3 mb-2">
+                                                    {expiredItems.length > 0 && (
+                                                        <div className="flex items-start gap-2 mb-2">
+                                                            <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                                            <div className="text-xs text-red-300">
+                                                                <span className="font-bold">Expired:</span> {expiredItems.map(i => i.name).join(', ')}
                                                             </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer hover:text-white transition-colors" onClick={() => startEditingVolume(item)}>
-                                                                <Beaker className="w-3 h-3" />
-                                                                <span className="font-medium">{item.volume || 'Volume Unknown'}</span>
-                                                                <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </div>
+                                                    )}
+                                                    {expiringItems.length > 0 && (
+                                                        <div className="flex items-start gap-2">
+                                                            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                                            <div className="text-xs text-amber-300">
+                                                                <span className="font-bold">Expiring soon:</span> {expiringItems.map(i => {
+                                                                    const days = getDaysRemaining(i.expiresDate);
+                                                                    return `${i.name} (${days}d)`;
+                                                                }).join(', ')}
                                                             </div>
-                                                        )}
-                                                    </div>
-
-                                                    {item.flavorNotes ? (
-                                                        <p className="text-[10px] text-stone-400 italic bg-stone-800/30 p-2 rounded-lg border border-stone-800/50">
-                                                            "{item.flavorNotes}"
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-[10px] text-stone-600 animate-pulse">Fetching flavor profile...</p>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <button 
-                                                    onClick={() => removeIngredient(item.id)}
-                                                    className="text-stone-600 hover:text-red-400 p-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                    
+                                    {pantry.map(item => {
+                                        const daysRemaining = getDaysRemaining(item.expiresDate);
+                                        const isExpired = daysRemaining !== null && daysRemaining <= 0;
+                                        const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 7;
+                                        const isRecent = isMadeRecently(item.createdDate);
+                                        
+                                        return (
+                                            <div key={item.id} className={`bg-background p-3 rounded-lg border relative group ${isExpired ? 'border-red-900/50' : isExpiringSoon ? 'border-amber-900/50' : 'border-stone-700'}`}>
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1 mr-2">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-bold text-white truncate">{item.name}</p>
+                                                                {item.isDiy && (
+                                                                    <Beaker className="w-3 h-3 text-secondary flex-shrink-0" />
+                                                                )}
+                                                                {isRecent && (
+                                                                    <span className="text-[9px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded">NEW</span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[10px] bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded uppercase">{item.category}</span>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            {editingIngredientId === item.id ? (
+                                                                <div className="flex items-center gap-1 bg-stone-800 rounded p-1">
+                                                                    <input 
+                                                                        type="text"
+                                                                        value={editVolumeValue}
+                                                                        onChange={(e) => setEditVolumeValue(e.target.value)}
+                                                                        className="bg-stone-900 text-xs text-white px-2 py-1 rounded w-24 outline-none border border-stone-600 focus:border-primary"
+                                                                        autoFocus
+                                                                    />
+                                                                    <button 
+                                                                        onClick={() => saveEditingVolume(item.id)}
+                                                                        className="text-green-400 hover:bg-stone-700 p-1 rounded"
+                                                                    >
+                                                                        <Check className="w-3 h-3" />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer hover:text-white transition-colors" onClick={() => startEditingVolume(item)}>
+                                                                    <Beaker className="w-3 h-3" />
+                                                                    <span className="font-medium">{item.volume || 'Volume Unknown'}</span>
+                                                                    <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Expiration Badge */}
+                                                            {daysRemaining !== null && (
+                                                                <span className={`text-[9px] px-1.5 py-0.5 rounded ${isExpired ? 'bg-red-900/50 text-red-400' : isExpiringSoon ? 'bg-amber-900/50 text-amber-400' : 'bg-stone-800 text-stone-500'}`}>
+                                                                    {isExpired ? 'Expired' : `${daysRemaining}d left`}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {item.flavorNotes ? (
+                                                            <p className="text-[10px] text-stone-400 italic bg-stone-800/30 p-2 rounded-lg border border-stone-800/50">
+                                                                "{item.flavorNotes}"
+                                                            </p>
+                                                        ) : (
+                                                            <p className="text-[10px] text-stone-600 animate-pulse">Fetching flavor profile...</p>
+                                                        )}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => removeIngredient(item.id)}
+                                                        className="text-stone-600 hover:text-red-400 p-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -2059,13 +2252,26 @@ export default function App() {
                             const recipe = DIY_RECIPES.find(r => r.id === selectedDiyItem);
                             if (!recipe) return null;
                             const scaleFactor = diyOutputVolume / recipe.baseYield;
+                            const status = getDiyIngredientStatus(recipe.id, recipe.name);
                             
                             return (
                                 <div className="bg-surface rounded-2xl border border-secondary/30 overflow-hidden shadow-lg">
                                     <div className="bg-gradient-to-r from-secondary/20 to-primary/10 p-4 border-b border-stone-700">
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded uppercase font-bold">{recipe.category}</span>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded uppercase font-bold">{recipe.category}</span>
+                                                    {status.inPantry && (
+                                                        <span className="text-[10px] bg-green-900/50 text-green-400 px-2 py-0.5 rounded uppercase font-bold flex items-center gap-1">
+                                                            <CheckCircle2 className="w-3 h-3" /> In Stock
+                                                        </span>
+                                                    )}
+                                                    {!status.inPantry && (
+                                                        <span className="text-[10px] bg-amber-900/50 text-amber-400 px-2 py-0.5 rounded uppercase font-bold flex items-center gap-1">
+                                                            <AlertTriangle className="w-3 h-3" /> Need to Make
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <h3 className="text-xl font-bold text-white mt-1">{recipe.name}</h3>
                                                 <p className="text-xs text-stone-400 mt-1">{recipe.description}</p>
                                             </div>
@@ -2076,6 +2282,26 @@ export default function App() {
                                                 <X className="w-5 h-5" />
                                             </button>
                                         </div>
+                                        
+                                        {/* Status Notifications */}
+                                        {status.isRecent && (
+                                            <div className="mt-3 bg-green-900/30 border border-green-800/50 rounded-lg p-2 flex items-center gap-2">
+                                                <Sparkles className="w-4 h-4 text-green-400" />
+                                                <span className="text-xs text-green-300">Fresh batch made recently! {status.daysRemaining} days until expiration.</span>
+                                            </div>
+                                        )}
+                                        {status.isExpiringSoon && !status.isRecent && (
+                                            <div className="mt-3 bg-amber-900/30 border border-amber-800/50 rounded-lg p-2 flex items-center gap-2">
+                                                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                                <span className="text-xs text-amber-300">Expires in {status.daysRemaining} days - use soon or make a fresh batch!</span>
+                                            </div>
+                                        )}
+                                        {status.isExpired && (
+                                            <div className="mt-3 bg-red-900/30 border border-red-800/50 rounded-lg p-2 flex items-center gap-2">
+                                                <XCircle className="w-4 h-4 text-red-400" />
+                                                <span className="text-xs text-red-300">Expired! Discard and make a fresh batch.</span>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {/* Ratio Calculator */}
@@ -2185,6 +2411,21 @@ export default function App() {
                                                 </div>
                                             </div>
                                         )}
+                                        
+                                        {/* I Made This Button */}
+                                        <button
+                                            onClick={() => {
+                                                handleMakeDiyIngredient(recipe, diyOutputVolume);
+                                                setSelectedDiyItem(null);
+                                            }}
+                                            className="w-full mt-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                                        >
+                                            <CheckCircle2 className="w-5 h-5" />
+                                            {status.inPantry ? 'I Made a Fresh Batch!' : 'I Made This!'}
+                                        </button>
+                                        <p className="text-[10px] text-stone-500 text-center">
+                                            Adds {diyOutputVolume}oz to your pantry with a {parseShelfLifeToDays(recipe.shelfLife)}-day expiration
+                                        </p>
                                     </div>
                                 </div>
                             );
@@ -2209,22 +2450,43 @@ export default function App() {
                                                 </h3>
                                             </div>
                                             <div className="divide-y divide-stone-800">
-                                                {categoryRecipes.map(recipe => (
-                                                    <button 
-                                                        key={recipe.id}
-                                                        onClick={() => { setSelectedDiyItem(recipe.id); setDiyOutputVolume(recipe.baseYield); }}
-                                                        className="w-full p-3 flex items-center justify-between hover:bg-stone-800/50 transition-colors text-left group"
-                                                    >
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="text-sm font-medium text-white group-hover:text-secondary transition-colors truncate">{recipe.name}</div>
-                                                            <div className="text-[10px] text-stone-500 truncate">{recipe.description}</div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                                                            <span className="text-[10px] text-stone-600">{recipe.baseYield}oz</span>
-                                                            <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-secondary transition-colors -rotate-90" />
-                                                        </div>
-                                                    </button>
-                                                ))}
+                                                {categoryRecipes.map(recipe => {
+                                                    const recipeStatus = getDiyIngredientStatus(recipe.id, recipe.name);
+                                                    return (
+                                                        <button 
+                                                            key={recipe.id}
+                                                            onClick={() => { setSelectedDiyItem(recipe.id); setDiyOutputVolume(recipe.baseYield); }}
+                                                            className="w-full p-3 flex items-center justify-between hover:bg-stone-800/50 transition-colors text-left group"
+                                                        >
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="text-sm font-medium text-white group-hover:text-secondary transition-colors truncate">{recipe.name}</div>
+                                                                    {recipeStatus.inPantry && !recipeStatus.isExpired && (
+                                                                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                                                                    )}
+                                                                    {recipeStatus.isExpiringSoon && (
+                                                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                                                    )}
+                                                                    {recipeStatus.isExpired && (
+                                                                        <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                                                                    )}
+                                                                    {!recipeStatus.inPantry && (
+                                                                        <span className="text-[9px] bg-amber-900/40 text-amber-400 px-1.5 py-0.5 rounded flex-shrink-0">MAKE</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-[10px] text-stone-500 truncate">{recipe.description}</div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                                                                {recipeStatus.inPantry && recipeStatus.daysRemaining !== null && (
+                                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${recipeStatus.isExpired ? 'bg-red-900/40 text-red-400' : recipeStatus.isExpiringSoon ? 'bg-amber-900/40 text-amber-400' : 'bg-stone-800 text-stone-400'}`}>
+                                                                        {recipeStatus.isExpired ? 'Expired' : `${recipeStatus.daysRemaining}d`}
+                                                                    </span>
+                                                                )}
+                                                                <ChevronDown className="w-4 h-4 text-stone-600 group-hover:text-secondary transition-colors -rotate-90" />
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     );
