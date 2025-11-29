@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, Camera, ScanLine, Link, Mic, MicOff, Disc, Trash2, Tag, Activity, Droplets } from 'lucide-react';
+import { Link as LinkIcon, Send, Loader2, Check, X, Plus, Save, User, Star, Globe, Image as ImageIcon, Sparkles, Calendar, Beer, ScanLine, Link, Mic, MicOff, Disc, Trash2, Tag, Activity, Droplets } from 'lucide-react';
 import { analyzeDrinkText, generateCocktailImage, transcribeAudio } from '../services/geminiService';
 import { Cocktail, FlavorProfile, Nutrition } from '../types';
 import FlavorWheel from './FlavorWheel';
@@ -28,7 +28,6 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
 
   // Refs for file inputs
   const menuInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Editing State
   const [entryType, setEntryType] = useState<'Recipe' | 'Order'>('Recipe');
@@ -170,26 +169,6 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       setIsLoading(false);
       setLoadingStep('');
     }
-  };
-
-  const handleDrinkPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-        const base64 = reader.result as string;
-        populateDraft({
-            imageUrl: base64,
-            name: 'New Drink',
-            description: 'Captured via camera',
-            category: 'Uncategorized',
-            ingredients: [],
-            instructions: [],
-            nutrition: { calories: 0, carbs: 0, abv: 0 }
-        });
-    };
-    reader.readAsDataURL(file);
   };
 
   const populateDraft = (data: any) => {
@@ -339,11 +318,11 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                 <div className="space-y-8">
                     {/* ... (Input mode content same as before) ... */}
                     {/* 1. Quick Actions */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div>
                         <button 
                            onClick={() => menuInputRef.current?.click()}
                            disabled={isScanningMenu}
-                           className="bg-stone-800 hover:bg-stone-700 p-4 rounded-xl border border-stone-600 flex flex-col items-center gap-2 transition-colors group"
+                           className="w-full bg-stone-800 hover:bg-stone-700 p-4 rounded-xl border border-stone-600 flex flex-col items-center gap-2 transition-colors group"
                         >
                             {isScanningMenu ? <Loader2 className="w-8 h-8 text-secondary animate-spin" /> : <ScanLine className="w-8 h-8 text-secondary group-hover:scale-110 transition-transform" />}
                             <span className="text-sm font-bold text-white">Scan or Upload Menu</span>
@@ -353,22 +332,6 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
                                 ref={menuInputRef}
                                 className="hidden"
                                 onChange={(e) => e.target.files && onScanMenu(e.target.files[0])}
-                            />
-                        </button>
-
-                        <button 
-                           onClick={() => photoInputRef.current?.click()}
-                           className="bg-stone-800 hover:bg-stone-700 p-4 rounded-xl border border-stone-600 flex flex-col items-center gap-2 transition-colors group"
-                        >
-                            <Camera className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-                            <span className="text-sm font-bold text-white">Drink Photo</span>
-                            <input 
-                                type="file" 
-                                accept="image/*"
-                                capture="environment"
-                                ref={photoInputRef}
-                                className="hidden"
-                                onChange={handleDrinkPhotoUpload}
                             />
                         </button>
                     </div>
