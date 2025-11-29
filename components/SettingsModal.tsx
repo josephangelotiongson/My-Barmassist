@@ -40,6 +40,10 @@ const SettingsModal: React.FC<Props> = ({
   const [enrichResult, setEnrichResult] = useState<any>(null);
   const [isAnalyzingLineage, setIsAnalyzingLineage] = useState(false);
   const [lineageResult, setLineageResult] = useState<any>(null);
+  const [isReenrichingAll, setIsReenrichingAll] = useState(false);
+  const [reenrichAllResult, setReenrichAllResult] = useState<any>(null);
+  const [isMigratingFlavors, setIsMigratingFlavors] = useState(false);
+  const [migrateFlavorResult, setMigrateFlavorResult] = useState<any>(null);
   
   // New recipe form state
   const [newRecipeName, setNewRecipeName] = useState('');
@@ -125,6 +129,58 @@ const SettingsModal: React.FC<Props> = ({
       setLineageResult({ error: 'Failed to analyze lineage' });
     }
     setIsAnalyzingLineage(false);
+  };
+
+  const handleReenrichAll = async () => {
+    if (!confirm('This will mark ALL recipes for re-enrichment using the latest AI models and flavor taxonomy. This is recommended after system updates. Continue?')) {
+      return;
+    }
+    setIsReenrichingAll(true);
+    setReenrichAllResult(null);
+    try {
+      const res = await fetch('/api/admin/reenrich-all-recipes', { 
+        method: 'POST',
+        credentials: 'include' 
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        setReenrichAllResult({ error: `Server error (${res.status}): ${errorText || 'Unknown error'}` });
+        setIsReenrichingAll(false);
+        return;
+      }
+      const data = await res.json();
+      setReenrichAllResult(data);
+      const statsRes = await fetch('/api/admin/global-recipes/stats', { credentials: 'include' });
+      if (statsRes.ok) setAdminStats(await statsRes.json());
+    } catch (error) {
+      setReenrichAllResult({ error: 'Failed to mark recipes for re-enrichment' });
+    }
+    setIsReenrichingAll(false);
+  };
+
+  const handleMigrateFlavorTaxonomy = async () => {
+    if (!confirm('This will update the flavor taxonomy structure to the latest 3-tier system. Existing data will be preserved. Continue?')) {
+      return;
+    }
+    setIsMigratingFlavors(true);
+    setMigrateFlavorResult(null);
+    try {
+      const res = await fetch('/api/admin/migrate-to-subcategories', { 
+        method: 'POST',
+        credentials: 'include' 
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        setMigrateFlavorResult({ error: `Server error (${res.status}): ${errorText || 'Unknown error'}` });
+        setIsMigratingFlavors(false);
+        return;
+      }
+      const data = await res.json();
+      setMigrateFlavorResult(data);
+    } catch (error) {
+      setMigrateFlavorResult({ error: 'Failed to migrate flavor taxonomy' });
+    }
+    setIsMigratingFlavors(false);
   };
   
   const handleAddGlobalRecipe = async () => {
@@ -770,6 +826,72 @@ const SettingsModal: React.FC<Props> = ({
                                     <div className="flex items-center gap-2">
                                         <CheckCircle className="w-4 h-4" />
                                         {lineageResult.message || `Created ${lineageResult.lineages} lineages, ${lineageResult.relationships} relationships`}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Future Proofing Section */}
+                    <div className="space-y-3 pt-4 border-t border-stone-700">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-cyan-400" />
+                            Future Proofing
+                        </h3>
+                        <p className="text-xs text-stone-400 mb-3">
+                            Update all data to use the latest AI models, flavor taxonomy rules, and enrichment frameworks. 
+                            Run these after system updates to ensure all data reflects current standards.
+                        </p>
+                        
+                        <button 
+                            onClick={handleMigrateFlavorTaxonomy}
+                            disabled={isMigratingFlavors}
+                            className="w-full bg-cyan-950/50 hover:bg-cyan-900/50 border border-cyan-800/50 text-cyan-300 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                        >
+                            {isMigratingFlavors ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Layers className="w-5 h-5" />
+                            )}
+                            <span className="font-bold">Migrate Flavor Taxonomy</span>
+                        </button>
+                        <p className="text-[10px] text-stone-500 text-center">
+                            Updates to the latest 3-tier flavor taxonomy (categories, subcategories, notes). Non-destructive.
+                        </p>
+                        
+                        {migrateFlavorResult && (
+                            <div className={`p-3 rounded-lg text-sm ${migrateFlavorResult.error || !migrateFlavorResult.success ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+                                {migrateFlavorResult.error ? migrateFlavorResult.error : (
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        {migrateFlavorResult.message}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button 
+                            onClick={handleReenrichAll}
+                            disabled={isReenrichingAll}
+                            className="w-full bg-emerald-950/50 hover:bg-emerald-900/50 border border-emerald-800/50 text-emerald-300 p-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                        >
+                            {isReenrichingAll ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <RefreshCcw className="w-5 h-5" />
+                            )}
+                            <span className="font-bold">Re-enrich All Data</span>
+                        </button>
+                        <p className="text-[10px] text-stone-500 text-center">
+                            Marks all recipes for AI re-enrichment with latest models and rules. After running, use "Enrich Pending Recipes" to process.
+                        </p>
+                        
+                        {reenrichAllResult && (
+                            <div className={`p-3 rounded-lg text-sm ${reenrichAllResult.error || !reenrichAllResult.success ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+                                {reenrichAllResult.error ? reenrichAllResult.error : (
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        {reenrichAllResult.message}
                                     </div>
                                 )}
                             </div>

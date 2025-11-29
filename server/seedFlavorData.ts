@@ -261,7 +261,18 @@ export async function seedFlavorData(): Promise<{ success: boolean; message: str
   }
 }
 
-function migrateProfile(profile: Record<string, number> | null): Record<string, number> | null {
+type FlavorProfile = {
+  Sweet: number;
+  Fruity: number;
+  Floral: number;
+  Herbal: number;
+  Spicy: number;
+  Earthy: number;
+  Sour: number;
+  Boozy: number;
+};
+
+function migrateProfile(profile: Record<string, number> | null): FlavorProfile | null {
   if (!profile) return null;
   
   const hasLegacyFields = 'Bitter' in profile || 'Smoky' in profile;
@@ -269,13 +280,22 @@ function migrateProfile(profile: Record<string, number> | null): Record<string, 
   const hasNewEarthy = 'Earthy' in profile && profile.Earthy > 0;
   
   if (!hasLegacyFields && hasNewFloral && hasNewEarthy) {
-    return profile;
+    return {
+      Sweet: profile.Sweet ?? 0,
+      Fruity: profile.Fruity ?? 0,
+      Floral: profile.Floral ?? 0,
+      Herbal: profile.Herbal ?? 0,
+      Spicy: profile.Spicy ?? 0,
+      Earthy: profile.Earthy ?? 0,
+      Sour: profile.Sour ?? 0,
+      Boozy: profile.Boozy ?? 0,
+    };
   }
   
   const bitterValue = (profile as any).Bitter ?? 0;
   const smokyValue = (profile as any).Smoky ?? 0;
   
-  const newProfile: Record<string, number> = {
+  const newProfile: FlavorProfile = {
     Sweet: profile.Sweet ?? 0,
     Fruity: profile.Fruity ?? 0,
     Floral: hasNewFloral ? profile.Floral : 0,
@@ -392,7 +412,7 @@ export async function migrateLegacyProfiles(): Promise<{
     
     const allLabRiffs = await db.select().from(labRiffs);
     for (const riff of allLabRiffs) {
-      const profile = riff.predictedFlavorProfile as Record<string, number> | null;
+      const profile = riff.flavorProfile as Record<string, number> | null;
       if (!profile) continue;
       
       const hasLegacy = 'Bitter' in profile || 'Smoky' in profile;
@@ -402,7 +422,7 @@ export async function migrateLegacyProfiles(): Promise<{
         const newProfile = migrateProfile(profile);
         if (newProfile) {
           await db.update(labRiffs)
-            .set({ predictedFlavorProfile: newProfile, updatedAt: new Date() })
+            .set({ flavorProfile: newProfile, updatedAt: new Date() })
             .where(eq(labRiffs.id, riff.id));
           labRiffsMigrated++;
         }
