@@ -233,14 +233,6 @@ const DrinkFamilyTree: React.FC<Props> = ({ cocktail, allRecipes, onClose, onSel
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={onClose}
-                className="p-2 hover:bg-stone-800 rounded-full text-stone-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
           </div>
         </div>
 
