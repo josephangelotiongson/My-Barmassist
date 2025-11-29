@@ -1167,6 +1167,69 @@ function MainApp() {
         }
       }
   };
+
+  const handleOrderPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, drink: Cocktail) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const inputElement = e.target;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const originalImageUrl = drink.imageUrl;
+      
+      setHistory(prev => prev.map(c => c.id === drink.id ? { ...c, imageUrl: base64 } : c));
+      
+      if (isAuthenticated) {
+        try {
+          const imageData = base64.split(',')[1];
+          const creatorId = user?.id || undefined;
+          
+          const imageResponse = await fetch('/api/recipe-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              recipeName: drink.name,
+              imageData: imageData,
+              creatorId: creatorId
+            })
+          });
+          
+          if (imageResponse.ok) {
+            const { imageUrl } = await imageResponse.json();
+            
+            if (drink.id.startsWith('user-')) {
+              const dbId = drink.id.replace('user-', '');
+              const updateResponse = await fetch(`/api/recipes/${dbId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ imageUrl })
+              });
+              
+              if (updateResponse.ok) {
+                setHistory(prev => prev.map(c => c.id === drink.id ? { ...c, imageUrl } : c));
+              } else {
+                setHistory(prev => prev.map(c => c.id === drink.id ? { ...c, imageUrl: originalImageUrl } : c));
+              }
+            } else {
+              setHistory(prev => prev.map(c => c.id === drink.id ? { ...c, imageUrl } : c));
+            }
+          } else {
+            setHistory(prev => prev.map(c => c.id === drink.id ? { ...c, imageUrl: originalImageUrl } : c));
+          }
+        } catch (error) {
+          console.error('Failed to upload order photo:', error);
+          setHistory(prev => prev.map(c => c.id === drink.id ? { ...c, imageUrl: originalImageUrl } : c));
+        }
+      }
+      
+      inputElement.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
   
   const handleSendToLab = (e: React.MouseEvent, drink: Cocktail) => {
     e.stopPropagation();
@@ -2869,12 +2932,35 @@ function MainApp() {
                                                 }}
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent"></div>
+                                            <label 
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="absolute bottom-1 right-1 p-1.5 bg-stone-900/80 rounded-full cursor-pointer hover:bg-stone-800 transition-colors opacity-0 group-hover:opacity-100"
+                                            >
+                                                <Camera className="w-3.5 h-3.5 text-primary" />
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    capture="environment"
+                                                    className="hidden"
+                                                    onChange={(e) => handleOrderPhotoUpload(e, drink)}
+                                                />
+                                            </label>
                                         </>
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center flex-col gap-1 bg-stone-800/50">
-                                           <Sparkles className="w-5 h-5 text-stone-600" />
-                                           <span className="text-[8px] text-stone-600">Pending</span>
-                                        </div>
+                                        <label 
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-full h-full flex items-center justify-center flex-col gap-1 bg-stone-800/50 cursor-pointer hover:bg-stone-700/50 transition-colors"
+                                        >
+                                           <Camera className="w-6 h-6 text-stone-500 group-hover:text-primary transition-colors" />
+                                           <span className="text-[9px] text-stone-500 group-hover:text-stone-400 font-medium">Add Photo</span>
+                                           <input 
+                                               type="file" 
+                                               accept="image/*"
+                                               capture="environment"
+                                               className="hidden"
+                                               onChange={(e) => handleOrderPhotoUpload(e, drink)}
+                                           />
+                                        </label>
                                     )}
                                 </div>
                             </div>
