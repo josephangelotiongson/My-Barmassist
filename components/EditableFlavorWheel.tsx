@@ -4,8 +4,10 @@ import { FLAVOR_TAXONOMY, FlavorSelection, createEmptySelection, selectionToFlav
 
 function profileToSelection(profile: FlavorProfile): FlavorSelection {
   const sel = createEmptySelection();
+  const SIGNIFICANCE_THRESHOLD = 4;
+  
   Object.entries(profile).forEach(([key, value]) => {
-    if (typeof value === 'number' && value > 0) {
+    if (typeof value === 'number' && value >= SIGNIFICANCE_THRESHOLD) {
       const cat = FLAVOR_TAXONOMY.find(c => c.label === key);
       if (cat) {
         sel.categories.add(cat.id);
