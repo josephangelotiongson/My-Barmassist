@@ -2,9 +2,30 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+
+const objectStorageService = new ObjectStorageService();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
+
+  // Serve cocktail images from Object Storage
+  app.get('/cocktail-images/:filename', async (req, res) => {
+    try {
+      const imagePath = `/cocktail-images/${req.params.filename}`;
+      const file = await objectStorageService.getCocktailImage(imagePath);
+      if (!file) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      await objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error serving cocktail image:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      return res.status(500).json({ error: "Failed to serve image" });
+    }
+  });
 
   // Auth routes - Replit Auth integration
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -247,11 +268,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recipe-images', async (req, res) => {
     try {
-      const { recipeName, imageUrl } = req.body;
-      if (!recipeName || !imageUrl) {
-        return res.status(400).json({ message: "Recipe name and image URL are required" });
+      const { recipeName, imageData } = req.body;
+      if (!recipeName || !imageData) {
+        return res.status(400).json({ message: "Recipe name and image data are required" });
       }
-      const result = await storage.upsertRecipeImage(recipeName, imageUrl);
+      
+      // Upload image to Object Storage and get the path
+      const imagePath = await objectStorageService.uploadCocktailImage(recipeName, imageData);
+      
+      // Store the path in the database
+      const result = await storage.upsertRecipeImage(recipeName, imagePath);
       res.json(result);
     } catch (error) {
       console.error("Error saving recipe image:", error);

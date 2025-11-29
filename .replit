@@ -49,3 +49,8 @@ run = ["npm", "run", "start"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-e1b2996f-9595-476e-aea6-3842aa94c3b2"
+
+[userenv]
+
+[userenv.shared]
+PRIVATE_OBJECT_DIR = "/cocktail-images"

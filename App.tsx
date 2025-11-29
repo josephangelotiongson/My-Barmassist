@@ -630,21 +630,26 @@ export default function App() {
       setGeneratingImages(prev => new Set(prev).add(cocktail.id));
       
       try {
-          const imageUrl = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
-          if (imageUrl) {
-              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl } : c));
-              
-              // Save the image URL to the global database for all users (guests and authenticated)
-              fetch('/api/recipe-images', {
+          const imageData = await generateCocktailImage(cocktail.name, cocktail.description, cocktail.ingredients);
+          if (imageData) {
+              // Upload to Object Storage and get the path
+              const response = await fetch('/api/recipe-images', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   recipeName: cocktail.name,
-                  imageUrl: imageUrl
+                  imageData: imageData
                 })
-              }).catch(() => {});
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                const imageUrl = result.imageUrl;
+                setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl } : c));
+              } else {
+                setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));
+              }
           } else {
-             // Set fallback if undefined returned
              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));
           }
       } catch (e) {
