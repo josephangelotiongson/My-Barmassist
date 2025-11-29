@@ -157,7 +157,7 @@ The `INITIAL_MASTER_DATA` array contains ingredient information used for nutriti
 - **DATABASE_URL** (Auto-configured): PostgreSQL connection string
 - **SESSION_SECRET** (Auto-generated): Session encryption key
 - **REPLIT_DOMAINS** (Auto-configured): Domain for OAuth callbacks
-- **PRIVATE_OBJECT_DIR**: Object Storage bucket path for cocktail images (`/mybarmassist generated images`)
+- **PRIVATE_OBJECT_DIR**: Object Storage bucket path for cocktail images (`/replit-objstore-e1b2996f-9595-476e-aea6-3842aa94c3b2`)
 
 ### Database Commands
 ```bash
