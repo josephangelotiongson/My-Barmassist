@@ -57,7 +57,12 @@ export async function setupVite(app: Express, server: any) {
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = await vite.transformIndexHtml(url, template);
 
-      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      res.status(200).set({ 
+        "Content-Type": "text/html",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+      }).end(template);
     } catch (e: any) {
       vite.ssrFixStacktrace(e);
       next(e);
