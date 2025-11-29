@@ -1217,11 +1217,14 @@ export const simulateFlavorSubstitutions = async (
     const targetVolumeSection = effectiveVolume 
       ? `\nTARGET TOTAL VOLUME: ${effectiveVolume}
 CRITICAL VOLUME GUIDANCE:
-- This cocktail's total volume should remain approximately ${effectiveVolume}
-- When substituting ingredients, MAINTAIN THE SAME MEASUREMENTS unless the substitution requires different proportions
-- When adding new ingredients, ensure the total volume doesn't exceed the target significantly
+- This cocktail's total volume should remain approximately ${effectiveVolume} (±0.5 oz tolerance)
+- You have FLEXIBILITY to REDUCE base ingredient amounts to accommodate additions and stay within volume tolerance
+- When adding new ingredients, consider proportionally reducing other ingredients (especially modifiers like syrups, juices, or liqueurs) to maintain volume balance
+- Example: If adding 0.5 oz of a new liqueur, you may reduce the base spirit or sweetener by 0.25-0.5 oz
 - The golden ratio of a cocktail depends on maintaining proper proportions - larger volumes dilute flavors, smaller volumes concentrate them
-- For additions: prefer small amounts (dashes, barspoons, rinses) that enhance without significantly changing volume`
+- For small additions (dashes, barspoons, rinses): these don't require reducing other ingredients
+- For larger additions (0.25+ oz): consider reducing a compatible ingredient to stay within target volume
+- Prioritize maintaining the drink's balance and character when deciding what to reduce`
       : '';
 
     let flavorDataContext = '';
@@ -1282,7 +1285,8 @@ INGREDIENT FLAVOR MAPPINGS:
       4. Additions should use reasonable bar measurements (dashes, barspoons, rinses, small amounts).
       5. Include BOTH substitutions array AND additions array in your response.
       6. The newIngredients list should include all original ingredients with substitutions applied PLUS any additions.
-      7. If a target volume is provided, ensure the modified recipe maintains approximately the same total volume to preserve proportions.
+      7. If a target volume is provided, maintain approximately the same total volume (±0.5 oz tolerance) by REDUCING base ingredients proportionally when making additions.
+      8. When reducing ingredients to accommodate additions, prefer reducing modifiers (syrups, liqueurs, juices) over base spirits to maintain the drink's backbone.
       
       ${flavorDataContext}
       
