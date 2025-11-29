@@ -1644,7 +1644,7 @@ export default function App() {
                           />
                        ) : (
                           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
-                             {user?.firstName?.[0] || user?.email?.[0] || 'U'}
+                             {user?.firstName?.[0] || 'U'}
                           </div>
                        )}
                        <button 
