@@ -51,9 +51,11 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
+  // Privacy-first: We do NOT store user email addresses
+  // Only store minimal data needed for the app to function
   await storage.upsertUser({
     id: claims["sub"],
-    email: claims["email"],
+    email: null, // Intentionally not stored for user privacy
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],

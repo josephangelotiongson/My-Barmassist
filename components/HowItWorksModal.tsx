@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Info, Zap, BarChart3, ScanLine, Brain, Star } from 'lucide-react';
+import { X, Info, Zap, BarChart3, ScanLine, Brain, Star, ShieldCheck } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -109,6 +109,23 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     <li>Digitize physical menus and cross-reference them with your palate.</li>
                     <li>Recognize bottles in your cabinet to auto-fill your pantry.</li>
                     <li>Generate visualizations for recipes that lack photos.</li>
+                </ul>
+            </div>
+
+            {/* 5. Privacy */}
+            <div className="bg-green-950/30 rounded-xl p-4 border border-green-800/50">
+                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-green-400" />
+                    Your Privacy Matters
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-3">
+                    <strong className="text-green-400">We do not store your email address.</strong> Your email is used only for authentication and is never saved to our database.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li>No email addresses are collected or stored.</li>
+                    <li>Your data (recipes, ratings, preferences) is yours alone.</li>
+                    <li>We will never sell, share, or use your data without consent.</li>
+                    <li>You can delete your account and all data at any time.</li>
                 </ul>
             </div>
 
