@@ -41,6 +41,12 @@ export interface IStorage {
   getUserRecipes(userId: string): Promise<UserRecipe[]>;
   createRecipe(recipe: InsertUserRecipe): Promise<UserRecipe>;
   updateRecipe(id: number, userId: string, recipe: Partial<InsertUserRecipe>): Promise<UserRecipe | undefined>;
+  updateRecipeEnrichment(id: number, userId: string, enrichment: {
+    flavorProfile?: any;
+    nutrition?: any;
+    enrichmentStatus: string;
+    enrichedAt?: Date;
+  }): Promise<UserRecipe | undefined>;
   deleteRecipe(id: number, userId: string): Promise<boolean>;
   resetAllRecipes(userId: string): Promise<boolean>;
   
@@ -112,6 +118,23 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(userRecipes)
       .set({ ...recipe, updatedAt: new Date() })
+      .where(and(eq(userRecipes.id, id), eq(userRecipes.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async updateRecipeEnrichment(id: number, userId: string, enrichment: {
+    flavorProfile?: any;
+    nutrition?: any;
+    enrichmentStatus: string;
+    enrichedAt?: Date;
+  }): Promise<UserRecipe | undefined> {
+    const [updated] = await db
+      .update(userRecipes)
+      .set({ 
+        ...enrichment, 
+        updatedAt: new Date() 
+      })
       .where(and(eq(userRecipes.id, id), eq(userRecipes.userId, userId)))
       .returning();
     return updated;

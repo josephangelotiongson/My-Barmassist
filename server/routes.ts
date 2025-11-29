@@ -5,6 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { seedGlobalRecipes } from "./seedGlobalRecipes";
 import { enrichPendingRecipes } from "./enrichGlobalRecipes";
+import { enrichRecipeData } from "./recipeEnrichment";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -112,8 +113,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recipes', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const recipe = await storage.createRecipe({ ...req.body, userId });
+      const recipeData = { ...req.body, userId };
+      
+      const recipe = await storage.createRecipe(recipeData);
+      
       res.json(recipe);
+      
+      if (recipe.enrichmentStatus === 'pending' && recipe.ingredients?.length > 0) {
+        console.log(`Starting background enrichment for user recipe "${recipe.name}"...`);
+        enrichRecipeData(recipe.name, recipe.ingredients, recipe.instructions)
+          .then(async (enrichment) => {
+            if (enrichment) {
+              await storage.updateRecipeEnrichment(recipe.id, userId, {
+                flavorProfile: enrichment.flavorProfile,
+                nutrition: enrichment.nutrition,
+                enrichmentStatus: 'complete',
+                enrichedAt: new Date(),
+              });
+              console.log(`Successfully enriched user recipe "${recipe.name}"`);
+            } else {
+              await storage.updateRecipeEnrichment(recipe.id, userId, {
+                enrichmentStatus: 'failed',
+              });
+              console.log(`Failed to enrich user recipe "${recipe.name}"`);
+            }
+          })
+          .catch((error) => {
+            console.error(`Error enriching recipe "${recipe.name}":`, error);
+          });
+      }
     } catch (error) {
       console.error("Error creating recipe:", error);
       res.status(500).json({ message: "Failed to create recipe" });

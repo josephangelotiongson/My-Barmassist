@@ -51,11 +51,18 @@ export const userRecipes = pgTable("user_recipes", {
     Spicy: number;
     Smoky: number;
   }>(),
+  nutrition: jsonb("nutrition").$type<{
+    calories: number;
+    sugarGrams: number;
+    abvPercent: number;
+  }>(),
   category: varchar("category"),
   glassType: varchar("glass_type"),
   garnish: varchar("garnish"),
   imageUrl: text("image_url"),
   isCustom: boolean("is_custom").default(true),
+  enrichmentStatus: varchar("enrichment_status").default("pending"),
+  enrichedAt: timestamp("enriched_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

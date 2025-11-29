@@ -20,6 +20,16 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
     - `POST /api/admin/enrich-recipes?batch=N` - Enrich N recipes with AI
   - Enrichment status tracking: pending, partial, complete, failed
 
+- **Automatic Recipe Enrichment**: New recipes are automatically enriched with AI
+  - When a user creates a new custom recipe, it is immediately saved to the database
+  - Background AI enrichment runs automatically to analyze the recipe and populate:
+    - Flavor profile (8 dimensions, 0-10 scale)
+    - Nutrition data (calories, sugar, ABV)
+  - Shared enrichment service (`server/recipeEnrichment.ts`) used by both:
+    - User recipe creation (automatic, background)
+    - Global recipe batch enrichment (admin-triggered)
+  - User recipes now include `nutrition`, `enrichmentStatus`, and `enrichedAt` fields
+
 - **Shared Image Storage System**: Smart image management using App Storage (Object Storage)
   - Images are stored globally and shared across ALL users (prevents storage flooding)
   - **Classic Recipes**: Shared globally by recipe name (e.g., `margarita.png`)
