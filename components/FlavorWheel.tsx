@@ -73,13 +73,24 @@ const interpolateColor = (intensity: number) => {
 
 const getCategoryScore = (categoryName: string, profile?: FlavorProfile): number => {
     if (!profile) return 0;
+    const anyProfile = profile as unknown as Record<string, number>;
     switch (categoryName) {
-        case 'Fruity': return Math.max(profile.Fruity || 0, profile.Sour || 0);
-        case 'Herbal': return Math.max(profile.Herbal || 0, profile.Bitter || 0);
-        case 'Earthy': return profile.Smoky || 0;
+        case 'Fruity': return profile.Fruity || 0;
+        case 'Herbal': {
+            const herbalValue = profile.Herbal || 0;
+            const legacyBitter = anyProfile.Bitter || 0;
+            return herbalValue > 0 ? herbalValue : legacyBitter;
+        }
+        case 'Earthy': {
+            const earthyValue = profile.Earthy || 0;
+            const legacySmoky = anyProfile.Smoky || 0;
+            return earthyValue > 0 ? earthyValue : legacySmoky;
+        }
         case 'Spicy': return profile.Spicy || 0;
         case 'Sweet': return profile.Sweet || 0;
-        case 'Floral': return 0; // Placeholder for now
+        case 'Floral': return profile.Floral || 0;
+        case 'Sour': return profile.Sour || 0;
+        case 'Boozy': return profile.Boozy || 0;
         default: return 0;
     }
 };

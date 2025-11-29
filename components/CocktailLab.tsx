@@ -47,13 +47,13 @@ interface LabResult {
 
 const DEFAULT_PROFILE: FlavorProfile = {
   [FlavorDimension.SWEET]: 5,
-  [FlavorDimension.SOUR]: 5,
-  [FlavorDimension.BITTER]: 3,
-  [FlavorDimension.BOOZY]: 5,
-  [FlavorDimension.HERBAL]: 3,
   [FlavorDimension.FRUITY]: 4,
+  [FlavorDimension.FLORAL]: 2,
+  [FlavorDimension.HERBAL]: 3,
   [FlavorDimension.SPICY]: 2,
-  [FlavorDimension.SMOKY]: 1,
+  [FlavorDimension.EARTHY]: 1,
+  [FlavorDimension.SOUR]: 5,
+  [FlavorDimension.BOOZY]: 5,
 };
 
 interface ExistingRiff {

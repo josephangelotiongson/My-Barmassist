@@ -43,15 +43,27 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <p className="text-xs text-stone-400 mb-4">
                     Every drink is analyzed by our Mixologist Agent and scored on 8 dimensions.
                 </p>
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                     <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Sweet:</span> 0 (Bone Dry Martini) to 10 (Liqueur Heavy).
+                        <span className="font-bold text-secondary">Sweet:</span> 0 (Bone Dry) to 10 (Liqueur Heavy).
                     </li>
                     <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Sour:</span> 0 (Manhattan) to 10 (Vinegar/Shrub).
+                        <span className="font-bold text-secondary">Fruity:</span> 0 (None) to 10 (Fruit Puree/Tiki).
                     </li>
                     <li className="text-xs text-stone-300">
-                        <span className="font-bold text-secondary">Bitter:</span> 0 (None) to 5 (Negroni) to 10 (Malort).
+                        <span className="font-bold text-secondary">Floral:</span> 0 (None) to 10 (Violet/Lavender dominant).
+                    </li>
+                    <li className="text-xs text-stone-300">
+                        <span className="font-bold text-secondary">Herbal:</span> 0 (None) to 10 (Absinthe/Amaro).
+                    </li>
+                    <li className="text-xs text-stone-300">
+                        <span className="font-bold text-secondary">Spicy:</span> 0 (None) to 10 (Habanero).
+                    </li>
+                    <li className="text-xs text-stone-300">
+                        <span className="font-bold text-secondary">Earthy:</span> 0 (None) to 10 (Peated/Mezcal).
+                    </li>
+                    <li className="text-xs text-stone-300">
+                        <span className="font-bold text-secondary">Sour:</span> 0 (Manhattan) to 10 (Shrub).
                     </li>
                     <li className="text-xs text-stone-300">
                         <span className="font-bold text-secondary">Boozy:</span> 0 (Mocktail) to 10 (Cask Strength).

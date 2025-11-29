@@ -52,15 +52,15 @@ const MODEL_IMAGE = 'gemini-2.5-flash-image';
 
 // --- STANDARDIZED SCORING RUBRICS ---
 const FLAVOR_RUBRIC = `
-FLAVOR SCORING RUBRIC (0-10 Scale):
+FLAVOR SCORING RUBRIC (0-10 Scale) - 8 Primary Categories:
 - SWEET: 0 (Bone Dry, e.g., Dry Martini) -> 3 (Old Fashioned) -> 5 (Balanced Sour/Daisy) -> 8 (Tiki) -> 10 (Liqueur/Syrup heavy).
-- SOUR: 0 (No Acid, e.g., Manhattan) -> 5 (Standard Sour, e.g., Whiskey Sour) -> 8 (Lime heavy) -> 10 (Vinegar/Shrub based).
-- BITTER: 0 (None) -> 2 (Angostura dashes) -> 5 (Negroni/Campari) -> 8 (Amaro/Fernet) -> 10 (Malort/Suze neat).
-- BOOZY: 0 (Mocktail) -> 4 (Standard Highball) -> 6 (Sour/Shake) -> 8 (Stirred/Spirit-Forward) -> 10 (Cask Strength/Overproof).
-- HERBAL: 0 (None) -> 3 (Gin) -> 6 (Chartreuse/Benedictine) -> 10 (Absinthe/Medicinal).
 - FRUITY: 0 (None) -> 3 (Twist/Garnish) -> 6 (Juice Modifier) -> 10 (Fruit Puree/Tiki Bomb).
+- FLORAL: 0 (None) -> 3 (St-Germain touch) -> 6 (Lavender/Rose) -> 10 (Violet liqueur dominant).
+- HERBAL: 0 (None) -> 3 (Gin botanicals) -> 6 (Chartreuse/Benedictine) -> 10 (Absinthe/Medicinal/Bitter amaro).
 - SPICY: 0 (None) -> 3 (Rye Whiskey spice) -> 6 (Ginger Beer) -> 10 (Habanero/Ghost Pepper).
-- SMOKY: 0 (None) -> 3 (Scotch Float) -> 6 (Mezcal) -> 10 (Heavily Peated Islay).
+- EARTHY: 0 (None) -> 3 (Aged spirits) -> 6 (Mezcal smoke/Peated scotch) -> 10 (Heavily Peated Islay/Fungal/Truffle).
+- SOUR: 0 (No Acid, e.g., Manhattan) -> 5 (Standard Sour, e.g., Whiskey Sour) -> 8 (Lime heavy) -> 10 (Vinegar/Shrub based).
+- BOOZY: 0 (Mocktail) -> 4 (Standard Highball) -> 6 (Sour/Shake) -> 8 (Stirred/Spirit-Forward) -> 10 (Cask Strength/Overproof).
 `;
 
 const MATCH_LOGIC = `
@@ -71,20 +71,20 @@ MATCH SCORING RULES (0-100%):
 - <50%: Missing Base Spirit OR Clash in flavor profile.
 `;
 
-// Schema for Flavor Profile
+// Schema for Flavor Profile (8 primary categories)
 const flavorProfileSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     Sweet: { type: Type.NUMBER },
-    Sour: { type: Type.NUMBER },
-    Bitter: { type: Type.NUMBER },
-    Boozy: { type: Type.NUMBER },
-    Herbal: { type: Type.NUMBER },
     Fruity: { type: Type.NUMBER },
+    Floral: { type: Type.NUMBER },
+    Herbal: { type: Type.NUMBER },
     Spicy: { type: Type.NUMBER },
-    Smoky: { type: Type.NUMBER },
+    Earthy: { type: Type.NUMBER },
+    Sour: { type: Type.NUMBER },
+    Boozy: { type: Type.NUMBER },
   },
-  required: ['Sweet', 'Sour', 'Bitter', 'Boozy', 'Herbal', 'Fruity', 'Spicy', 'Smoky'],
+  required: ['Sweet', 'Fruity', 'Floral', 'Herbal', 'Spicy', 'Earthy', 'Sour', 'Boozy'],
 };
 
 // Schema for Nutrition
@@ -308,8 +308,8 @@ export const analyzeDrinkText = async (text: string): Promise<any> => {
         "ingredients": ["string", "string"],
         "instructions": ["string", "string"],
         "flavorProfile": {
-          "Sweet": number, "Sour": number, "Bitter": number, "Boozy": number,
-          "Herbal": number, "Fruity": number, "Spicy": number, "Smoky": number
+          "Sweet": number, "Fruity": number, "Floral": number, "Herbal": number,
+          "Spicy": number, "Earthy": number, "Sour": number, "Boozy": number
         },
         "nutrition": {
           "calories": number,
@@ -611,7 +611,7 @@ export const deduceRecipe = async (name: string, knownIngredients: string[]): Pr
       ingredients: knownIngredients.length > 0 ? knownIngredients : ["Spirit", "Modifier"],
       instructions: ["Mix ingredients with ice.", "Serve."],
       description: "Could not deduce specific recipe.",
-      flavorProfile: { Sweet: 5, Sour: 5, Bitter: 0, Boozy: 5, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 },
+      flavorProfile: { Sweet: 5, Fruity: 0, Floral: 0, Herbal: 0, Spicy: 0, Earthy: 0, Sour: 5, Boozy: 5 },
       category: "Uncategorized",
       nutrition: { calories: 150, carbs: 5, abv: 15 },
       history: "History unavailable for this deducted recipe."

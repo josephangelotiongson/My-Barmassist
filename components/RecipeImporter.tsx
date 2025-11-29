@@ -251,7 +251,7 @@ const RecipeImporter: React.FC<Props> = ({ isOpen, onClose, onAddCocktail, onSca
       category: draftCategory,
       ingredients: draftIngredients,
       instructions: instructionsArray,
-      flavorProfile: draftProfile || { Sweet: 0, Sour: 0, Bitter: 0, Boozy: 0, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0 },
+      flavorProfile: draftProfile || { Sweet: 0, Fruity: 0, Floral: 0, Herbal: 0, Spicy: 0, Earthy: 0, Sour: 0, Boozy: 0 },
       nutrition: draftNutrition,
       source: entryType === 'Order' ? 'Order' : (draftLinks.length > 0 ? 'Social' : 'Manual'),
       externalLinks: draftLinks,

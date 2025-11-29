@@ -17,13 +17,13 @@ interface SharedRecipe {
   creatorType?: string;
   flavorProfile?: {
     Sweet: number;
-    Sour: number;
-    Bitter: number;
-    Boozy: number;
-    Herbal: number;
     Fruity: number;
+    Floral: number;
+    Herbal: number;
     Spicy: number;
-    Smoky: number;
+    Earthy: number;
+    Sour: number;
+    Boozy: number;
   };
   nutrition?: {
     calories: number;

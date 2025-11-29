@@ -44,13 +44,13 @@ export const userRecipes = pgTable("user_recipes", {
   instructions: text("instructions"),
   flavorProfile: jsonb("flavor_profile").$type<{
     Sweet: number;
-    Sour: number;
-    Bitter: number;
-    Boozy: number;
-    Herbal: number;
     Fruity: number;
+    Floral: number;
+    Herbal: number;
     Spicy: number;
-    Smoky: number;
+    Earthy: number;
+    Sour: number;
+    Boozy: number;
   }>(),
   nutrition: jsonb("nutrition").$type<{
     calories: number;
@@ -102,13 +102,13 @@ export const userSettings = pgTable("user_settings", {
   handedness: varchar("handedness").default("right"),
   flavorProfile: jsonb("flavor_profile").$type<{
     Sweet: number;
-    Sour: number;
-    Bitter: number;
-    Boozy: number;
-    Herbal: number;
     Fruity: number;
+    Floral: number;
+    Herbal: number;
     Spicy: number;
-    Smoky: number;
+    Earthy: number;
+    Sour: number;
+    Boozy: number;
   }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -170,13 +170,13 @@ export const globalRecipes = pgTable("global_recipes", {
   creatorType: varchar("creator_type"),
   flavorProfile: jsonb("flavor_profile").$type<{
     Sweet: number;
-    Sour: number;
-    Bitter: number;
-    Boozy: number;
-    Herbal: number;
     Fruity: number;
+    Floral: number;
+    Herbal: number;
     Spicy: number;
-    Smoky: number;
+    Earthy: number;
+    Sour: number;
+    Boozy: number;
   }>(),
   nutrition: jsonb("nutrition").$type<{
     calories: number;
@@ -222,13 +222,13 @@ export const labRiffs = pgTable("lab_riffs", {
   }[]>(),
   flavorProfile: jsonb("flavor_profile").$type<{
     Sweet: number;
-    Sour: number;
-    Bitter: number;
-    Boozy: number;
-    Herbal: number;
     Fruity: number;
+    Floral: number;
+    Herbal: number;
     Spicy: number;
-    Smoky: number;
+    Earthy: number;
+    Sour: number;
+    Boozy: number;
   }>(),
   nutrition: jsonb("nutrition").$type<{
     calories: number;

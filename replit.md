@@ -23,7 +23,7 @@ None set yet - will be documented as user expresses preferences during developme
 - **Personalized Experience**: Merges user-specific data (ratings, custom recipes) with global recipes upon login.
 - **AI-Powered Recommendations**: Suggestions based on ingredients and flavor preferences.
 - **Ingredient Scanning**: AI-driven inventory management (future: image recognition).
-- **Flavor Profiling**: Visual representation of flavor dimensions (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky).
+- **Flavor Profiling**: Visual representation of 8 flavor dimensions (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy).
 - **Recipe Management**: Create, import (including from social media URLs), and manage custom recipes.
 - **Shopping List**: Track ingredients and manage inventory.
 - **Nutrition Estimation**: Calculates calories, carbs, and ABV for cocktails.
@@ -57,16 +57,19 @@ None set yet - will be documented as user expresses preferences during developme
     - Automatically calculates volume from ingredient measurements (supports mixed fractions like "1 1/2 oz")
     - AI considers target volume when suggesting substitutions to maintain golden ratios
     - Volume displayed in recipe selector for quick reference
-  - **Interactive Editable Flavor Wheel**: Hierarchical two-ring design with granular control:
-    - Inner ring: 8 main flavor categories (Sweet, Sour, Bitter, Boozy, Herbal, Fruity, Spicy, Smoky)
-    - Outer ring: 32 fine flavor notes (4 per category) - each independently modifiable
-    - Continuous color intensity (0-10 scale) with opacity mapping (20%-100%)
-    - Category values derived from child notes using weighted formula (70% max + 30% average)
+  - **Interactive Editable Flavor Wheel**: Hierarchical 3-tier design with granular control:
+    - Inner ring: 8 main flavor categories (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy)
+    - Middle ring: Subcategories for each flavor dimension
+    - Outer ring: Specific flavor notes - each independently modifiable
+    - Continuous color intensity (0-10 scale) with opacity mapping (25%-100%)
+    - Category and subcategory values derived using weighted aggregation formula (70% max + 30% average)
     - Fine flavor labels positioned OUTSIDE the wheel for readability
-    - Click outer ring notes to modify individual flavors (e.g., Citrus vs Tart in Sour category)
+    - Click outer ring notes to modify individual flavors
+    - Click middle ring subcategories to adjust related notes together
     - Click inner ring categories to adjust all child notes together
-    - Hover shows precise values for both notes and categories
+    - Hover shows precise values for notes, subcategories, and categories
     - HSL interpolation for smooth color transitions
+    - Backwards compatibility: Maps legacy Bitter values to Herbal, Smoky values to Earthy
   - Visual radar chart comparing Original, Target, and Predicted flavor profiles
   - AI suggests ingredient substitutions to achieve target flavor goals
   - Toggle individual substitutions to preview modified recipe

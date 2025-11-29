@@ -1,24 +1,24 @@
 
 export enum FlavorDimension {
   SWEET = 'Sweet',
-  SOUR = 'Sour',
-  BITTER = 'Bitter',
-  BOOZY = 'Boozy',
-  HERBAL = 'Herbal',
   FRUITY = 'Fruity',
+  FLORAL = 'Floral',
+  HERBAL = 'Herbal',
   SPICY = 'Spicy',
-  SMOKY = 'Smoky'
+  EARTHY = 'Earthy',
+  SOUR = 'Sour',
+  BOOZY = 'Boozy'
 }
 
 export interface FlavorProfile {
   [FlavorDimension.SWEET]: number;
-  [FlavorDimension.SOUR]: number;
-  [FlavorDimension.BITTER]: number;
-  [FlavorDimension.BOOZY]: number;
-  [FlavorDimension.HERBAL]: number;
   [FlavorDimension.FRUITY]: number;
+  [FlavorDimension.FLORAL]: number;
+  [FlavorDimension.HERBAL]: number;
   [FlavorDimension.SPICY]: number;
-  [FlavorDimension.SMOKY]: number;
+  [FlavorDimension.EARTHY]: number;
+  [FlavorDimension.SOUR]: number;
+  [FlavorDimension.BOOZY]: number;
 }
 
 export interface Nutrition {

@@ -22,7 +22,7 @@ import { INITIAL_MASTER_DATA, INITIAL_RECIPES_DATA } from './initialData';
 
 // Default empty profile for fallback
 const INITIAL_PROFILE: FlavorProfile = {
-  Sweet: 0, Sour: 0, Bitter: 0, Boozy: 0, Herbal: 0, Fruity: 0, Spicy: 0, Smoky: 0
+  Sweet: 0, Fruity: 0, Floral: 0, Herbal: 0, Spicy: 0, Earthy: 0, Sour: 0, Boozy: 0
 };
 
 const INITIAL_SETTINGS: AppSettings = {
