@@ -12,10 +12,10 @@ This is a sophisticated cocktail/bar assistant application built with React, Typ
   - Users can now log in via Google, GitHub, X, Apple, and email/password
   - Login: Navigate to `/api/login`
   - Logout: Navigate to `/api/logout`
-- **Persistent Cocktail Images**: AI-generated cocktail images are now saved to the database for logged-in users
-  - Images are generated once and saved, so they load instantly on future visits
-  - Guests still see images generate in real-time; logged-in users get cached images
-  - Images are stored in the userRatings table alongside ratings
+- **Persistent Cocktail Images**: AI-generated cocktail images are saved globally for all users
+  - Images are generated once and saved to the database, so all users (guests and logged-in) see them instantly
+  - No need to regenerate images - they're shared across all users
+  - Images are stored in the global recipeImages table
 - **Improved Mobile Navigation**: Increased bottom navigation bar size for better phone usability
   - Larger touch targets (28px icons)
   - Larger text labels (12px)

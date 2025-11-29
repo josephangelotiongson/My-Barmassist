@@ -118,6 +118,14 @@ export const masterIngredients = pgTable("master_ingredients", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Global recipe images (shared across all users - no authentication required)
+export const recipeImages = pgTable("recipe_images", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  recipeName: varchar("recipe_name").notNull().unique(),
+  imageUrl: text("image_url").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UserRecipe = typeof userRecipes.$inferSelect;

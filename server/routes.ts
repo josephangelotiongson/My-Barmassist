@@ -234,6 +234,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Global recipe images (no authentication required - shared across all users)
+  app.get('/api/recipe-images', async (req, res) => {
+    try {
+      const images = await storage.getAllRecipeImages();
+      res.json(images);
+    } catch (error) {
+      console.error("Error fetching recipe images:", error);
+      res.status(500).json({ message: "Failed to fetch recipe images" });
+    }
+  });
+
+  app.post('/api/recipe-images', async (req, res) => {
+    try {
+      const { recipeName, imageUrl } = req.body;
+      if (!recipeName || !imageUrl) {
+        return res.status(400).json({ message: "Recipe name and image URL are required" });
+      }
+      const result = await storage.upsertRecipeImage(recipeName, imageUrl);
+      res.json(result);
+    } catch (error) {
+      console.error("Error saving recipe image:", error);
+      res.status(500).json({ message: "Failed to save recipe image" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

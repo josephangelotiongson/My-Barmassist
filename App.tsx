@@ -197,34 +197,60 @@ export default function App() {
 
   // Track if we've loaded user data
   const [userDataLoaded, setUserDataLoaded] = useState(false);
+  
+  // Track if we've loaded global images
+  const [globalImagesLoaded, setGlobalImagesLoaded] = useState(false);
+
+  // Load global recipe images for everyone (guests and authenticated users)
+  useEffect(() => {
+    if (!globalImagesLoaded) {
+      setGlobalImagesLoaded(true);
+      fetch('/api/recipe-images')
+        .then(res => res.ok ? res.json() : [])
+        .then((images: { recipeName: string; imageUrl: string }[]) => {
+          if (images.length > 0) {
+            const imageMap = new Map<string, string>();
+            images.forEach(img => imageMap.set(img.recipeName, img.imageUrl));
+            
+            setHistory(prev => prev.map(recipe => {
+              const savedImage = imageMap.get(recipe.name);
+              return savedImage ? { ...recipe, imageUrl: savedImage } : recipe;
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [globalImagesLoaded]);
 
   // Load user data when authenticated
   useEffect(() => {
     if (isAuthenticated && user && !userDataLoaded) {
       setUserDataLoaded(true);
       
-      // Load recipes and ratings together, then merge in single update
+      // Load recipes, ratings, and global images together, then merge in single update
       const loadRecipesAndRatings = async () => {
         try {
-          const [recipesRes, ratingsRes] = await Promise.all([
+          const [recipesRes, ratingsRes, globalImagesRes] = await Promise.all([
             fetch('/api/recipes', { credentials: 'include' }),
-            fetch('/api/ratings', { credentials: 'include' })
+            fetch('/api/ratings', { credentials: 'include' }),
+            fetch('/api/recipe-images')
           ]);
           
           const recipes: any[] = recipesRes.ok ? await recipesRes.json() : [];
           const ratings: any[] = ratingsRes.ok ? await ratingsRes.json() : [];
+          const globalImages: { recipeName: string; imageUrl: string }[] = globalImagesRes.ok ? await globalImagesRes.json() : [];
           
-          // Create rating and image lookup maps
+          // Create rating lookup map
           const ratingMap = new Map<string, number>();
-          const imageMap = new Map<string, string>();
           ratings.forEach((r: any) => {
             ratingMap.set(r.recipeName, r.rating);
-            if (r.imageUrl) {
-              imageMap.set(r.recipeName, r.imageUrl);
-            }
           });
           
-          // Build custom recipes with ratings applied
+          // Create global image lookup map
+          const globalImageMap = new Map<string, string>();
+          globalImages.forEach(img => globalImageMap.set(img.recipeName, img.imageUrl));
+          
+          // Build custom recipes with ratings and global images applied
           const customRecipes: Cocktail[] = recipes.map((r: any) => ({
             id: `user-${r.id}`,
             name: r.name,
@@ -234,21 +260,21 @@ export default function App() {
             flavorProfile: r.flavorProfile || {},
             nutrition: { calories: 0, carbs: 0, abv: 0 },
             category: r.category || 'Custom',
-            imageUrl: r.imageUrl,
+            imageUrl: r.imageUrl || globalImageMap.get(r.name),
             isUserCreated: true,
             rating: ratingMap.get(r.name),
             dateAdded: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString()
           }));
           
-          // Apply ratings and saved images to preloaded recipes and merge with custom recipes
+          // Apply ratings and global images to preloaded recipes and merge with custom recipes
           setHistory(prev => {
             const updatedPreloaded = prev.map(recipe => {
               const rating = ratingMap.get(recipe.name);
-              const savedImage = imageMap.get(recipe.name);
+              const globalImage = globalImageMap.get(recipe.name);
               return { 
                 ...recipe, 
                 ...(rating !== undefined && { rating }),
-                ...(savedImage && { imageUrl: savedImage })
+                ...(globalImage && !recipe.imageUrl && { imageUrl: globalImage })
               };
             });
             return [...customRecipes, ...updatedPreloaded];
@@ -293,8 +319,9 @@ export default function App() {
         })
         .catch(() => {});
     } else if (!isAuthenticated && !isAuthLoading && userDataLoaded) {
-      // User logged out - reset to preloaded recipes only
+      // User logged out - reset to preloaded recipes and reload global images
       setUserDataLoaded(false);
+      setGlobalImagesLoaded(false);
       setHistory(getPreloadedRecipes());
       setShoppingList([]);
       setSettings(INITIAL_SETTINGS);
@@ -585,6 +612,7 @@ export default function App() {
     setPantry(INITIAL_PANTRY);
     setSettings(INITIAL_SETTINGS);
     setUserDataLoaded(false);
+    setGlobalImagesLoaded(false);
     
     if (isAuthenticated) {
       Promise.all([
@@ -606,18 +634,15 @@ export default function App() {
           if (imageUrl) {
               setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl } : c));
               
-              // Save the image URL to the database for logged-in users
-              if (isAuthenticated) {
-                fetch('/api/ratings/image', {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    recipeName: cocktail.name,
-                    imageUrl: imageUrl
-                  })
-                }).catch(() => {});
-              }
+              // Save the image URL to the global database for all users (guests and authenticated)
+              fetch('/api/recipe-images', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  recipeName: cocktail.name,
+                  imageUrl: imageUrl
+                })
+              }).catch(() => {});
           } else {
              // Set fallback if undefined returned
              setHistory(prev => prev.map(c => c.id === cocktail.id ? { ...c, imageUrl: FALLBACK_IMAGE } : c));

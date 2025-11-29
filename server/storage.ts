@@ -4,6 +4,7 @@ import {
   userRatings,
   userShoppingList,
   userSettings,
+  recipeImages,
   type User,
   type UpsertUser,
   type UserRecipe,
@@ -17,6 +18,14 @@ import {
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
+
+// Type for global recipe images
+export type RecipeImage = {
+  id: number;
+  recipeName: string;
+  imageUrl: string;
+  createdAt: Date | null;
+};
 
 export interface IStorage {
   // User operations
@@ -49,6 +58,10 @@ export interface IStorage {
   // Settings operations
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   upsertUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
+  
+  // Global recipe images (no auth required)
+  getAllRecipeImages(): Promise<RecipeImage[]>;
+  upsertRecipeImage(recipeName: string, imageUrl: string): Promise<RecipeImage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -215,6 +228,23 @@ export class DatabaseStorage implements IStorage {
           ...settings,
           updatedAt: new Date(),
         },
+      })
+      .returning();
+    return result;
+  }
+
+  // Global recipe images (no auth required)
+  async getAllRecipeImages(): Promise<RecipeImage[]> {
+    return await db.select().from(recipeImages);
+  }
+
+  async upsertRecipeImage(recipeName: string, imageUrl: string): Promise<RecipeImage> {
+    const [result] = await db
+      .insert(recipeImages)
+      .values({ recipeName, imageUrl })
+      .onConflictDoUpdate({
+        target: recipeImages.recipeName,
+        set: { imageUrl },
       })
       .returning();
     return result;

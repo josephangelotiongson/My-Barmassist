@@ -38,7 +38,7 @@ localPort = 32953
 externalPort = 3001
 
 [[ports]]
-localPort = 41839
+localPort = 37615
 externalPort = 3000
 
 [deployment]
@@ -46,3 +46,6 @@ deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 publicDir = "dist"
 run = ["npm", "run", "start"]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-e1b2996f-9595-476e-aea6-3842aa94c3b2"
