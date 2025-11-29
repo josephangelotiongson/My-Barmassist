@@ -8,6 +8,7 @@ import {
   text,
   integer,
   boolean,
+  real,
 } from "drizzle-orm/pg-core";
 
 // Session storage table.
@@ -123,7 +124,7 @@ export const masterIngredients = pgTable("master_ingredients", {
   isGeneric: boolean("is_generic").default(true),
   vendorBrand: varchar("vendor_brand"),
   originRegion: varchar("origin_region"),
-  abv: integer("abv"),
+  abv: real("abv"),
   nutrition: jsonb("nutrition").$type<{
     caloriesPerOz: number;
     carbsPerOz: number;
