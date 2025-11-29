@@ -322,8 +322,20 @@ export default function App() {
           
           // Apply ratings and global images to preloaded recipes and merge with custom recipes
           // Always prefer global App Storage images over any existing images
+          // User recipes take priority - filter out global duplicates
           setHistory(prev => {
-            const updatedPreloaded = prev.map(recipe => {
+            // Create a set of user recipe names (case-insensitive) to check for duplicates
+            const userRecipeNames = new Set(
+              customRecipes.map(r => r.name.toLowerCase().trim())
+            );
+            
+            // Filter out global recipes that have a user-created duplicate
+            const filteredPreloaded = prev.filter(recipe => {
+              const normalizedName = recipe.name.toLowerCase().trim();
+              return !userRecipeNames.has(normalizedName);
+            });
+            
+            const updatedPreloaded = filteredPreloaded.map(recipe => {
               const rating = ratingMap.get(recipe.name);
               const globalImage = globalImageMap.get(recipe.name);
               return { 
