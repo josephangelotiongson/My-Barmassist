@@ -27,7 +27,7 @@ None set yet - will be documented as user expresses preferences during developme
 - **Cocktail Lineage / Family Tree**: AI-powered drink genealogy feature mapping evolutionary relationships of cocktails based on six root templates (Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip). Provides ancestors, siblings, descendants, flavor bridges, and evolution narratives.
 - **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation:
     - **Target Volume Tracking**: Calculates and manages cocktail volume, with AI adjusting ingredient suggestions to maintain target volume and golden ratios.
-    - **Volume Lever UI**: Interactive tool to balance cocktail volume for AI-suggested modifications.
+    - **Volume Lever UI**: Interactive tool to balance cocktail volume for AI-suggested modifications, with real-time flavor profile impact visualization showing which flavor categories will change as ingredients are reduced.
     - **Interactive Editable Flavor Wheel**: Hierarchical 3-tier design for granular control over flavor notes (categories, subcategories, specific notes) with visual radar chart comparisons.
     - **Precise Flavor Note Matching**: AI understands specific flavor notes for accurate substitutions and provides commentary on obscure requests.
     - **Lab Riff Creation**: Save modified recipes as new riffs with signature-based deduplication and automatic lineage integration.
