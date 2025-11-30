@@ -28,8 +28,7 @@ const INITIAL_PROFILE: FlavorProfile = {
 const INITIAL_SETTINGS: AppSettings = {
     lowStockKeywords: ['empty', 'low', '10%', 'near empty', 'almost gone', 'running low'],
     allergies: [],
-    handedness: 'right',
-    measurementSystem: 'imperial'
+    handedness: 'right'
 };
 
 // DIY Ingredients Database - recipes for homemade bar ingredients
@@ -1865,7 +1864,6 @@ function MainApp() {
           setSelectedCocktail(null);
           setFamilyTreeCocktail(cocktail);
         }}
-        measurementSystem={settings.measurementSystem || 'imperial'}
       />
       
       <SettingsModal 
@@ -3042,7 +3040,6 @@ function MainApp() {
                       initialMode={labMode}
                       onClearInitialRecipe={() => { setLabRecipe(null); setLabMode('recipe'); }}
                       onSaveExperiment={handleAddCocktail}
-                      measurementSystem={settings.measurementSystem || 'imperial'}
                     />
                 </div>
             </div>

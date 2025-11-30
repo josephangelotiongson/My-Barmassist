@@ -95,6 +95,5 @@ export interface MasterIngredient {
 export interface AppSettings {
   lowStockKeywords: string[]; 
   allergies: string[]; 
-  handedness: 'right' | 'left';
-  measurementSystem: 'imperial' | 'metric';
+  handedness: 'right' | 'left'; 
 }
