@@ -268,10 +268,6 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
 
             {/* FLAVOR ANALYSIS SECTION (Wheel + Points) */}
             <div className="bg-stone-800/50 rounded-2xl p-6 border border-stone-700 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-3 opacity-10">
-                    <Disc className="w-24 h-24 text-white" />
-                </div>
-                
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                     <Disc className="w-4 h-4 text-secondary" />
                     Flavor Analysis
