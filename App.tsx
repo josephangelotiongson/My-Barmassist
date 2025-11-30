@@ -3050,16 +3050,16 @@ function MainApp() {
         <div className="grid grid-cols-4 h-20 max-w-md mx-auto">
           <button 
              onClick={() => handleTabChange('palate')} 
-             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'palate' ? 'text-primary' : 'text-stone-500 hover:text-stone-400'}`}
+             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'palate' ? 'text-secondary' : 'text-stone-500 hover:text-stone-400'}`}
           >
-            <BarChart3 className={`w-7 h-7 ${activeTab === 'palate' ? 'fill-primary/20' : ''}`} />
+            <BarChart3 className={`w-7 h-7 ${activeTab === 'palate' ? 'fill-secondary/20' : ''}`} />
             <span className="text-xs font-bold">Palate</span>
           </button>
           <button 
              onClick={() => handleTabChange('recipes')} 
-             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'recipes' ? 'text-white' : 'text-stone-500 hover:text-stone-400'}`}
+             className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'recipes' ? 'text-secondary' : 'text-stone-500 hover:text-stone-400'}`}
           >
-            <BookOpen className={`w-7 h-7 ${activeTab === 'recipes' ? 'fill-white/20' : ''}`} />
+            <BookOpen className={`w-7 h-7 ${activeTab === 'recipes' ? 'fill-secondary/20' : ''}`} />
             <span className="text-xs font-bold">Barmulary</span>
           </button>
           <button 
