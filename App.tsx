@@ -1974,14 +1974,14 @@ function MainApp() {
                <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700 flex-none">
                    <button 
                       onClick={() => setPalateView('diagnosis')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${palateView === 'diagnosis' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${palateView === 'diagnosis' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <BarChart3 className="w-4 h-4" />
                       Profile
                    </button>
                    <button 
                       onClick={() => setPalateView('wheel')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${palateView === 'wheel' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${palateView === 'wheel' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <Disc className="w-4 h-4" />
                       Reference
@@ -2242,21 +2242,21 @@ function MainApp() {
                   <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setBarView('shopping')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${barView === 'shopping' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${barView === 'shopping' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <ShoppingCart className="w-3.5 h-3.5" />
                       Shopping
                    </button>
                    <button 
                       onClick={() => setBarView('pantry')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${barView === 'pantry' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${barView === 'pantry' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <Wine className="w-3.5 h-3.5" />
                       Pantry
                    </button>
                    <button 
                       onClick={() => setBarView('makeIt')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${barView === 'makeIt' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${barView === 'makeIt' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <Beaker className="w-3.5 h-3.5" />
                       Make It
@@ -2265,9 +2265,9 @@ function MainApp() {
                 
                 {barView === 'shopping' && (
                     <>
-                    <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30 animate-in fade-in duration-300">
+                    <div className="bg-secondary/10 rounded-2xl p-4 border border-secondary/30 animate-in fade-in duration-300">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                             <ShoppingCart className="w-5 h-5 text-white" />
                           </div>
                           <div>
@@ -2351,9 +2351,9 @@ function MainApp() {
                             <Plus className="w-6 h-6" />
                         </button>
                         
-                        <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30">
+                        <div className="bg-secondary/10 rounded-2xl p-4 border border-secondary/30">
                             <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                                 <Wine className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -2499,9 +2499,9 @@ function MainApp() {
 
                 {barView === 'makeIt' && (
                     <div className="space-y-4 animate-in fade-in duration-300">
-                        <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30">
+                        <div className="bg-secondary/10 rounded-2xl p-4 border border-secondary/30">
                             <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                                 <Beaker className="w-5 h-5 text-white" />
                               </div>
                               <div>
@@ -2523,7 +2523,7 @@ function MainApp() {
                             
                             return (
                                 <div className="bg-surface rounded-2xl border border-secondary/30 overflow-hidden shadow-lg">
-                                    <div className="bg-gradient-to-r from-secondary/20 to-primary/10 p-4 border-b border-stone-700">
+                                    <div className="bg-secondary/10 p-4 border-b border-stone-700">
                                         <div className="flex items-start justify-between">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
@@ -2680,7 +2680,7 @@ function MainApp() {
                                                 handleMakeDiyIngredient(recipe, diyOutputVolume);
                                                 setSelectedDiyItem(null);
                                             }}
-                                            className="w-full mt-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                                            className="w-full mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
                                         >
                                             <CheckCircle2 className="w-5 h-5" />
                                             {status.inPantry ? 'I Made a Fresh Batch!' : 'I Made This!'}
@@ -2757,24 +2757,24 @@ function MainApp() {
             </div>
             
             <div ref={recommendScrollRef} className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'recommend' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
-                  <div className="flex bg-stone-800 p-1 rounded-xl border border-secondary/30">
+                  <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setRxView('recommend')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'recommend' ? 'bg-secondary/20 text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-secondary/70'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'recommend' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <ChefHat className="w-4 h-4" />
                       Recommend
                    </button>
                    <button 
                       onClick={() => setRxView('lab')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'lab' ? 'bg-secondary/20 text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-secondary/70'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'lab' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <FlaskConical className="w-4 h-4" />
                       Flavor Lab
                    </button>
                    <button 
                       onClick={() => setRxView('history')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'history' ? 'bg-secondary/20 text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-secondary/70'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'history' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <History className="w-4 h-4" />
                       History
@@ -2782,9 +2782,9 @@ function MainApp() {
                 </div>
                 
                 <div className={`space-y-6 ${rxView === 'recommend' ? '' : 'hidden'}`}>
-                <div className="bg-gradient-to-br from-secondary/20 to-stone-900 rounded-2xl p-4 border border-secondary/30">
+                <div className="bg-secondary/10 rounded-2xl p-4 border border-secondary/30">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary to-emerald-600 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                         <ChefHat className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -2833,7 +2833,7 @@ function MainApp() {
                  <div className="space-y-4">
                     {recommendations.map((rec, idx) => (
                         <div key={idx} className="bg-surface rounded-2xl border border-stone-700 overflow-hidden flex flex-col shadow-md">
-                            <div className="p-1 bg-gradient-to-r from-secondary to-emerald-500 h-1" />
+                            <div className="p-1 bg-secondary h-1" />
                             <div className="p-5 flex-1 flex flex-col">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="text-lg font-bold text-white">{rec.name}</h3>
@@ -2913,9 +2913,9 @@ function MainApp() {
                 </div>
 
                 <div className={`space-y-4 ${rxView === 'history' ? '' : 'hidden'}`}>
-                        <div className="bg-gradient-to-br from-stone-800/60 to-stone-900 rounded-2xl p-4 border border-stone-700/50">
+                        <div className="bg-secondary/10 rounded-2xl p-4 border border-secondary/30">
                             <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stone-600 to-stone-700 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                                 <History className="w-5 h-5 text-white" />
                               </div>
                               <div>
