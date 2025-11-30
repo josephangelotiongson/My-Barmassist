@@ -266,7 +266,7 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                 </div>
             )}
 
-            {/* FLAVOR ANALYSIS SECTION (Wheel + Text) */}
+            {/* FLAVOR ANALYSIS SECTION (Wheel + Points) */}
             <div className="bg-stone-800/50 rounded-2xl p-6 border border-stone-700 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-3 opacity-10">
                     <Disc className="w-24 h-24 text-white" />
@@ -278,20 +278,34 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                 </h3>
 
                 <div className="flex flex-col items-center gap-4">
-                    {/* Wheel Visualization */}
-                    <div className="w-full max-w-[200px] aspect-square">
+                    {/* Wheel Visualization - Larger */}
+                    <div className="w-full max-w-[280px] aspect-square">
                         <FlavorWheel userProfile={cocktail.flavorProfile} />
                     </div>
                     
-                    {/* Agent Summary Text */}
-                    <div className="bg-stone-900/80 p-4 rounded-xl border border-stone-700 w-full text-center">
-                         <div className="text-[10px] text-primary font-bold uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
-                            <Sparkles className="w-3 h-3" /> Mixologist Agent Notes
-                         </div>
-                         <p className="text-sm text-stone-300 italic leading-relaxed">
-                            "{cocktail.description}"
-                         </p>
-                    </div>
+                    {/* Flavor Points Summary */}
+                    {cocktail.flavorProfile && (
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {Object.entries(cocktail.flavorProfile)
+                                .filter(([_, value]) => (value as number) > 0)
+                                .sort(([, a], [, b]) => (b as number) - (a as number))
+                                .slice(0, 5)
+                                .map(([dim, value]) => {
+                                    const numValue = value as number;
+                                    const intensity = numValue > 7 ? 'bg-amber-600' : numValue > 4 ? 'bg-amber-700' : 'bg-stone-700';
+                                    return (
+                                        <span 
+                                            key={dim}
+                                            className={`${intensity} px-2 py-1 rounded text-xs font-medium flex items-center gap-1`}
+                                        >
+                                            <span className="text-stone-300">{dim}</span>
+                                            <span className="font-bold text-white">{numValue.toFixed(0)}</span>
+                                        </span>
+                                    );
+                                })
+                            }
+                        </div>
+                    )}
                 </div>
             </div>
 
