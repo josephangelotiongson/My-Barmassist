@@ -1478,7 +1478,7 @@ export interface DeproofResult {
 const deproofSchema: Schema = {
   type: Type.OBJECT,
   properties: {
-    isPossible: { type: Type.BOOLEAN, description: "Whether this cocktail can reasonably be made into a zero or low-proof version" },
+    isPossible: { type: Type.BOOLEAN, description: "Whether this cocktail can reasonably be made into the target proof level (zero-proof, low-proof, or low-abv)" },
     impossibilityReason: { type: Type.STRING, description: "If not possible, explain why (e.g., the drink's identity is inseparable from its alcohol content)" },
     substitutions: {
       type: Type.ARRAY,
@@ -1486,7 +1486,7 @@ const deproofSchema: Schema = {
         type: Type.OBJECT,
         properties: {
           original: { type: Type.STRING, description: "The alcoholic ingredient to replace" },
-          replacement: { type: Type.STRING, description: "The non-alcoholic or low-ABV replacement" },
+          replacement: { type: Type.STRING, description: "The replacement ingredient (non-alcoholic for zero-proof, low-ABV for low-proof/low-abv targets)" },
           rationale: { type: Type.STRING, description: "Why this substitution works and maintains the drink's character" }
         },
         required: ['original', 'replacement', 'rationale']
