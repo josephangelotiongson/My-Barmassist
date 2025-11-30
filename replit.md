@@ -38,6 +38,7 @@ None set yet - will be documented as user expresses preferences during developme
         - Saves de-proofed recipes to Barmulary under appropriate category (Zero-Proof, Low-Proof, or Low-ABV)
     - **Target Volume Tracking**: Calculates and manages cocktail volume, with AI adjusting ingredient suggestions to maintain target volume and golden ratios.
     - **Volume Lever UI**: Interactive tool to balance cocktail volume for AI-suggested modifications, with real-time flavor profile impact visualization showing which flavor categories will change as ingredients are reduced.
+    - **Industry-Standard Dilution Calculations**: All volume and ABV calculations incorporate preparation method detection (shaking: 25-30% dilution, stirring: 20-25% dilution) for accurate final drink metrics. Shows base volume, water added, and final volume with preparation method labels.
     - **Interactive Editable Flavor Wheel**: Hierarchical 3-tier design for granular control over flavor notes (categories, subcategories, specific notes) with visual radar chart comparisons.
     - **Precise Flavor Note Matching**: AI understands specific flavor notes for accurate substitutions and provides commentary on obscure requests.
     - **Lab Riff Creation**: Save modified recipes as new riffs with signature-based deduplication and automatic lineage integration.
