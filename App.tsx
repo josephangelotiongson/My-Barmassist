@@ -569,6 +569,7 @@ function MainApp() {
   const [formularyView, setFormularyView] = useState<'drinks' | 'creators'>('drinks');
   const [rxView, setRxView] = useState<'recommend' | 'history' | 'lab'>('recommend');
   const [labRecipe, setLabRecipe] = useState<Cocktail | null>(null);
+  const [labMode, setLabMode] = useState<'recipe' | 'build' | 'deproof'>('recipe');
   const [barView, setBarView] = useState<'shopping' | 'pantry' | 'makeIt'>('shopping');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   
@@ -1282,6 +1283,15 @@ function MainApp() {
   const handleSendToLab = (e: React.MouseEvent, drink: Cocktail) => {
     e.stopPropagation();
     setLabRecipe(drink);
+    setLabMode('recipe');
+    setActiveTab('recommend');
+    setRxView('lab');
+  };
+
+  const handleSendToDeproof = (e: React.MouseEvent, drink: Cocktail) => {
+    e.stopPropagation();
+    setLabRecipe(drink);
+    setLabMode('deproof');
     setActiveTab('recommend');
     setRxView('lab');
   };
@@ -3018,7 +3028,8 @@ function MainApp() {
                     <CocktailLab 
                       allRecipes={history}
                       initialRecipe={labRecipe}
-                      onClearInitialRecipe={() => setLabRecipe(null)}
+                      initialMode={labMode}
+                      onClearInitialRecipe={() => { setLabRecipe(null); setLabMode('recipe'); }}
                       onSaveExperiment={handleAddCocktail}
                     />
                 </div>
