@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle, Network } from 'lucide-react';
+import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle, Network, Ruler } from 'lucide-react';
 import { MasterIngredient, AppSettings } from '../types';
 
 interface Props {
@@ -361,6 +361,13 @@ const SettingsModal: React.FC<Props> = ({
           handedness: mode
       });
   };
+
+  const setMeasurementSystem = (system: 'imperial' | 'metric') => {
+      onUpdateSettings({
+          ...settings,
+          measurementSystem: system
+      });
+  };
   
   const handleResetRatings = () => {
       if (confirm('Are you sure? This will remove all your ratings and reset your palate profile. Your recipes will be kept.')) {
@@ -454,6 +461,41 @@ const SettingsModal: React.FC<Props> = ({
                             >
                                 <AlignRight className="w-6 h-6" />
                                 <span className="text-xs font-bold">Right Handed</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* MEASUREMENT SYSTEM */}
+                    <div>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <Ruler className="w-4 h-4 text-secondary" />
+                            Measurement System
+                        </h3>
+                        <p className="text-xs text-stone-400 mb-3">
+                            Choose how ingredient volumes are displayed. Metric uses standard bar measurements (30mL = 1 oz).
+                        </p>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setMeasurementSystem('imperial')}
+                                className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                                    settings.measurementSystem === 'imperial' 
+                                    ? 'bg-secondary/10 border-secondary text-secondary shadow-lg shadow-secondary/10' 
+                                    : 'bg-stone-900 border-stone-700 text-stone-500 hover:bg-stone-800'
+                                }`}
+                            >
+                                <span className="text-lg font-bold">oz</span>
+                                <span className="text-xs font-bold">Imperial (US)</span>
+                            </button>
+                            <button 
+                                onClick={() => setMeasurementSystem('metric')}
+                                className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                                    settings.measurementSystem === 'metric' 
+                                    ? 'bg-secondary/10 border-secondary text-secondary shadow-lg shadow-secondary/10' 
+                                    : 'bg-stone-900 border-stone-700 text-stone-500 hover:bg-stone-800'
+                                }`}
+                            >
+                                <span className="text-lg font-bold">mL</span>
+                                <span className="text-xs font-bold">Metric</span>
                             </button>
                         </div>
                     </div>

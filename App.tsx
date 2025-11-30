@@ -28,7 +28,8 @@ const INITIAL_PROFILE: FlavorProfile = {
 const INITIAL_SETTINGS: AppSettings = {
     lowStockKeywords: ['empty', 'low', '10%', 'near empty', 'almost gone', 'running low'],
     allergies: [],
-    handedness: 'right'
+    handedness: 'right',
+    measurementSystem: 'imperial'
 };
 
 // DIY Ingredients Database - recipes for homemade bar ingredients
