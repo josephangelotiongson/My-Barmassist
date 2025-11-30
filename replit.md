@@ -43,6 +43,7 @@ None set yet - will be documented as user expresses preferences during developme
     - **Lab Riff Creation**: Save modified recipes as new riffs with signature-based deduplication and automatic lineage integration.
 - **Privacy-First Design**: User email is not stored in the database.
 - **Duplicate Detection**: Prevents redundant recipe entries using name matching and ingredient signature hashing.
+- **Measurement System Toggle**: Users can switch between Imperial (oz) and Metric (mL) units in Settings. Conversion uses standard bar measurements (30mL = 1oz). Setting persists per user in the database.
 
 ### Database Schema
 - **Core Entities**: `users`, `sessions`, `global_recipes`, `master_ingredients`, `user_recipes`, `user_ratings`, `user_shopping_list`, `user_settings`, `recipe_images`.

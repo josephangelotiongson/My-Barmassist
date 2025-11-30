@@ -9,6 +9,7 @@ import { Cocktail, FlavorProfile, FlavorDimension } from '../types';
 import { calculateTotalVolume, formatVolumeForDisplay, calculateVolumeOverage } from '../shared/volumeUtils';
 import { FLAVOR_TAXONOMY } from '../shared/flavorTaxonomy';
 import VolumeLever from './VolumeLever';
+import { convertIngredient, MeasurementSystem } from '../utils/measurements';
 import {
   Radar,
   RadarChart,
@@ -26,6 +27,7 @@ interface Props {
   initialRecipe?: Cocktail | null;
   onClearInitialRecipe?: () => void;
   initialMode?: 'recipe' | 'build' | 'deproof';
+  measurementSystem?: MeasurementSystem;
 }
 
 interface Substitution {
@@ -156,7 +158,7 @@ interface DeproofResult {
   estimatedAbv: number;
 }
 
-const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe, initialMode }) => {
+const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe, initialMode, measurementSystem = 'imperial' as MeasurementSystem }) => {
   const [labMode, setLabMode] = useState<'recipe' | 'build' | 'deproof'>(initialMode || 'recipe');
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
@@ -1589,7 +1591,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     {buildResult.ingredients.map((ing, idx) => (
                       <li key={idx} className="text-sm text-stone-200 flex items-start gap-2">
                         <span className="text-secondary mt-0.5">•</span>
-                        {ing}
+                        {convertIngredient(ing, measurementSystem)}
                       </li>
                     ))}
                   </ul>
@@ -1825,7 +1827,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   {selectedDeproofRecipe.ingredients.map((ing, idx) => (
                     <li key={idx} className="text-sm text-stone-300 flex items-start gap-2">
                       <span className="text-secondary mt-0.5">•</span>
-                      {ing}
+                      {convertIngredient(ing, measurementSystem)}
                     </li>
                   ))}
                 </ul>

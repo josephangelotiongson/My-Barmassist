@@ -1,9 +1,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp, Network, Share2, Copy } from 'lucide-react';
-import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem } from '../types';
+import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem, AppSettings } from '../types';
 import FlavorWheel from './FlavorWheel';
 import FlavorRadar from './RadarChart';
+import { convertIngredient, convertTargetVolume, MeasurementSystem } from '../utils/measurements';
 
 interface Props {
   cocktail: Cocktail | null;
@@ -21,9 +22,10 @@ interface Props {
   onViewFamilyTree?: (cocktail: Cocktail) => void;
   recipeType?: 'global' | 'user' | 'riff';
   recipeDbId?: number | string;
+  measurementSystem?: MeasurementSystem;
 }
 
-const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct, onViewFamilyTree, recipeType, recipeDbId }) => {
+const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppingList = [], onViewRecipe, onSave, onAddToShoppingList, onRate, onDelete, onAddLink, isToConcoct, onRemoveFromToConcoct, onViewFamilyTree, recipeType, recipeDbId, measurementSystem = 'imperial' as MeasurementSystem }) => {
   const [newLink, setNewLink] = useState('');
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [sharecopied, setShareCopied] = useState(false);
@@ -348,10 +350,11 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                     <ul className="space-y-2">
                         {cocktail.ingredients.map((ing, idx) => {
                             const available = isAvailable(ing);
+                            const displayIngredient = convertIngredient(ing, measurementSystem);
                             return (
                                 <li key={idx} className={`text-sm px-3 py-2 rounded border flex items-center gap-2 ${available ? 'bg-green-950/20 border-green-900/30 text-green-200' : 'bg-surface border-stone-800 text-stone-300'}`}>
                                     {available ? <Check className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0"></span>}
-                                    {ing}
+                                    {displayIngredient}
                                 </li>
                             );
                         })}

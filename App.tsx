@@ -1865,6 +1865,7 @@ function MainApp() {
           setSelectedCocktail(null);
           setFamilyTreeCocktail(cocktail);
         }}
+        measurementSystem={settings.measurementSystem || 'imperial'}
       />
       
       <SettingsModal 
@@ -3041,6 +3042,7 @@ function MainApp() {
                       initialMode={labMode}
                       onClearInitialRecipe={() => { setLabRecipe(null); setLabMode('recipe'); }}
                       onSaveExperiment={handleAddCocktail}
+                      measurementSystem={settings.measurementSystem || 'imperial'}
                     />
                 </div>
             </div>

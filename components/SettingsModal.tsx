@@ -478,7 +478,7 @@ const SettingsModal: React.FC<Props> = ({
                             <button 
                                 onClick={() => setMeasurementSystem('imperial')}
                                 className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
-                                    settings.measurementSystem === 'imperial' 
+                                    (settings.measurementSystem || 'imperial') === 'imperial' 
                                     ? 'bg-secondary/10 border-secondary text-secondary shadow-lg shadow-secondary/10' 
                                     : 'bg-stone-900 border-stone-700 text-stone-500 hover:bg-stone-800'
                                 }`}
@@ -489,7 +489,7 @@ const SettingsModal: React.FC<Props> = ({
                             <button 
                                 onClick={() => setMeasurementSystem('metric')}
                                 className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
-                                    settings.measurementSystem === 'metric' 
+                                    (settings.measurementSystem || 'imperial') === 'metric' 
                                     ? 'bg-secondary/10 border-secondary text-secondary shadow-lg shadow-secondary/10' 
                                     : 'bg-stone-900 border-stone-700 text-stone-500 hover:bg-stone-800'
                                 }`}

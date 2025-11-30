@@ -1,32 +1,6 @@
 export type MeasurementSystem = 'imperial' | 'metric';
 
-interface ConversionResult {
-  amount: number;
-  unit: string;
-  display: string;
-}
-
 const OZ_TO_ML = 30;
-
-const IMPERIAL_STANDARD_MEASURES = [
-  { oz: 2, label: '2 oz' },
-  { oz: 1.5, label: '1.5 oz' },
-  { oz: 1, label: '1 oz' },
-  { oz: 0.75, label: '0.75 oz' },
-  { oz: 0.5, label: '0.5 oz' },
-  { oz: 0.25, label: '0.25 oz' },
-];
-
-const METRIC_STANDARD_MEASURES = [
-  { ml: 60, label: '60 mL' },
-  { ml: 45, label: '45 mL' },
-  { ml: 30, label: '30 mL' },
-  { ml: 22.5, label: '22.5 mL' },
-  { ml: 20, label: '20 mL' },
-  { ml: 15, label: '15 mL' },
-  { ml: 10, label: '10 mL' },
-  { ml: 7.5, label: '7.5 mL' },
-];
 
 export function ozToMl(oz: number): number {
   return oz * OZ_TO_ML;
@@ -61,55 +35,95 @@ export function formatMeasurement(oz: number, system: MeasurementSystem): string
   }
 }
 
-export function parseIngredientAmount(ingredient: string): { amount: number | null; unit: string | null; rest: string } {
-  const lower = ingredient.toLowerCase().trim();
+interface ParseResult {
+  amount: number | null;
+  unit: string | null;
+  rest: string;
+  matchLength: number;
+}
+
+export function parseIngredientAmount(ingredient: string): ParseResult {
+  const trimmed = ingredient.trim();
   
-  const decimalOzMatch = lower.match(/^(\d+(?:\.\d+)?)\s*oz\b(.*)$/i);
+  const decimalOzMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*oz\b\s*/i);
   if (decimalOzMatch) {
+    const matchLen = decimalOzMatch[0].length;
+    let rest = trimmed.slice(matchLen);
+    rest = rest.replace(/^of\s+/i, '');
     return { 
       amount: parseFloat(decimalOzMatch[1]), 
       unit: 'oz', 
-      rest: decimalOzMatch[2].trim().replace(/^of\s+/i, '')
+      rest: rest,
+      matchLength: matchLen
     };
   }
   
-  const fractionOzMatch = lower.match(/^(\d+)\/(\d+)\s*oz\b(.*)$/i);
+  const fractionOzMatch = trimmed.match(/^(\d+)\/(\d+)\s*oz\b\s*/i);
   if (fractionOzMatch) {
+    const matchLen = fractionOzMatch[0].length;
+    let rest = trimmed.slice(matchLen);
+    rest = rest.replace(/^of\s+/i, '');
     return { 
       amount: parseInt(fractionOzMatch[1]) / parseInt(fractionOzMatch[2]), 
       unit: 'oz', 
-      rest: fractionOzMatch[3].trim().replace(/^of\s+/i, '')
+      rest: rest,
+      matchLength: matchLen
     };
   }
   
-  const mlMatch = lower.match(/^(\d+(?:\.\d+)?)\s*ml\b(.*)$/i);
+  const mlMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*ml\b\s*/i);
   if (mlMatch) {
+    const matchLen = mlMatch[0].length;
+    let rest = trimmed.slice(matchLen);
+    rest = rest.replace(/^of\s+/i, '');
     return { 
       amount: mlToOz(parseFloat(mlMatch[1])), 
       unit: 'ml', 
-      rest: mlMatch[2].trim().replace(/^of\s+/i, '')
+      rest: rest,
+      matchLength: matchLen
     };
   }
   
-  const dashMatch = lower.match(/^(\d+)\s*dash(?:es)?\b(.*)$/i);
+  const clMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*cl\b\s*/i);
+  if (clMatch) {
+    const matchLen = clMatch[0].length;
+    let rest = trimmed.slice(matchLen);
+    rest = rest.replace(/^of\s+/i, '');
+    return { 
+      amount: mlToOz(parseFloat(clMatch[1]) * 10), 
+      unit: 'cl', 
+      rest: rest,
+      matchLength: matchLen
+    };
+  }
+  
+  const dashMatch = trimmed.match(/^(\d+)\s*dash(?:es)?\b\s*/i);
   if (dashMatch) {
+    const matchLen = dashMatch[0].length;
+    let rest = trimmed.slice(matchLen);
+    rest = rest.replace(/^of\s+/i, '');
     return { 
       amount: parseInt(dashMatch[1]), 
       unit: 'dash', 
-      rest: dashMatch[2].trim().replace(/^of\s+/i, '')
+      rest: rest,
+      matchLength: matchLen
     };
   }
   
-  const barspoonMatch = lower.match(/^(\d+)\s*(?:bar\s*spoon|bsp)\b(.*)$/i);
+  const barspoonMatch = trimmed.match(/^(\d+)\s*(?:bar\s*spoon|bsp)\b\s*/i);
   if (barspoonMatch) {
+    const matchLen = barspoonMatch[0].length;
+    let rest = trimmed.slice(matchLen);
+    rest = rest.replace(/^of\s+/i, '');
     return { 
       amount: parseInt(barspoonMatch[1]), 
       unit: 'barspoon', 
-      rest: barspoonMatch[2].trim().replace(/^of\s+/i, '')
+      rest: rest,
+      matchLength: matchLen
     };
   }
   
-  return { amount: null, unit: null, rest: ingredient };
+  return { amount: null, unit: null, rest: ingredient, matchLength: 0 };
 }
 
 export function convertIngredient(ingredient: string, system: MeasurementSystem): string {
@@ -123,11 +137,9 @@ export function convertIngredient(ingredient: string, system: MeasurementSystem)
     return ingredient;
   }
   
-  const ozAmount = unit === 'ml' ? amount : amount;
-  const formatted = formatMeasurement(ozAmount, system);
+  const formatted = formatMeasurement(amount, system);
   
-  const capitalizedRest = rest.charAt(0).toUpperCase() + rest.slice(1);
-  return `${formatted} ${capitalizedRest}`.trim();
+  return `${formatted} ${rest}`.trim();
 }
 
 export function convertIngredientsList(ingredients: string[], system: MeasurementSystem): string[] {

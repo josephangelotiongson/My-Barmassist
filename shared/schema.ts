@@ -100,6 +100,7 @@ export const userSettings = pgTable("user_settings", {
   lowStockKeywords: jsonb("low_stock_keywords").$type<string[]>(),
   allergies: jsonb("allergies").$type<string[]>(),
   handedness: varchar("handedness").default("right"),
+  measurementSystem: varchar("measurement_system").default("imperial"),
   flavorProfile: jsonb("flavor_profile").$type<{
     Sweet: number;
     Fruity: number;
