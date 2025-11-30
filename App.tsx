@@ -2762,8 +2762,7 @@ function MainApp() {
                    </button>
                 </div>
                 
-                 {rxView === 'recommend' ? (
-                <>
+                <div className={`space-y-6 ${rxView === 'recommend' ? '' : 'hidden'}`}>
                 <div className="bg-gradient-to-br from-red-950/40 to-stone-900 rounded-2xl p-4 border border-red-800/30">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center">
@@ -2892,9 +2891,9 @@ function MainApp() {
                         </div>
                     ))}
                 </div>
-                </>
-                ) : rxView === 'history' ? (
-                    <div className="space-y-4">
+                </div>
+
+                <div className={`space-y-4 ${rxView === 'history' ? '' : 'hidden'}`}>
                         <div className="bg-gradient-to-br from-stone-800/60 to-stone-900 rounded-2xl p-4 border border-stone-700/50">
                             <div className="flex items-center gap-3 mb-2">
                               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-stone-600 to-stone-700 flex items-center justify-center">
@@ -3013,8 +3012,7 @@ function MainApp() {
                                 </div>
                             </div>
                         ))}
-                    </div>
-                ) : null}
+                </div>
                 
                 <div className={`${rxView === 'lab' ? '' : 'hidden'}`}>
                     <CocktailLab 
