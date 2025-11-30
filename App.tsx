@@ -2044,7 +2044,7 @@ function MainApp() {
                         onClick={() => setAbvFilter('low')}
                         className={`text-[10px] px-3 py-1 rounded-full border transition-all font-bold uppercase tracking-wide flex items-center gap-1 ${abvFilter === 'low' ? 'bg-amber-900/50 text-amber-200 border-amber-700' : 'bg-stone-900 text-stone-500 border-stone-800'}`}
                     >
-                        <Wine className="w-3 h-3" /> Low ABV
+                        <Wine className="w-3 h-3" /> Low-ABV
                     </button>
                     <button 
                         onClick={() => setAbvFilter('zero')}
@@ -2738,24 +2738,24 @@ function MainApp() {
             </div>
             
             <div ref={recommendScrollRef} className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'recommend' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
-                  <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
+                  <div className="flex bg-stone-800 p-1 rounded-xl border border-accent/30">
                    <button 
                       onClick={() => setRxView('recommend')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'recommend' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'recommend' ? 'bg-accent/20 text-accent shadow-lg border border-accent/50' : 'text-stone-400 hover:text-accent/70'}`}
                    >
                       <ChefHat className="w-4 h-4" />
                       Recommend
                    </button>
                    <button 
                       onClick={() => setRxView('lab')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'lab' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'lab' ? 'bg-accent/20 text-accent shadow-lg border border-accent/50' : 'text-stone-400 hover:text-accent/70'}`}
                    >
                       <FlaskConical className="w-4 h-4" />
                       Flavor Lab
                    </button>
                    <button 
                       onClick={() => setRxView('history')}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'history' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${rxView === 'history' ? 'bg-accent/20 text-accent shadow-lg border border-accent/50' : 'text-stone-400 hover:text-accent/70'}`}
                    >
                       <History className="w-4 h-4" />
                       History
@@ -2763,9 +2763,9 @@ function MainApp() {
                 </div>
                 
                 <div className={`space-y-6 ${rxView === 'recommend' ? '' : 'hidden'}`}>
-                <div className="bg-gradient-to-br from-red-950/40 to-stone-900 rounded-2xl p-4 border border-red-800/30">
+                <div className="bg-gradient-to-br from-accent/20 to-stone-900 rounded-2xl p-4 border border-accent/30">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-emerald-600 flex items-center justify-center">
                         <ChefHat className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -2781,18 +2781,18 @@ function MainApp() {
                     <button 
                         onClick={generateRecs}
                         disabled={isGeneratingRecs}
-                        className="bg-surface text-stone-200 border border-stone-600 p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-stone-700 hover:border-primary transition-all disabled:opacity-50 shadow-sm hover:text-white"
+                        className="bg-surface text-stone-200 border border-stone-600 p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-stone-700 hover:border-accent transition-all disabled:opacity-50 shadow-sm hover:text-white"
                     >
-                        {isGeneratingRecs && !isScanningMenu ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <ChefHat className="w-6 h-6 text-primary" />}
+                        {isGeneratingRecs && !isScanningMenu ? <Loader2 className="w-6 h-6 animate-spin text-accent" /> : <ChefHat className="w-6 h-6 text-accent" />}
                         <span className="text-xs">From Pantry</span>
                     </button>
 
                     <button 
                         onClick={() => menuInputRef.current?.click()}
                         disabled={isGeneratingRecs}
-                        className="bg-surface text-stone-200 border border-stone-600 p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-stone-700 hover:border-secondary transition-all disabled:opacity-50 shadow-sm hover:text-white"
+                        className="bg-surface text-stone-200 border border-stone-600 p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-stone-700 hover:border-accent transition-all disabled:opacity-50 shadow-sm hover:text-white"
                     >
-                            {isScanningMenu ? <Loader2 className="w-6 h-6 animate-spin text-secondary" /> : <ScanLine className="w-6 h-6 text-secondary" />}
+                            {isScanningMenu ? <Loader2 className="w-6 h-6 animate-spin text-accent" /> : <ScanLine className="w-6 h-6 text-accent" />}
                         <span className="text-xs">Scan Menu</span>
                     </button>
                     <input 
@@ -2805,20 +2805,20 @@ function MainApp() {
 
                     <button 
                         onClick={() => setBarHelpMode('selection')}
-                        className="bg-surface text-stone-200 border border-stone-600 p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-stone-700 hover:border-white/20 transition-all shadow-sm hover:text-white"
+                        className="bg-surface text-stone-200 border border-stone-600 p-3 rounded-xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-stone-700 hover:border-accent transition-all shadow-sm hover:text-white"
                     >
-                         <HelpCircle className="w-6 h-6 text-white" />
+                         <HelpCircle className="w-6 h-6 text-accent" />
                          <span className="text-xs">Bar Assist</span>
                     </button>
                 </div>
                  <div className="space-y-4">
                     {recommendations.map((rec, idx) => (
                         <div key={idx} className="bg-surface rounded-2xl border border-stone-700 overflow-hidden flex flex-col shadow-md">
-                            <div className="p-1 bg-gradient-to-r from-primary to-secondary h-1" />
+                            <div className="p-1 bg-gradient-to-r from-accent to-emerald-500 h-1" />
                             <div className="p-5 flex-1 flex flex-col">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="text-lg font-bold text-white">{rec.name}</h3>
-                                    <div className="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] font-bold border border-secondary/20">
+                                    <div className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold border border-accent/20">
                                         {rec.matchScore}% Match
                                     </div>
                                 </div>
