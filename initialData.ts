@@ -857,11 +857,11 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
         nutrition: { calories: 50, carbs: 12, abv: 0 } 
     },
     
-    // === LOW-PROOF / SESSION ===
+    // === LOW-ABV / SESSION (5-15% ABV) ===
     { 
         id: 'garibaldi', 
         name: 'Garibaldi', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['1.5 oz Campari', '4 oz Fluffy Orange Juice'], 
         instructions: ['Build in highball glass.', 'Add ice.', 'Stir gently to keep foam.'], 
         description: 'Named after the unifier of Italy. Perfected by Dante NYC.', 
@@ -874,7 +874,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'bicyclette', 
         name: 'Bicyclette', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['2 oz Campari', '2 oz Dry White Wine', 'Soda Water'], 
         instructions: ['Build in wine glass over ice.', 'Top with splash of soda.', 'Lemon twist.'], 
         description: 'A French favorite, supposedly causing older men to wobble on their bicycles.', 
@@ -887,7 +887,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'aperol-spritz', 
         name: 'Aperol Spritz', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['2 oz Aperol', '3 oz Prosecco', '1 oz Soda Water'], 
         instructions: ['Build in wine glass with ice.', 'Orange slice.'], 
         description: 'The drink of Venetian summers.', 
@@ -900,7 +900,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'port-tonic', 
         name: 'Port & Tonic', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['2 oz White Port', '4 oz Tonic Water'], 
         instructions: ['Build in highball over ice.', 'Stir.', 'Lemon wheel and mint.'], 
         description: 'The national refresher of Portugal.', 
@@ -913,7 +913,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'michelada', 
         name: 'Michelada', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['12 oz Light Mexican Beer', '1 oz Lime Juice', '2 dashes Hot Sauce', '2 dashes Worcestershire', 'Tajin Rim'], 
         instructions: ['Rim glass with Tajin.', 'Add lime and sauces.', 'Add ice and beer.', 'Stir.'], 
         description: '"Mi chela helada" (My cold beer).', 
@@ -926,7 +926,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'bamboo', 
         name: 'Bamboo', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['1.5 oz Dry Sherry', '1.5 oz Dry Vermouth', '1 dash Angostura', '1 dash Orange Bitters'], 
         instructions: ['Stir with ice.', 'Strain into coupe.', 'Lemon twist.'], 
         description: 'Created for the railroad tycoon Cornelius Vanderbilt.', 
@@ -939,7 +939,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'adonis', 
         name: 'Adonis', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['1.5 oz Fino Sherry', '1.5 oz Sweet Vermouth', '2 dashes Orange Bitters'], 
         instructions: ['Stir with ice.', 'Strain into coupe.', 'Orange peel.'], 
         description: 'Named after the first Broadway musical to run for over 500 performances.', 
@@ -952,7 +952,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'sherry-cobbler', 
         name: 'Sherry Cobbler', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['3 oz Amontillado Sherry', '0.5 oz Simple Syrup', '2 Orange Slices'], 
         instructions: ['Muddle orange and syrup.', 'Add sherry and ice.', 'Shake.', 'Pour over crushed ice.'], 
         description: 'The drink that popularized the drinking straw in the 1830s.', 
@@ -965,7 +965,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'americano', 
         name: 'Americano', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['1.5 oz Campari', '1.5 oz Sweet Vermouth', 'Soda Water'], 
         instructions: ['Build in rocks glass with ice.', 'Top with soda.', 'Orange twist.'], 
         description: 'Originally the "Milano-Torino". James Bond\'s very first drink order.', 
@@ -978,7 +978,7 @@ export const INITIAL_RECIPES_DATA: Cocktail[] = [
     { 
         id: 'spaghett', 
         name: 'Spaghett', 
-        category: 'Low-Proof', 
+        category: 'Low-ABV', 
         ingredients: ['1 bottle Miller High Life', '1 oz Aperol', 'Splash Lemon Juice'], 
         instructions: ['Take sip of beer.', 'Pour Aperol and lemon into bottle.'], 
         description: 'A cult sensation from Baltimore.', 

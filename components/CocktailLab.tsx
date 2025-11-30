@@ -151,7 +151,7 @@ interface DeproofResult {
   predictedProfile: FlavorProfile;
   rationale: string;
   newIngredients: string[];
-  proofLevel: 'zero' | 'low';
+  proofLevel: 'zero' | 'low' | 'low-abv';
   estimatedAbv: number;
 }
 
@@ -196,7 +196,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
   const [showVolumeLever, setShowVolumeLever] = useState(false);
   
   // De-proof mode states
-  const [deproofTarget, setDeproofTarget] = useState<'zero' | 'low'>('zero');
+  const [deproofTarget, setDeproofTarget] = useState<'zero' | 'low' | 'low-abv'>('zero');
   const [deproofResult, setDeproofResult] = useState<DeproofResult | null>(null);
   const [isDeproofing, setIsDeproofing] = useState(false);
   const [appliedDeproofSubs, setAppliedDeproofSubs] = useState<Set<number>>(new Set());
@@ -1765,32 +1765,45 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                 <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                   <button
                     onClick={() => setDeproofTarget('zero')}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all flex flex-col items-center justify-center gap-1 ${
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex flex-col items-center justify-center gap-0.5 ${
                       deproofTarget === 'zero' 
                         ? 'bg-accent text-white shadow-lg border border-green-600' 
                         : 'text-stone-400 hover:text-stone-300'
                     }`}
                   >
-                    <span className="text-lg">0%</span>
-                    <span className="text-[10px] uppercase tracking-wider opacity-70">Zero Proof</span>
+                    <span className="text-base">0%</span>
+                    <span className="text-[9px] uppercase tracking-wider opacity-70">Zero-Proof</span>
                   </button>
                   <button
                     onClick={() => setDeproofTarget('low')}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all flex flex-col items-center justify-center gap-1 ${
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex flex-col items-center justify-center gap-0.5 ${
                       deproofTarget === 'low' 
+                        ? 'bg-sky-600 text-white shadow-lg border border-sky-500' 
+                        : 'text-stone-400 hover:text-stone-300'
+                    }`}
+                  >
+                    <span className="text-base">&lt;5%</span>
+                    <span className="text-[9px] uppercase tracking-wider opacity-70">Low-Proof</span>
+                  </button>
+                  <button
+                    onClick={() => setDeproofTarget('low-abv')}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex flex-col items-center justify-center gap-0.5 ${
+                      deproofTarget === 'low-abv' 
                         ? 'bg-amber-600 text-white shadow-lg border border-amber-500' 
                         : 'text-stone-400 hover:text-stone-300'
                     }`}
                   >
-                    <span className="text-lg">≤5%</span>
-                    <span className="text-[10px] uppercase tracking-wider opacity-70">Low Proof</span>
+                    <span className="text-base">5-15%</span>
+                    <span className="text-[9px] uppercase tracking-wider opacity-70">Low-ABV</span>
                   </button>
                 </div>
                 
                 <p className="text-xs text-stone-500 mt-3 text-center">
                   {deproofTarget === 'zero' 
                     ? 'Completely alcohol-free using non-alcoholic alternatives'
-                    : 'Reduced alcohol content using low-ABV substitutes'
+                    : deproofTarget === 'low'
+                    ? 'Very low alcohol (<5%) for sessionable drinking'
+                    : 'Moderate reduction (5-15%) using fortified wines & aperitifs'
                   }
                 </p>
               </div>
@@ -1827,7 +1840,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                 ) : (
                   <>
                     <GlassWater className="w-5 h-5" />
-                    Generate {deproofTarget === 'zero' ? 'Zero' : 'Low'}-Proof Version
+                    Generate {deproofTarget === 'zero' ? 'Zero-Proof' : deproofTarget === 'low' ? 'Low-Proof' : 'Low-ABV'} Version
                   </>
                 )}
               </button>
@@ -1858,6 +1871,8 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                         <div className={`px-2 py-1 rounded-lg text-xs font-bold ${
                           deproofResult.proofLevel === 'zero' 
                             ? 'bg-accent/30 text-accent' 
+                            : deproofResult.proofLevel === 'low'
+                            ? 'bg-sky-600/30 text-sky-400'
                             : 'bg-amber-600/30 text-amber-400'
                         }`}>
                           {deproofResult.proofLevel === 'zero' ? '0% ABV' : `~${deproofResult.estimatedAbv}% ABV`}
@@ -1986,15 +2001,30 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                   <button
                     onClick={async () => {
                       if (onSaveExperiment && deproofResult && selectedDeproofRecipe) {
+                        const categoryByProof = {
+                          'zero': 'Zero-Proof',
+                          'low': 'Low-Proof',
+                          'low-abv': 'Low-ABV'
+                        };
+                        const labelByProof = {
+                          'zero': 'NA',
+                          'low': 'LP',
+                          'low-abv': 'Low-ABV'
+                        };
+                        const descByProof = {
+                          'zero': 'Non-alcoholic',
+                          'low': 'Low-proof (<5% ABV)',
+                          'low-abv': 'Low-ABV (5-15%)'
+                        };
                         const newCocktail: Cocktail = {
                           id: `deproof-${Date.now()}`,
-                          name: `${selectedDeproofRecipe.name} (${deproofResult.proofLevel === 'zero' ? 'NA' : 'Low-ABV'})`,
+                          name: `${selectedDeproofRecipe.name} (${labelByProof[deproofResult.proofLevel]})`,
                           creator: 'De-Proof Lab',
-                          description: `${deproofResult.proofLevel === 'zero' ? 'Non-alcoholic' : 'Low-alcohol'} version of ${selectedDeproofRecipe.name}`,
+                          description: `${descByProof[deproofResult.proofLevel]} version of ${selectedDeproofRecipe.name}`,
                           ingredients: deproofResult.newIngredients,
                           instructions: selectedDeproofRecipe.instructions || [],
                           flavorProfile: deproofResult.predictedProfile,
-                          category: 'Mocktails & Low-ABV',
+                          category: categoryByProof[deproofResult.proofLevel],
                           dateAdded: new Date().toISOString()
                         };
                         await onSaveExperiment(newCocktail);
