@@ -232,7 +232,7 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                          <div className="flex flex-col items-center leading-none pl-1">
                              <div className="flex items-center gap-1 text-white font-bold text-sm">
                                 <Droplets className="w-3 h-3 text-blue-400" />
-                                {cocktail.nutrition.abv}%
+                                {drinkMetrics?.finalAbv ?? cocktail.nutrition.abv}%
                              </div>
                              <span className="text-[9px] text-stone-500">ABV</span>
                          </div>
@@ -267,24 +267,21 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                     </button>
                     
                     {showDilutionDetails && (
-                        <div className="mt-4 pt-4 border-t border-cyan-800/30 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-stone-900/50 rounded-lg p-3">
-                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Base Volume</span>
-                                    <span className="text-lg font-bold text-white">{formatOzAmount(drinkMetrics.baseVolumeOz)} oz</span>
+                        <div className="mt-4 pt-4 border-t border-cyan-800/30 space-y-2">
+                            <div className="flex items-center justify-between gap-2 bg-stone-900/50 rounded-lg px-3 py-2">
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-stone-500 uppercase">Base:</span>
+                                    <span className="text-sm font-bold text-white">{formatOzAmount(drinkMetrics.baseVolumeOz)} oz</span>
                                 </div>
-                                <div className="bg-stone-900/50 rounded-lg p-3">
-                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Water Added</span>
-                                    <span className="text-lg font-bold text-cyan-400">+{formatOzAmount(drinkMetrics.waterAddedOz)} oz</span>
+                                <span className="text-stone-600">+</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-stone-500 uppercase">Water:</span>
+                                    <span className="text-sm font-bold text-cyan-400">{formatOzAmount(drinkMetrics.waterAddedOz)} oz</span>
                                 </div>
-                                <div className="bg-stone-900/50 rounded-lg p-3">
-                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Final Volume</span>
-                                    <span className="text-lg font-bold text-white">{formatOzAmount(drinkMetrics.finalVolumeOz)} oz</span>
-                                </div>
-                                <div className="bg-stone-900/50 rounded-lg p-3">
-                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Final ABV</span>
-                                    <span className="text-lg font-bold text-purple-400">{drinkMetrics.finalAbv}%</span>
-                                    <span className="text-[10px] text-stone-600 ml-1">(was {drinkMetrics.baseAbv}%)</span>
+                                <span className="text-stone-600">=</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-stone-500 uppercase">Final:</span>
+                                    <span className="text-sm font-bold text-white">{formatOzAmount(drinkMetrics.finalVolumeOz)} oz</span>
                                 </div>
                             </div>
                             <p className="text-[10px] text-stone-500 italic text-center">
