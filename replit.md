@@ -25,7 +25,14 @@ None set yet - will be documented as user expresses preferences during developme
 - **Inventory & Shopping List**: Track ingredients, manage inventory, and generate shopping lists.
 - **DIY Ingredient System**: Manage homemade ingredients with scalable recipes, expiration tracking, and status indicators.
 - **Cocktail Lineage / Family Tree**: AI-powered drink genealogy feature mapping evolutionary relationships of cocktails based on six root templates (Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip). Provides ancestors, siblings, descendants, flavor bridges, and evolution narratives.
-- **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation:
+- **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation with three modes:
+    - **Recipe Mode**: Modify existing cocktails with AI-suggested flavor adjustments
+    - **Build Mode**: Create new cocktails from scratch with selected ingredients
+    - **De-Proof Mode**: Transform cocktails into zero-proof (0% ABV) or low-proof (under 5% ABV) versions
+        - AI analyzes alcoholic ingredients and suggests appropriate substitutions
+        - Maintains original flavor profiles as closely as possible
+        - Includes feasibility check for drinks that cannot be de-proofed
+        - Saves de-proofed recipes to Barmulary under "Mocktails & Low-ABV" category
     - **Target Volume Tracking**: Calculates and manages cocktail volume, with AI adjusting ingredient suggestions to maintain target volume and golden ratios.
     - **Volume Lever UI**: Interactive tool to balance cocktail volume for AI-suggested modifications, with real-time flavor profile impact visualization showing which flavor categories will change as ingredients are reduced.
     - **Interactive Editable Flavor Wheel**: Hierarchical 3-tier design for granular control over flavor notes (categories, subcategories, specific notes) with visual radar chart comparisons.
