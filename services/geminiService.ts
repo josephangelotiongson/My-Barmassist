@@ -1449,3 +1449,191 @@ export const buildCocktailFromIngredients = async (
     throw error;
   }
 };
+
+export interface DeproofSubstitution {
+  original: string;
+  replacement: string;
+  rationale: string;
+}
+
+export interface DeproofAddition {
+  ingredient: string;
+  amount: string;
+  rationale: string;
+}
+
+export interface DeproofResult {
+  isPossible: boolean;
+  impossibilityReason?: string;
+  substitutions: DeproofSubstitution[];
+  additions: DeproofAddition[];
+  removals: string[];
+  predictedProfile: FlavorProfile;
+  rationale: string;
+  newIngredients: string[];
+  proofLevel: 'zero' | 'low';
+  estimatedAbv: number;
+}
+
+const deproofSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    isPossible: { type: Type.BOOLEAN, description: "Whether this cocktail can reasonably be made into a zero or low-proof version" },
+    impossibilityReason: { type: Type.STRING, description: "If not possible, explain why (e.g., the drink's identity is inseparable from its alcohol content)" },
+    substitutions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          original: { type: Type.STRING, description: "The alcoholic ingredient to replace" },
+          replacement: { type: Type.STRING, description: "The non-alcoholic or low-ABV replacement" },
+          rationale: { type: Type.STRING, description: "Why this substitution works and maintains the drink's character" }
+        },
+        required: ['original', 'replacement', 'rationale']
+      }
+    },
+    additions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          ingredient: { type: Type.STRING, description: "A new ingredient to add" },
+          amount: { type: Type.STRING, description: "The amount to add" },
+          rationale: { type: Type.STRING, description: "Why this addition helps the de-proofed version" }
+        },
+        required: ['ingredient', 'amount', 'rationale']
+      }
+    },
+    removals: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Ingredients to remove entirely (if they cannot be substituted)"
+    },
+    predictedProfile: flavorProfileSchema,
+    rationale: { type: Type.STRING, description: "Overall explanation of how this de-proofed version compares to the original" },
+    newIngredients: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Complete final ingredients list with measurements"
+    },
+    proofLevel: { type: Type.STRING, description: "Either 'zero' for 0% ABV or 'low' for under 5% ABV" },
+    estimatedAbv: { type: Type.NUMBER, description: "Estimated ABV percentage of the final drink (0 for zero-proof)" }
+  },
+  required: ['isPossible', 'substitutions', 'additions', 'removals', 'predictedProfile', 'rationale', 'newIngredients', 'proofLevel', 'estimatedAbv']
+};
+
+export const analyzeDeproof = async (
+  baseRecipe: { name: string; ingredients: string[]; flavorProfile: FlavorProfile; targetVolume?: string },
+  targetProofLevel: 'zero' | 'low'
+): Promise<DeproofResult> => {
+  try {
+    const nonAlcoholicAlternatives = `
+NON-ALCOHOLIC SPIRIT ALTERNATIVES:
+- Gin → Seedlip Garden/Grove, Lyre's Dry London Spirit, or juniper-infused tonic water
+- Vodka → Seedlip, distilled water with citrus essence, or Ritual Zero Proof Vodka
+- Rum → Lyre's White Cane Spirit, All The Bitter's No.0, or spiced tea concentrate
+- Whiskey/Bourbon → Lyre's American Malt, Ritual Zero Proof Whiskey, or smoked tea
+- Tequila → Ritual Zero Proof Tequila, or agave syrup with citrus
+- Mezcal → Smoked black tea, lapsang souchong concentrate
+- Cognac/Brandy → Lyre's Brandy, grape juice reduction, or Seedlip Spice
+- Vermouth → Lyre's Aperitif Dry/Rosso, Verjus, or shrubs
+- Campari/Aperol → Lyre's Italian Orange, Ghia, or grapefruit-rhubarb shrub
+- Amaretto → Orgeat syrup, almond extract in simple syrup
+- Triple Sec/Cointreau → Fresh orange juice reduction, orange bitters (non-alcoholic)
+- Coffee Liqueur → Cold brew concentrate with vanilla syrup
+- Irish Cream → Non-dairy creamer with chocolate and vanilla
+- Wine → Non-alcoholic wine, Verjus, or grape juice
+- Champagne/Prosecco → Non-alcoholic sparkling wine, elderflower tonic
+
+LOW-ABV ALTERNATIVES (if low-proof target):
+- High-proof spirits → Lower-proof versions or half measures diluted with NA alternatives
+- Consider vermouth, sherry, sake, or low-ABV amari as spirit replacements
+- Fortified wines instead of distilled spirits
+
+FLAVOR COMPLEXITY ADDITIONS for mocktails:
+- Bitters (alcohol-free versions by All The Bitter, etc.)
+- Shrubs (fruit vinegar-based syrups)
+- Herbal teas and tisanes
+- Citrus zests and peels
+- Fresh herbs (muddled or as garnish)
+- Spices (cinnamon, cardamom, star anise)
+- Salt (to enhance perceived complexity)
+- Verjus (tart grape juice)
+`;
+
+    const prompt = `
+      You are an expert Mocktail and Low-ABV cocktail specialist.
+      
+      BASE COCKTAIL: "${baseRecipe.name}"
+      INGREDIENTS: ${JSON.stringify(baseRecipe.ingredients)}
+      CURRENT FLAVOR PROFILE: ${JSON.stringify(baseRecipe.flavorProfile)}
+      TARGET VOLUME: ${baseRecipe.targetVolume || 'standard cocktail size'}
+      
+      TARGET: Create a ${targetProofLevel === 'zero' ? 'ZERO-PROOF (0% ABV)' : 'LOW-PROOF (under 5% ABV)'} version
+      
+      ${nonAlcoholicAlternatives}
+      
+      FIRST, ASSESS FEASIBILITY:
+      Some cocktails cannot be meaningfully de-proofed because:
+      1. Their identity IS the alcohol (e.g., a straight whiskey neat)
+      2. No reasonable substitutes exist for the core alcoholic component
+      3. The result would be unpalatable or unrecognizable
+      
+      Examples of drinks that CANNOT be de-proofed:
+      - Straight pours (whiskey neat, shots)
+      - Spirit-forward drinks where >90% of volume is high-proof alcohol
+      - Drinks where alcohol is the only liquid component
+      
+      Examples that CAN be de-proofed:
+      - Cocktails with mixers, juices, or syrups
+      - Drinks where spirits can be replaced with NA alternatives
+      - Most classic cocktails (Margarita, Mojito, Old Fashioned, etc.)
+      
+      If the drink cannot be reasonably de-proofed, set isPossible to false and explain why.
+      
+      IF POSSIBLE, CREATE THE DE-PROOFED VERSION:
+      1. Replace alcoholic ingredients with high-quality non-alcoholic alternatives
+      2. Maintain the drink's essential character and flavor profile
+      3. Add complexity ingredients (bitters, shrubs, teas) to replace alcohol's warmth
+      4. Keep the same preparation style where possible
+      5. Provide the complete final recipe with all measurements
+      
+      RULES:
+      1. ${targetProofLevel === 'zero' ? 'ZERO alcohol - no ingredients with any alcohol content' : 'Keep total ABV under 5% - can use low-proof options'}
+      2. Prioritize commercially available non-alcoholic alternatives
+      3. If a home-made substitute is needed, describe it clearly
+      4. The Boozy dimension in the flavor profile should be 0-1 for zero-proof, or 1-3 for low-proof
+      5. Try to maintain other flavor dimensions as close to original as possible
+      
+      Return your analysis as JSON.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_FLASH,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: deproofSchema,
+        temperature: 0.5,
+      }
+    });
+
+    const data = JSON.parse(response.text || '{}');
+    
+    return {
+      isPossible: data.isPossible ?? true,
+      impossibilityReason: data.impossibilityReason,
+      substitutions: data.substitutions || [],
+      additions: data.additions || [],
+      removals: data.removals || [],
+      predictedProfile: data.predictedProfile || { ...baseRecipe.flavorProfile, [FlavorDimension.BOOZY]: 0 },
+      rationale: data.rationale || 'De-proofed version of the original cocktail.',
+      newIngredients: data.newIngredients || baseRecipe.ingredients,
+      proofLevel: data.proofLevel || targetProofLevel,
+      estimatedAbv: data.estimatedAbv ?? 0
+    };
+  } catch (error) {
+    console.error("Error analyzing de-proof options:", error);
+    throw error;
+  }
+};

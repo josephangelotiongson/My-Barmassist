@@ -1347,6 +1347,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/lab/deproof', async (req, res) => {
+    try {
+      const { baseRecipe, targetProofLevel } = req.body;
+      
+      if (!baseRecipe) {
+        return res.status(400).json({ 
+          message: "Missing required field: baseRecipe" 
+        });
+      }
+      
+      if (!baseRecipe.name || !baseRecipe.ingredients || !baseRecipe.flavorProfile) {
+        return res.status(400).json({ 
+          message: "baseRecipe must include name, ingredients, and flavorProfile" 
+        });
+      }
+      
+      if (!targetProofLevel || !['zero', 'low'].includes(targetProofLevel)) {
+        return res.status(400).json({ 
+          message: "targetProofLevel must be 'zero' or 'low'" 
+        });
+      }
+      
+      console.log(`[Lab] Analyzing de-proof options for "${baseRecipe.name}" (target: ${targetProofLevel}-proof)`);
+      
+      const { analyzeDeproof } = await import('../services/geminiService');
+      const result = await analyzeDeproof(baseRecipe, targetProofLevel);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error analyzing de-proof options:", error);
+      res.status(500).json({ 
+        message: "Failed to analyze de-proof options",
+        error: error.message 
+      });
+    }
+  });
+
   // Helper: Compute ingredient signature hash for deduplication
   function computeIngredientSignature(ingredients: string[], parentSlug: string): string {
     // Normalize ingredients: lowercase, remove measurements, sort alphabetically
