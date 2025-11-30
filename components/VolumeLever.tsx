@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Scale, Minus, Plus, AlertTriangle, Check, ChevronDown, ChevronUp, TrendingDown } from 'lucide-react';
+import { Scale, Minus, Plus, AlertTriangle, Check, ChevronDown, ChevronUp, TrendingDown, Droplets, Info } from 'lucide-react';
 import { 
   calculateVolumeOverage, 
   classifyReducibleIngredients, 
   formatOzAmount,
   applyReductions as applyReductionsUtil,
   ReducibleIngredient,
+  calculateCompleteDrinkMetrics,
+  DILUTION_STANDARDS,
+  PreparationMethod,
 } from '../shared/volumeUtils';
 import { INGREDIENT_FLAVOR_MAP } from '../shared/flavorTaxonomy';
 import { FlavorProfile } from '../types';
@@ -13,6 +16,7 @@ import { FlavorProfile } from '../types';
 interface Props {
   originalIngredients: string[];
   modifiedIngredients: string[];
+  instructions?: string[];
   targetVolume?: string;
   predictedProfile?: FlavorProfile;
   onReductionsApply: (adjustedIngredients: string[]) => void;
@@ -112,6 +116,7 @@ function estimateProfileAfterReductions(
 const VolumeLever: React.FC<Props> = ({
   originalIngredients,
   modifiedIngredients,
+  instructions = [],
   targetVolume,
   predictedProfile,
   onReductionsApply,
@@ -119,6 +124,12 @@ const VolumeLever: React.FC<Props> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [reductions, setReductions] = useState<Map<number, number>>(new Map());
+  const [showDilutionInfo, setShowDilutionInfo] = useState(false);
+  
+  const drinkMetrics = useMemo(() => 
+    calculateCompleteDrinkMetrics(modifiedIngredients, instructions),
+    [modifiedIngredients, instructions]
+  );
   
   const overage = useMemo(() => 
     calculateVolumeOverage(originalIngredients, modifiedIngredients, targetVolume),
@@ -250,6 +261,51 @@ const VolumeLever: React.FC<Props> = ({
                 )}
               </p>
             </div>
+          </div>
+          
+          <div className="bg-cyan-950/30 border border-cyan-800/50 rounded-lg p-3">
+            <button
+              onClick={() => setShowDilutionInfo(!showDilutionInfo)}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2">
+                <Droplets className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-medium text-cyan-300">
+                  Dilution: {drinkMetrics.methodLabel}
+                </span>
+                <span className="text-[10px] bg-cyan-900/50 text-cyan-400 px-1.5 py-0.5 rounded">
+                  +{drinkMetrics.dilutionPercent}% water
+                </span>
+              </div>
+              <Info className="w-3.5 h-3.5 text-cyan-500" />
+            </button>
+            
+            {showDilutionInfo && (
+              <div className="mt-3 pt-3 border-t border-cyan-800/30 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-stone-800/50 rounded p-2">
+                    <span className="text-stone-500 block mb-0.5">Base Volume</span>
+                    <span className="text-white font-medium">{formatOzAmount(drinkMetrics.baseVolumeOz)} oz</span>
+                  </div>
+                  <div className="bg-stone-800/50 rounded p-2">
+                    <span className="text-stone-500 block mb-0.5">+ Dilution</span>
+                    <span className="text-cyan-400 font-medium">+{formatOzAmount(drinkMetrics.waterAddedOz)} oz</span>
+                  </div>
+                  <div className="bg-stone-800/50 rounded p-2">
+                    <span className="text-stone-500 block mb-0.5">Final Volume</span>
+                    <span className="text-white font-medium">{formatOzAmount(drinkMetrics.finalVolumeOz)} oz</span>
+                  </div>
+                  <div className="bg-stone-800/50 rounded p-2">
+                    <span className="text-stone-500 block mb-0.5">Final ABV</span>
+                    <span className="text-purple-400 font-medium">{drinkMetrics.finalAbv}%</span>
+                    <span className="text-stone-600 text-[10px] ml-1">(was {drinkMetrics.baseAbv}%)</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-stone-500 italic">
+                  {DILUTION_STANDARDS[drinkMetrics.method as PreparationMethod]?.description || 'Standard dilution applied'}
+                </p>
+              </div>
+            )}
           </div>
           
           {predictedProfile && totalReduction > 0 && affectedCategories.length > 0 && (

@@ -4,6 +4,55 @@ export interface ParsedVolume {
   original: string;
 }
 
+export type PreparationMethod = 'shaken' | 'stirred' | 'built' | 'blended' | 'thrown' | 'unknown';
+
+export interface DilutionInfo {
+  method: PreparationMethod;
+  dilutionPercent: number;
+  waterAddedOz: number;
+  finalVolumeOz: number;
+  displayLabel: string;
+}
+
+export const DILUTION_STANDARDS = {
+  shaken: {
+    percent: 0.27,
+    range: { min: 0.25, max: 0.30 },
+    label: 'Shaken (12-15 sec)',
+    description: 'Vigorous shaking adds ~25-30% water from ice melt'
+  },
+  stirred: {
+    percent: 0.22,
+    range: { min: 0.20, max: 0.25 },
+    label: 'Stirred (30-45 sec)',
+    description: 'Gentle stirring adds ~20-25% water from ice melt'
+  },
+  built: {
+    percent: 0.10,
+    range: { min: 0.05, max: 0.15 },
+    label: 'Built in glass',
+    description: 'Minimal dilution from ice over time (~5-15%)'
+  },
+  blended: {
+    percent: 0.35,
+    range: { min: 0.30, max: 0.40 },
+    label: 'Blended',
+    description: 'Blending with ice adds ~30-40% water'
+  },
+  thrown: {
+    percent: 0.18,
+    range: { min: 0.15, max: 0.20 },
+    label: 'Thrown',
+    description: 'Traditional throwing technique adds ~15-20% water'
+  },
+  unknown: {
+    percent: 0.20,
+    range: { min: 0.15, max: 0.25 },
+    label: 'Standard',
+    description: 'Default assumption of ~20% dilution'
+  }
+} as const;
+
 const UNIT_TO_ML: Record<string, number> = {
   'oz': 29.5735,
   'ml': 1,
@@ -139,7 +188,11 @@ export function calculateTotalVolumeInOz(ingredients: string[]): number {
     }
   }
   
-  return Math.round((totalMl / 29.5735) * 10) / 10;
+  return totalMl / 29.5735;
+}
+
+export function calculateTotalVolumeInOzRounded(ingredients: string[]): number {
+  return Math.round(calculateTotalVolumeInOz(ingredients) * 10) / 10;
 }
 
 export function calculateTotalVolume(ingredients: string[], preferredUnit: 'oz' | 'ml' = 'oz'): string {
@@ -336,4 +389,353 @@ export function formatOzAmount(oz: number): string {
   if (oz === 2.75) return '2 3/4';
   if (Number.isInteger(oz)) return oz.toString();
   return oz.toFixed(2);
+}
+
+export function detectPreparationMethod(instructions: string | string[]): PreparationMethod {
+  const instructionText = Array.isArray(instructions) 
+    ? instructions.join(' ').toLowerCase() 
+    : (instructions || '').toLowerCase();
+  
+  const shakenPatterns = [
+    /\bshake\b/,
+    /\bshaken\b/,
+    /\bshaking\b/,
+    /shake\s+(?:hard|vigorously|well|with\s+ice)/,
+    /dry\s+shake/,
+    /reverse\s+dry\s+shake/,
+    /whip\s+shake/
+  ];
+  
+  const stirredPatterns = [
+    /\bstir\b/,
+    /\bstirred\b/,
+    /\bstirring\b/,
+    /stir\s+(?:gently|well|until\s+chilled)/
+  ];
+  
+  const builtPatterns = [
+    /\bbuild\b/,
+    /\bbuilt\b/,
+    /build\s+(?:in|over\s+ice)/,
+    /pour\s+(?:directly|over\s+ice)/,
+    /add\s+(?:to|directly\s+to)\s+(?:the\s+)?glass/
+  ];
+  
+  const blendedPatterns = [
+    /\bblend\b/,
+    /\bblended\b/,
+    /\bblender\b/,
+    /blend\s+(?:until\s+smooth|with\s+ice)/
+  ];
+  
+  const thrownPatterns = [
+    /\bthrow\b/,
+    /\bthrown\b/,
+    /throw\s+(?:between|back\s+and\s+forth)/
+  ];
+  
+  if (blendedPatterns.some(p => p.test(instructionText))) return 'blended';
+  if (shakenPatterns.some(p => p.test(instructionText))) return 'shaken';
+  if (stirredPatterns.some(p => p.test(instructionText))) return 'stirred';
+  if (thrownPatterns.some(p => p.test(instructionText))) return 'thrown';
+  if (builtPatterns.some(p => p.test(instructionText))) return 'built';
+  
+  return 'unknown';
+}
+
+export interface DilutionInfoInternal {
+  method: PreparationMethod;
+  dilutionPercent: number;
+  baseVolumeOz: number;
+  waterAddedOz: number;
+  finalVolumeOz: number;
+  displayLabel: string;
+}
+
+export function calculateDilutionInfoInternal(
+  ingredients: string[],
+  instructions: string | string[] | null | undefined,
+  customMethod?: PreparationMethod
+): DilutionInfoInternal {
+  const baseVolumeOz = calculateTotalVolumeInOz(ingredients);
+  const normalizedInstructions = Array.isArray(instructions) 
+    ? instructions.filter(Boolean).join(' ')
+    : (instructions || '');
+  const method = customMethod || detectPreparationMethod(normalizedInstructions);
+  const dilutionData = DILUTION_STANDARDS[method];
+  
+  const dilutionPercent = dilutionData.percent;
+  const waterAddedOz = baseVolumeOz * dilutionPercent;
+  const finalVolumeOz = baseVolumeOz + waterAddedOz;
+  
+  return {
+    method,
+    dilutionPercent,
+    baseVolumeOz,
+    waterAddedOz,
+    finalVolumeOz,
+    displayLabel: dilutionData.label
+  };
+}
+
+export function calculateDilutionInfo(
+  ingredients: string[],
+  instructions: string | string[] | null | undefined,
+  customMethod?: PreparationMethod
+): DilutionInfo {
+  const internal = calculateDilutionInfoInternal(ingredients, instructions, customMethod);
+  
+  return {
+    method: internal.method,
+    dilutionPercent: internal.dilutionPercent,
+    waterAddedOz: Math.round(internal.waterAddedOz * 100) / 100,
+    finalVolumeOz: Math.round(internal.finalVolumeOz * 100) / 100,
+    displayLabel: internal.displayLabel
+  };
+}
+
+export function calculateFinalVolumeWithDilution(
+  ingredients: string[],
+  instructions: string | string[] | null | undefined,
+  preferredUnit: 'oz' | 'ml' = 'oz'
+): string {
+  const dilutionInfo = calculateDilutionInfo(ingredients, instructions);
+  
+  if (dilutionInfo.finalVolumeOz === 0) {
+    return '';
+  }
+  
+  if (preferredUnit === 'ml') {
+    const totalMl = Math.round(dilutionInfo.finalVolumeOz * 29.5735);
+    return `${totalMl} ml`;
+  }
+  
+  return `${dilutionInfo.finalVolumeOz} oz`;
+}
+
+export interface AbvCalculationResult {
+  baseAbv: number;
+  finalAbv: number;
+  dilutionFactor: number;
+  method: PreparationMethod;
+}
+
+export function calculateIngredientAbvContribution(
+  ingredientLine: string,
+  ingredientAbvMap: Record<string, number>
+): { volumeOz: number; alcoholOz: number } {
+  const parsed = parseIngredientVolume(ingredientLine);
+  if (!parsed) {
+    return { volumeOz: 0, alcoholOz: 0 };
+  }
+  
+  let volumeOz = 0;
+  const mlConversion = UNIT_TO_ML[parsed.unit] || 0;
+  if (mlConversion > 0) {
+    volumeOz = (parsed.amount * mlConversion) / 29.5735;
+  }
+  
+  const ingredientName = ingredientLine.toLowerCase()
+    .replace(/[\d½¼¾⅓⅔⅛⅜⅝⅞.\/]+\s*(oz|ml|cl|dash|dashes|tsp|tbsp|cup|cups|bar\s*spoon|barspoon|drop|drops|splash|splashes|rinse|part|parts)s?\b/gi, '')
+    .replace(/^\s*(oz|ml|cl|dash|dashes|tsp|tbsp|cup|cups|bar\s*spoon|barspoon|drop|drops|splash|splashes|rinse|part|parts)s?\s+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  let abv = 0;
+  for (const [key, value] of Object.entries(ingredientAbvMap)) {
+    if (ingredientName.includes(key.toLowerCase())) {
+      abv = value;
+      break;
+    }
+  }
+  
+  const alcoholOz = volumeOz * (abv / 100);
+  
+  return { volumeOz, alcoholOz };
+}
+
+export const COMMON_INGREDIENT_ABV: Record<string, number> = {
+  'vodka': 40,
+  'gin': 40,
+  'rum': 40,
+  'white rum': 40,
+  'light rum': 40,
+  'dark rum': 40,
+  'aged rum': 40,
+  'overproof rum': 63,
+  'navy strength': 57,
+  'tequila': 40,
+  'blanco tequila': 40,
+  'reposado tequila': 40,
+  'anejo tequila': 40,
+  'mezcal': 45,
+  'whiskey': 40,
+  'bourbon': 45,
+  'rye': 45,
+  'scotch': 43,
+  'irish whiskey': 40,
+  'brandy': 40,
+  'cognac': 40,
+  'pisco': 42,
+  'absinthe': 65,
+  'chartreuse': 55,
+  'green chartreuse': 55,
+  'yellow chartreuse': 40,
+  'benedictine': 40,
+  'cointreau': 40,
+  'triple sec': 30,
+  'grand marnier': 40,
+  'curacao': 25,
+  'blue curacao': 25,
+  'maraschino': 32,
+  'luxardo': 32,
+  'amaretto': 28,
+  'kahlua': 20,
+  'coffee liqueur': 20,
+  'baileys': 17,
+  'cream liqueur': 17,
+  'campari': 25,
+  'aperol': 11,
+  'fernet': 45,
+  'fernet branca': 39,
+  'cynar': 16.5,
+  'amaro': 25,
+  'vermouth': 18,
+  'sweet vermouth': 16,
+  'dry vermouth': 18,
+  'blanc vermouth': 16,
+  'lillet': 17,
+  'lillet blanc': 17,
+  'cocchi': 16,
+  'sherry': 17,
+  'fino sherry': 15,
+  'oloroso sherry': 18,
+  'port': 20,
+  'madeira': 19,
+  'marsala': 18,
+  'champagne': 12,
+  'prosecco': 11,
+  'sparkling wine': 12,
+  'wine': 12,
+  'white wine': 12,
+  'red wine': 13,
+  'beer': 5,
+  'lager': 5,
+  'ale': 5,
+  'stout': 5,
+  'cider': 5,
+  'sake': 15,
+  'pernod': 40,
+  'pastis': 45,
+  'ouzo': 40,
+  'aquavit': 42,
+  'sloe gin': 26,
+  'st germain': 20,
+  'elderflower liqueur': 20,
+  'creme de cassis': 20,
+  'creme de violette': 20,
+  'creme de cacao': 25,
+  'frangelico': 20,
+  'drambuie': 40,
+  'galliano': 42.3,
+  'midori': 20,
+  'chambord': 16.5,
+  'peach schnapps': 20,
+  'limoncello': 28,
+  'sambuca': 42,
+  'grappa': 40,
+  'genever': 35,
+  'batavia arrack': 50,
+  'falernum': 11,
+  'allspice dram': 22,
+  'pimento dram': 22,
+  'velvet falernum': 11,
+  'orgeat': 0,
+  'simple syrup': 0,
+  'honey syrup': 0,
+  'grenadine': 0,
+  'lime juice': 0,
+  'lemon juice': 0,
+  'orange juice': 0,
+  'cranberry juice': 0,
+  'pineapple juice': 0,
+  'grapefruit juice': 0,
+  'soda': 0,
+  'club soda': 0,
+  'tonic': 0,
+  'ginger beer': 0,
+  'ginger ale': 0,
+  'cola': 0,
+  'bitters': 44,
+  'angostura': 44,
+  'peychauds': 35,
+  'orange bitters': 45,
+};
+
+export function calculateFinalAbvAfterDilution(
+  ingredients: string[],
+  instructions: string | string[] | null | undefined,
+  ingredientAbvOverrides?: Record<string, number>
+): AbvCalculationResult {
+  const abvMap = { ...COMMON_INGREDIENT_ABV, ...ingredientAbvOverrides };
+  const dilutionInternal = calculateDilutionInfoInternal(ingredients, instructions);
+  const method = dilutionInternal.method;
+  
+  let totalAlcoholOz = 0;
+  
+  for (const ingredient of ingredients) {
+    const { alcoholOz } = calculateIngredientAbvContribution(ingredient, abvMap);
+    totalAlcoholOz += alcoholOz;
+  }
+  
+  if (dilutionInternal.baseVolumeOz === 0) {
+    return {
+      baseAbv: 0,
+      finalAbv: 0,
+      dilutionFactor: 1,
+      method
+    };
+  }
+  
+  const baseAbv = (totalAlcoholOz / dilutionInternal.baseVolumeOz) * 100;
+  const finalAbv = (totalAlcoholOz / dilutionInternal.finalVolumeOz) * 100;
+  const dilutionFactor = dilutionInternal.baseVolumeOz / dilutionInternal.finalVolumeOz;
+  
+  return {
+    baseAbv: Math.round(baseAbv * 10) / 10,
+    finalAbv: Math.round(finalAbv * 10) / 10,
+    dilutionFactor: Math.round(dilutionFactor * 100) / 100,
+    method
+  };
+}
+
+export interface CompleteDrinkMetrics {
+  baseVolumeOz: number;
+  finalVolumeOz: number;
+  waterAddedOz: number;
+  baseAbv: number;
+  finalAbv: number;
+  method: PreparationMethod;
+  methodLabel: string;
+  dilutionPercent: number;
+}
+
+export function calculateCompleteDrinkMetrics(
+  ingredients: string[],
+  instructions: string | string[] | null | undefined,
+  ingredientAbvOverrides?: Record<string, number>
+): CompleteDrinkMetrics {
+  const dilutionInternal = calculateDilutionInfoInternal(ingredients, instructions);
+  const abvResult = calculateFinalAbvAfterDilution(ingredients, instructions, ingredientAbvOverrides);
+  
+  return {
+    baseVolumeOz: Math.round(dilutionInternal.baseVolumeOz * 100) / 100,
+    finalVolumeOz: Math.round(dilutionInternal.finalVolumeOz * 100) / 100,
+    waterAddedOz: Math.round(dilutionInternal.waterAddedOz * 100) / 100,
+    baseAbv: abvResult.baseAbv,
+    finalAbv: abvResult.finalAbv,
+    method: dilutionInternal.method,
+    methodLabel: dilutionInternal.displayLabel,
+    dilutionPercent: Math.round(dilutionInternal.dilutionPercent * 100)
+  };
 }

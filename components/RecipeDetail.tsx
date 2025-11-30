@@ -1,9 +1,9 @@
-
 import React, { useMemo, useState } from 'react';
-import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp, Network, Share2, Copy } from 'lucide-react';
+import { X, Clock, ExternalLink, Sparkles, User, List, ListOrdered, Check, ArrowRight, Beaker, ShoppingCart, AlertCircle, BookOpen, Star, Trash2, Disc, Hexagon, Link, Plus, Activity, Droplets, Book, ChevronDown, ChevronUp, Network, Share2, Copy, Info } from 'lucide-react';
 import { Cocktail, FlavorDimension, Ingredient, ShoppingListItem } from '../types';
 import FlavorWheel from './FlavorWheel';
 import FlavorRadar from './RadarChart';
+import { calculateCompleteDrinkMetrics, DILUTION_STANDARDS, formatOzAmount, PreparationMethod } from '../shared/volumeUtils';
 
 interface Props {
   cocktail: Cocktail | null;
@@ -27,6 +27,12 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
   const [newLink, setNewLink] = useState('');
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [sharecopied, setShareCopied] = useState(false);
+  const [showDilutionDetails, setShowDilutionDetails] = useState(false);
+
+  const drinkMetrics = useMemo(() => {
+    if (!cocktail) return null;
+    return calculateCompleteDrinkMetrics(cocktail.ingredients, cocktail.instructions);
+  }, [cocktail]);
 
   const getShareUrl = () => {
     if (!cocktail) return '';
@@ -233,6 +239,61 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                      </div>
                  )}
             </div>
+
+            {/* Dilution & Volume Info */}
+            {drinkMetrics && (
+                <div className="bg-cyan-950/20 border border-cyan-800/30 rounded-xl p-4">
+                    <button 
+                        onClick={() => setShowDilutionDetails(!showDilutionDetails)}
+                        className="w-full flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-cyan-900/40 flex items-center justify-center">
+                                <Droplets className="w-5 h-5 text-cyan-400" />
+                            </div>
+                            <div className="text-left">
+                                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                    {drinkMetrics.methodLabel}
+                                    <span className="text-[10px] bg-cyan-900/50 text-cyan-400 px-1.5 py-0.5 rounded font-normal">
+                                        +{drinkMetrics.dilutionPercent}% dilution
+                                    </span>
+                                </h4>
+                                <p className="text-xs text-stone-400">
+                                    Final: {formatOzAmount(drinkMetrics.finalVolumeOz)} oz • {drinkMetrics.finalAbv}% ABV
+                                </p>
+                            </div>
+                        </div>
+                        <Info className="w-4 h-4 text-cyan-500" />
+                    </button>
+                    
+                    {showDilutionDetails && (
+                        <div className="mt-4 pt-4 border-t border-cyan-800/30 space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-stone-900/50 rounded-lg p-3">
+                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Base Volume</span>
+                                    <span className="text-lg font-bold text-white">{formatOzAmount(drinkMetrics.baseVolumeOz)} oz</span>
+                                </div>
+                                <div className="bg-stone-900/50 rounded-lg p-3">
+                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Water Added</span>
+                                    <span className="text-lg font-bold text-cyan-400">+{formatOzAmount(drinkMetrics.waterAddedOz)} oz</span>
+                                </div>
+                                <div className="bg-stone-900/50 rounded-lg p-3">
+                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Final Volume</span>
+                                    <span className="text-lg font-bold text-white">{formatOzAmount(drinkMetrics.finalVolumeOz)} oz</span>
+                                </div>
+                                <div className="bg-stone-900/50 rounded-lg p-3">
+                                    <span className="text-[10px] text-stone-500 uppercase block mb-1">Final ABV</span>
+                                    <span className="text-lg font-bold text-purple-400">{drinkMetrics.finalAbv}%</span>
+                                    <span className="text-[10px] text-stone-600 ml-1">(was {drinkMetrics.baseAbv}%)</span>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-stone-500 italic text-center">
+                                {DILUTION_STANDARDS[drinkMetrics.method as PreparationMethod]?.description || 'Standard dilution applied'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* FLAVOR ANALYSIS SECTION (Wheel + Text) */}
             <div className="bg-stone-800/50 rounded-2xl p-6 border border-stone-700 relative overflow-hidden">

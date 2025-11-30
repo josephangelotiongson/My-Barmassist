@@ -1152,6 +1152,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
                     <VolumeLever
                       originalIngredients={selectedRecipe.ingredients}
                       modifiedIngredients={getRawModifiedIngredients()}
+                      instructions={selectedRecipe.instructions}
                       targetVolume={selectedRecipe.targetVolume}
                       predictedProfile={labResult?.predictedProfile}
                       onReductionsApply={(adjusted) => {
