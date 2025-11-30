@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Ban, BatteryLow, LogIn, LogOut, FlaskConical } from 'lucide-react';
+import { Beaker, ChefHat, BarChart3, Trash2, Sparkles, Loader2, Wine, BookOpen, ExternalLink, User, ChevronDown, ChevronUp, Layers, Star, Disc, Plus, ImageIcon, Pencil, Check, Camera, ScanLine, Beer, Calendar, MapPin, HelpCircle, ShieldCheck, Zap, XCircle, MessageCircle, Store, Globe, Search, X, ShoppingCart, Minus, Archive, Settings, AlertTriangle, CheckCircle2, ShoppingBag, History, Info, Edit3, ListOrdered, Activity, Droplets, GlassWater, LogIn, LogOut, FlaskConical } from 'lucide-react';
 import { useAuth } from './client/src/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import FlavorRadar from './components/RadarChart';
@@ -2042,15 +2042,15 @@ function MainApp() {
                     </button>
                     <button 
                         onClick={() => setAbvFilter('low')}
-                        className={`text-[10px] px-3 py-1 rounded-full border transition-all font-bold uppercase tracking-wide flex items-center gap-1 ${abvFilter === 'low' ? 'bg-blue-900/50 text-blue-200 border-blue-700' : 'bg-stone-900 text-stone-500 border-stone-800'}`}
+                        className={`text-[10px] px-3 py-1 rounded-full border transition-all font-bold uppercase tracking-wide flex items-center gap-1 ${abvFilter === 'low' ? 'bg-amber-900/50 text-amber-200 border-amber-700' : 'bg-stone-900 text-stone-500 border-stone-800'}`}
                     >
-                        <BatteryLow className="w-3 h-3" /> Low ABV
+                        <Wine className="w-3 h-3" /> Low ABV
                     </button>
                     <button 
                         onClick={() => setAbvFilter('zero')}
-                        className={`text-[10px] px-3 py-1 rounded-full border transition-all font-bold uppercase tracking-wide flex items-center gap-1 ${abvFilter === 'zero' ? 'bg-green-900/50 text-green-200 border-green-700' : 'bg-stone-900 text-stone-500 border-stone-800'}`}
+                        className={`text-[10px] px-3 py-1 rounded-full border transition-all font-bold uppercase tracking-wide flex items-center gap-1 ${abvFilter === 'zero' ? 'bg-accent/30 text-accent border-accent/50' : 'bg-stone-900 text-stone-500 border-stone-800'}`}
                     >
-                        <Ban className="w-3 h-3" /> Zero Proof
+                        <GlassWater className="w-3 h-3" /> Zero-Proof
                     </button>
                 </div>
 
