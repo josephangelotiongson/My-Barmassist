@@ -3016,14 +3016,14 @@ function MainApp() {
                     </div>
                 ) : null}
                 
-                {rxView === 'lab' && (
+                <div className={`${rxView === 'lab' ? '' : 'hidden'}`}>
                     <CocktailLab 
                       allRecipes={history}
                       initialRecipe={labRecipe}
                       onClearInitialRecipe={() => setLabRecipe(null)}
                       onSaveExperiment={handleAddCocktail}
                     />
-                )}
+                </div>
             </div>
         </div>
       </main>
