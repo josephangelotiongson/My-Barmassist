@@ -240,6 +240,32 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                  )}
             </div>
 
+            {/* HISTORY / LORE SECTION (EXPANDABLE) */}
+            {cocktail.history && (
+                <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden">
+                    <button 
+                        onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-stone-800 transition-colors"
+                    >
+                        <h3 className="text-sm font-bold text-stone-300 uppercase tracking-wider flex items-center gap-2">
+                            <Book className="w-4 h-4 text-secondary" />
+                            History & Lore
+                        </h3>
+                        {isHistoryExpanded ? <ChevronUp className="w-4 h-4 text-stone-500" /> : <ChevronDown className="w-4 h-4 text-stone-500" />}
+                    </button>
+                    
+                    {isHistoryExpanded && (
+                        <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2">
+                            <div className="pt-2 border-t border-stone-800/50">
+                                <p className="text-sm text-stone-400 leading-relaxed italic">
+                                    {cocktail.history}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* FLAVOR ANALYSIS SECTION (Wheel + Text) */}
             <div className="bg-stone-800/50 rounded-2xl p-6 border border-stone-700 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-3 opacity-10">
@@ -295,32 +321,6 @@ const RecipeDetail: React.FC<Props> = ({ cocktail, onClose, pantry = [], shoppin
                 </button>
             )}
 
-            {/* HISTORY / LORE SECTION (EXPANDABLE) */}
-            {cocktail.history && (
-                <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden">
-                    <button 
-                        onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-stone-800 transition-colors"
-                    >
-                        <h3 className="text-sm font-bold text-stone-300 uppercase tracking-wider flex items-center gap-2">
-                            <Book className="w-4 h-4 text-secondary" />
-                            History & Lore
-                        </h3>
-                        {isHistoryExpanded ? <ChevronUp className="w-4 h-4 text-stone-500" /> : <ChevronDown className="w-4 h-4 text-stone-500" />}
-                    </button>
-                    
-                    {isHistoryExpanded && (
-                        <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2">
-                            <div className="pt-2 border-t border-stone-800/50">
-                                <p className="text-sm text-stone-400 leading-relaxed italic">
-                                    {cocktail.history}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-            
             {/* Order Log Info - Specific to Orders */}
             {cocktail.source === 'Order' && (
                 <div className="bg-stone-800 p-4 rounded-xl border border-stone-700 space-y-4">
