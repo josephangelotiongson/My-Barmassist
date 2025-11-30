@@ -1471,7 +1471,7 @@ export interface DeproofResult {
   predictedProfile: FlavorProfile;
   rationale: string;
   newIngredients: string[];
-  proofLevel: 'zero' | 'low';
+  proofLevel: 'zero' | 'low' | 'low-abv';
   estimatedAbv: number;
 }
 
@@ -1516,19 +1516,27 @@ const deproofSchema: Schema = {
       items: { type: Type.STRING },
       description: "Complete final ingredients list with measurements"
     },
-    proofLevel: { type: Type.STRING, description: "Either 'zero' for 0% ABV or 'low' for under 5% ABV" },
-    estimatedAbv: { type: Type.NUMBER, description: "Estimated ABV percentage of the final drink (0 for zero-proof)" }
+    proofLevel: { type: Type.STRING, description: "Either 'zero' for 0% ABV, 'low' for under 5% ABV, or 'low-abv' for 5-15% ABV" },
+    estimatedAbv: { type: Type.NUMBER, description: "Estimated ABV percentage of the final drink (0 for zero-proof, <5 for low-proof, 5-15 for low-abv)" }
   },
   required: ['isPossible', 'substitutions', 'additions', 'removals', 'predictedProfile', 'rationale', 'newIngredients', 'proofLevel', 'estimatedAbv']
 };
 
 export const analyzeDeproof = async (
   baseRecipe: { name: string; ingredients: string[]; flavorProfile: FlavorProfile; targetVolume?: string },
-  targetProofLevel: 'zero' | 'low'
+  targetProofLevel: 'zero' | 'low' | 'low-abv'
 ): Promise<DeproofResult> => {
   try {
+    const getTargetDescription = () => {
+      switch (targetProofLevel) {
+        case 'zero': return 'ZERO-PROOF (0% ABV) - completely non-alcoholic';
+        case 'low': return 'LOW-PROOF (under 5% ABV) - very sessionable';
+        case 'low-abv': return 'LOW-ABV (5-15% ABV) - moderate alcohol using aperitifs and fortified wines';
+      }
+    };
+
     const nonAlcoholicAlternatives = `
-NON-ALCOHOLIC SPIRIT ALTERNATIVES:
+NON-ALCOHOLIC SPIRIT ALTERNATIVES (for zero-proof):
 - Gin → Seedlip Garden/Grove, Lyre's Dry London Spirit, or juniper-infused tonic water
 - Vodka → Seedlip, distilled water with citrus essence, or Ritual Zero Proof Vodka
 - Rum → Lyre's White Cane Spirit, All The Bitter's No.0, or spiced tea concentrate
@@ -1545,12 +1553,23 @@ NON-ALCOHOLIC SPIRIT ALTERNATIVES:
 - Wine → Non-alcoholic wine, Verjus, or grape juice
 - Champagne/Prosecco → Non-alcoholic sparkling wine, elderflower tonic
 
-LOW-ABV ALTERNATIVES (if low-proof target):
-- High-proof spirits → Lower-proof versions or half measures diluted with NA alternatives
-- Consider vermouth, sherry, sake, or low-ABV amari as spirit replacements
-- Fortified wines instead of distilled spirits
+LOW-PROOF ALTERNATIVES (<5% ABV):
+- High-proof spirits → Replace with very small amounts or NA alternatives
+- Use dilution with mixers, juices, and sodas
+- Beer or cider can provide low-ABV base
+- Consider kombucha or other fermented beverages
 
-FLAVOR COMPLEXITY ADDITIONS for mocktails:
+LOW-ABV ALTERNATIVES (5-15% ABV):
+- Spirits → Replace with sherry, port, vermouth, or sake (15-20% ABV)
+- Whiskey/Bourbon → Replace with Amaro (16-35% ABV) in reduced amounts or sherry
+- Gin/Vodka → Replace with dry vermouth or blanc vermouth
+- Tequila → Replace with dry sherry or Fino sherry
+- Consider Aperol (11%), Campari (24%), Lillet (17%), Cocchi Americano (16.5%)
+- Fortified wines: Sherry (15-20%), Port (19-22%), Madeira (18-22%)
+- Low-ABV amari: Cynar (16.5%), Montenegro (23%), Averna (29%)
+- Use smaller pours of spirits combined with fortified wines
+
+FLAVOR COMPLEXITY ADDITIONS for all de-proofed versions:
 - Bitters (alcohol-free versions by All The Bitter, etc.)
 - Shrubs (fruit vinegar-based syrups)
 - Herbal teas and tisanes
@@ -1561,6 +1580,14 @@ FLAVOR COMPLEXITY ADDITIONS for mocktails:
 - Verjus (tart grape juice)
 `;
 
+    const getAbvRules = () => {
+      switch (targetProofLevel) {
+        case 'zero': return 'ZERO alcohol - no ingredients with any alcohol content. Boozy dimension should be 0-1.';
+        case 'low': return 'Keep total ABV under 5% - use heavy dilution with mixers. Boozy dimension should be 1-3.';
+        case 'low-abv': return 'Keep total ABV between 5-15% - replace spirits with fortified wines and aperitifs. Boozy dimension should be 3-5.';
+      }
+    };
+
     const prompt = `
       You are an expert Mocktail and Low-ABV cocktail specialist.
       
@@ -1569,7 +1596,7 @@ FLAVOR COMPLEXITY ADDITIONS for mocktails:
       CURRENT FLAVOR PROFILE: ${JSON.stringify(baseRecipe.flavorProfile)}
       TARGET VOLUME: ${baseRecipe.targetVolume || 'standard cocktail size'}
       
-      TARGET: Create a ${targetProofLevel === 'zero' ? 'ZERO-PROOF (0% ABV)' : 'LOW-PROOF (under 5% ABV)'} version
+      TARGET: Create a ${getTargetDescription()} version
       
       ${nonAlcoholicAlternatives}
       
@@ -1586,24 +1613,24 @@ FLAVOR COMPLEXITY ADDITIONS for mocktails:
       
       Examples that CAN be de-proofed:
       - Cocktails with mixers, juices, or syrups
-      - Drinks where spirits can be replaced with NA alternatives
+      - Drinks where spirits can be replaced with NA or low-ABV alternatives
       - Most classic cocktails (Margarita, Mojito, Old Fashioned, etc.)
       
-      If the drink cannot be reasonably de-proofed, set isPossible to false and explain why.
+      If the drink cannot be reasonably de-proofed to the target level, set isPossible to false and explain why.
       
       IF POSSIBLE, CREATE THE DE-PROOFED VERSION:
-      1. Replace alcoholic ingredients with high-quality non-alcoholic alternatives
+      1. Replace alcoholic ingredients with appropriate alternatives for the target ABV level
       2. Maintain the drink's essential character and flavor profile
-      3. Add complexity ingredients (bitters, shrubs, teas) to replace alcohol's warmth
+      3. Add complexity ingredients (bitters, shrubs, teas) to compensate for reduced alcohol
       4. Keep the same preparation style where possible
       5. Provide the complete final recipe with all measurements
       
       RULES:
-      1. ${targetProofLevel === 'zero' ? 'ZERO alcohol - no ingredients with any alcohol content' : 'Keep total ABV under 5% - can use low-proof options'}
-      2. Prioritize commercially available non-alcoholic alternatives
+      1. ${getAbvRules()}
+      2. Prioritize commercially available alternatives
       3. If a home-made substitute is needed, describe it clearly
-      4. The Boozy dimension in the flavor profile should be 0-1 for zero-proof, or 1-3 for low-proof
-      5. Try to maintain other flavor dimensions as close to original as possible
+      4. Try to maintain other flavor dimensions as close to original as possible
+      5. proofLevel must be exactly: '${targetProofLevel}'
       
       Return your analysis as JSON.
     `;

@@ -1363,9 +1363,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      if (!targetProofLevel || !['zero', 'low'].includes(targetProofLevel)) {
+      if (!targetProofLevel || !['zero', 'low', 'low-abv'].includes(targetProofLevel)) {
         return res.status(400).json({ 
-          message: "targetProofLevel must be 'zero' or 'low'" 
+          message: "targetProofLevel must be 'zero', 'low', or 'low-abv'" 
         });
       }
       
