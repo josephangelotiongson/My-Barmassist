@@ -28,11 +28,14 @@ None set yet - will be documented as user expresses preferences during developme
 - **Cocktail Laboratory (Flavor Lab)**: AI-powered ingredient experimentation with three modes:
     - **Recipe Mode**: Modify existing cocktails with AI-suggested flavor adjustments
     - **Build Mode**: Create new cocktails from scratch with selected ingredients
-    - **De-Proof Mode**: Transform cocktails into zero-proof (0% ABV) or low-proof (under 5% ABV) versions
-        - AI analyzes alcoholic ingredients and suggests appropriate substitutions
+    - **De-Proof Mode**: Transform cocktails into lower-ABV versions with 3 target levels:
+        - **Zero-Proof** (0% ABV): Completely non-alcoholic using NA spirit alternatives
+        - **Low-Proof** (<5% ABV): Very sessionable with minimal alcohol content
+        - **Low-ABV** (5-15% ABV): Moderate reduction using aperitifs and fortified wines
+        - AI analyzes alcoholic ingredients and suggests appropriate substitutions for each tier
         - Maintains original flavor profiles as closely as possible
         - Includes feasibility check for drinks that cannot be de-proofed
-        - Saves de-proofed recipes to Barmulary under "Mocktails & Low-ABV" category
+        - Saves de-proofed recipes to Barmulary under appropriate category (Zero-Proof, Low-Proof, or Low-ABV)
     - **Target Volume Tracking**: Calculates and manages cocktail volume, with AI adjusting ingredient suggestions to maintain target volume and golden ratios.
     - **Volume Lever UI**: Interactive tool to balance cocktail volume for AI-suggested modifications, with real-time flavor profile impact visualization showing which flavor categories will change as ingredients are reduced.
     - **Interactive Editable Flavor Wheel**: Hierarchical 3-tier design for granular control over flavor notes (categories, subcategories, specific notes) with visual radar chart comparisons.
