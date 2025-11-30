@@ -2166,13 +2166,22 @@ function MainApp() {
                                                                         </button>
                                                                     ))}
                                                                 </div>
-                                                                <button
-                                                                    onClick={(e) => handleSendToLab(e, drink)}
-                                                                    className="p-1.5 hover:bg-stone-700 rounded-lg transition-colors group"
-                                                                    title="Send to Flavor Lab"
-                                                                >
-                                                                    <FlaskConical className="w-4 h-4 text-stone-500 group-hover:text-accent transition-colors" />
-                                                                </button>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button
+                                                                        onClick={(e) => handleSendToLab(e, drink)}
+                                                                        className="p-1.5 hover:bg-stone-700 rounded-lg transition-colors group"
+                                                                        title="Send to Flavor Lab"
+                                                                    >
+                                                                        <FlaskConical className="w-4 h-4 text-stone-500 group-hover:text-accent transition-colors" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => handleSendToDeproof(e, drink)}
+                                                                        className="p-1.5 hover:bg-stone-700 rounded-lg transition-colors group"
+                                                                        title="De-Proof this cocktail"
+                                                                    >
+                                                                        <GlassWater className="w-4 h-4 text-stone-500 group-hover:text-accent transition-colors" />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <div className="w-28 bg-stone-900 relative shrink-0 border-l border-stone-700 group h-full">
