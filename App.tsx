@@ -893,6 +893,54 @@ function MainApp() {
   const [touchStart, setTouchStart] = useState<{ x: number, y: number } | null>(null);
   const [touchEnd, setTouchEnd] = useState<{ x: number, y: number } | null>(null);
 
+  // Scroll position refs for each tab (for navigation persistence)
+  const palateScrollRef = useRef<HTMLDivElement>(null);
+  const recipesScrollRef = useRef<HTMLDivElement>(null);
+  const barScrollRef = useRef<HTMLDivElement>(null);
+  const recommendScrollRef = useRef<HTMLDivElement>(null);
+  
+  // Store scroll positions when switching tabs
+  const scrollPositionsRef = useRef<Record<string, number>>({
+    palate: 0,
+    recipes: 0,
+    bar: 0,
+    recommend: 0
+  });
+  
+  // Save scroll position before switching tabs
+  const handleTabChange = (newTab: 'palate' | 'recipes' | 'bar' | 'recommend') => {
+    // Save current tab's scroll position
+    const scrollRefs: Record<string, React.RefObject<HTMLDivElement | null>> = {
+      palate: palateScrollRef,
+      recipes: recipesScrollRef,
+      bar: barScrollRef,
+      recommend: recommendScrollRef
+    };
+    const currentRef = scrollRefs[activeTab];
+    if (currentRef?.current) {
+      scrollPositionsRef.current[activeTab] = currentRef.current.scrollTop;
+    }
+    setActiveTab(newTab);
+  };
+  
+  // Restore scroll position when switching to a tab
+  useEffect(() => {
+    const scrollRefs: Record<string, React.RefObject<HTMLDivElement | null>> = {
+      palate: palateScrollRef,
+      recipes: recipesScrollRef,
+      bar: barScrollRef,
+      recommend: recommendScrollRef
+    };
+    const targetRef = scrollRefs[activeTab];
+    if (targetRef?.current) {
+      setTimeout(() => {
+        if (targetRef.current) {
+          targetRef.current.scrollTop = scrollPositionsRef.current[activeTab] || 0;
+        }
+      }, 0);
+    }
+  }, [activeTab]);
+
   const onTouchStart = (e: React.TouchEvent) => {
       setTouchEnd(null);
       setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
@@ -1912,7 +1960,7 @@ function MainApp() {
 
        <main className="flex-1 bg-background relative overflow-hidden">
         <div className="max-w-md mx-auto h-full relative">
-            <div className={`absolute inset-0 p-4 pb-24 flex flex-col gap-4 transition-opacity duration-300 ${activeTab === 'palate' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
+            <div ref={palateScrollRef} className={`absolute inset-0 p-4 pb-24 flex flex-col gap-4 overflow-y-auto scrollbar-hide transition-opacity duration-300 ${activeTab === 'palate' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
                <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700 flex-none">
                    <button 
                       onClick={() => setPalateView('diagnosis')}
@@ -1966,7 +2014,7 @@ function MainApp() {
                 </div>
             </div>
 
-            <div className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'recipes' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
+            <div ref={recipesScrollRef} className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'recipes' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
                  <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setFormularyView('drinks')}
@@ -2171,7 +2219,7 @@ function MainApp() {
                 </button>
             </div>
             
-            <div className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'bar' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
+            <div ref={barScrollRef} className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'bar' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
                   <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setBarView('shopping')}
@@ -2689,7 +2737,7 @@ function MainApp() {
                 )}
             </div>
             
-            <div className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'recommend' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
+            <div ref={recommendScrollRef} className={`absolute inset-0 overflow-y-auto p-4 pb-24 scrollbar-hide space-y-6 transition-opacity duration-300 ${activeTab === 'recommend' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'}`}>
                   <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setRxView('recommend')}
@@ -2983,28 +3031,28 @@ function MainApp() {
       <nav className="flex-none z-30 bg-surface border-t border-stone-700 pb-safe">
         <div className="grid grid-cols-4 h-20 max-w-md mx-auto">
           <button 
-             onClick={() => setActiveTab('palate')} 
+             onClick={() => handleTabChange('palate')} 
              className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'palate' ? 'text-primary' : 'text-stone-500 hover:text-stone-400'}`}
           >
             <BarChart3 className={`w-7 h-7 ${activeTab === 'palate' ? 'fill-primary/20' : ''}`} />
             <span className="text-xs font-bold">Palate</span>
           </button>
           <button 
-             onClick={() => setActiveTab('recipes')} 
+             onClick={() => handleTabChange('recipes')} 
              className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'recipes' ? 'text-white' : 'text-stone-500 hover:text-stone-400'}`}
           >
             <BookOpen className={`w-7 h-7 ${activeTab === 'recipes' ? 'fill-white/20' : ''}`} />
             <span className="text-xs font-bold">Barmulary</span>
           </button>
           <button 
-             onClick={() => setActiveTab('bar')} 
+             onClick={() => handleTabChange('bar')} 
              className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'bar' ? 'text-secondary' : 'text-stone-500 hover:text-stone-400'}`}
           >
             <Wine className={`w-7 h-7 ${activeTab === 'bar' ? 'fill-secondary/20' : ''}`} />
             <span className="text-xs font-bold">Bar</span>
           </button>
           <button 
-             onClick={() => setActiveTab('recommend')} 
+             onClick={() => handleTabChange('recommend')} 
              className={`flex flex-col items-center justify-center gap-1.5 transition-colors ${activeTab === 'recommend' ? 'text-accent' : 'text-stone-500 hover:text-stone-400'}`}
           >
             <ChefHat className={`w-7 h-7 ${activeTab === 'recommend' ? 'fill-accent/20' : ''}`} />
