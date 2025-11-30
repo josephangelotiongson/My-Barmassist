@@ -340,17 +340,6 @@ const FlavorWheel: React.FC<Props> = ({ userProfile }) => {
                 />
             </svg>
         </div>
-        <div className="h-8 mt-2 text-center">
-            {selected ? (
-                <span className="text-white font-bold bg-stone-800 px-3 py-1 rounded-full text-sm animate-in fade-in slide-in-from-bottom-2">
-                    {selected}
-                </span>
-            ) : (
-                <span className="text-stone-500 text-xs italic">
-                   Wheel intensity maps to your palate.
-                </span>
-            )}
-        </div>
     </div>
   );
 };
