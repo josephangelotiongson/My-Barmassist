@@ -25,6 +25,7 @@ interface Props {
   onSaveExperiment?: (recipe: Cocktail) => void;
   initialRecipe?: Cocktail | null;
   onClearInitialRecipe?: () => void;
+  initialMode?: 'recipe' | 'build' | 'deproof';
 }
 
 interface Substitution {
@@ -155,8 +156,8 @@ interface DeproofResult {
   estimatedAbv: number;
 }
 
-const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe }) => {
-  const [labMode, setLabMode] = useState<'recipe' | 'build' | 'deproof'>('recipe');
+const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRecipe, onClearInitialRecipe, initialMode }) => {
+  const [labMode, setLabMode] = useState<'recipe' | 'build' | 'deproof'>(initialMode || 'recipe');
   const [selectedRecipe, setSelectedRecipe] = useState<Cocktail | null>(initialRecipe || null);
   const [showRecipeSelector, setShowRecipeSelector] = useState(false);
   const [targetProfile, setTargetProfile] = useState<FlavorProfile>(DEFAULT_PROFILE);
@@ -206,23 +207,30 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
   useEffect(() => {
     if (initialRecipe) {
-      setLabMode('recipe');
-      setSelectedRecipe(initialRecipe);
-      const profile = initialRecipe.flavorProfile && Object.keys(initialRecipe.flavorProfile).length > 0 
-        ? { ...initialRecipe.flavorProfile } 
-        : { ...DEFAULT_PROFILE };
-      setTargetProfile(profile);
-      setTargetNoteProfile(undefined);
-      setBaseNoteProfile(deriveNoteProfileFromCategories(profile));
-      setLabResult(null);
-      setErrorMessage(null);
-      setAppliedSubs(new Set());
-      setAppliedAdds(new Set());
-      wheelKeyRef.current += 1;
+      if (initialMode === 'deproof') {
+        setLabMode('deproof');
+        setSelectedDeproofRecipe(initialRecipe);
+        setDeproofResult(null);
+        setAppliedDeproofSubs(new Set());
+      } else {
+        setLabMode('recipe');
+        setSelectedRecipe(initialRecipe);
+        const profile = initialRecipe.flavorProfile && Object.keys(initialRecipe.flavorProfile).length > 0 
+          ? { ...initialRecipe.flavorProfile } 
+          : { ...DEFAULT_PROFILE };
+        setTargetProfile(profile);
+        setTargetNoteProfile(undefined);
+        setBaseNoteProfile(deriveNoteProfileFromCategories(profile));
+        setLabResult(null);
+        setErrorMessage(null);
+        setAppliedSubs(new Set());
+        setAppliedAdds(new Set());
+        wheelKeyRef.current += 1;
+      }
       
       onClearInitialRecipe?.();
     }
-  }, [initialRecipe?.id]);
+  }, [initialRecipe?.id, initialMode]);
 
   useEffect(() => {
     const fetchMasterIngredients = async () => {
