@@ -520,6 +520,18 @@ export interface AbvCalculationResult {
   method: PreparationMethod;
 }
 
+function normalizeForAbvLookup(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[\d½¼¾⅓⅔⅛⅜⅝⅞.\/]+\s*(oz|ml|cl|dash|dashes|tsp|tbsp|cup|cups|bar\s*spoon|barspoon|drop|drops|splash|splashes|rinse|part|parts)s?\b/gi, '')
+    .replace(/^\s*(oz|ml|cl|dash|dashes|tsp|tbsp|cup|cups|bar\s*spoon|barspoon|drop|drops|splash|splashes|rinse|part|parts)s?\s+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function calculateIngredientAbvContribution(
   ingredientLine: string,
   ingredientAbvMap: Record<string, number>
@@ -535,11 +547,7 @@ export function calculateIngredientAbvContribution(
     volumeOz = (parsed.amount * mlConversion) / 29.5735;
   }
   
-  const ingredientName = ingredientLine.toLowerCase()
-    .replace(/[\d½¼¾⅓⅔⅛⅜⅝⅞.\/]+\s*(oz|ml|cl|dash|dashes|tsp|tbsp|cup|cups|bar\s*spoon|barspoon|drop|drops|splash|splashes|rinse|part|parts)s?\b/gi, '')
-    .replace(/^\s*(oz|ml|cl|dash|dashes|tsp|tbsp|cup|cups|bar\s*spoon|barspoon|drop|drops|splash|splashes|rinse|part|parts)s?\s+/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const ingredientName = normalizeForAbvLookup(ingredientLine);
   
   let abv = 0;
   for (const [key, value] of Object.entries(ingredientAbvMap)) {
