@@ -1,6 +1,85 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle, Network } from 'lucide-react';
+import { X, Database, Settings as SettingsIcon, Plus, Trash2, Save, AlertTriangle, Hand, AlignLeft, AlignRight, RefreshCcw, Droplets, ChevronDown, ChevronRight, Layers, Edit3, XCircle, Shield, Wine, Loader2, CheckCircle, Network, Sparkles, Megaphone } from 'lucide-react';
 import { MasterIngredient, AppSettings } from '../types';
+
+interface ReleaseNote {
+  version: string;
+  date: string;
+  title: string;
+  features: string[];
+  isNew?: boolean;
+}
+
+const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: "1.5.0",
+    date: "Dec 2024",
+    title: "Flavor Laboratory & De-Proofing",
+    isNew: true,
+    features: [
+      "New Flavor Lab with Recipe, Build, and De-Proof modes",
+      "3-tier ABV reduction: Zero-Proof, Low-Proof, Low-ABV",
+      "Interactive volume lever for balanced modifications",
+      "Industry-standard dilution calculations for accurate ABV",
+      "Editable hierarchical flavor wheel with 8 categories"
+    ]
+  },
+  {
+    version: "1.4.0",
+    date: "Nov 2024",
+    title: "Cocktail Lineage & Family Trees",
+    features: [
+      "AI-powered drink genealogy mapping evolutionary relationships",
+      "Six root cocktail templates: Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip",
+      "View ancestors, siblings, descendants, and flavor bridges",
+      "Evolution narratives explaining how drinks developed"
+    ]
+  },
+  {
+    version: "1.3.0",
+    date: "Nov 2024",
+    title: "AI Image Generation",
+    features: [
+      "Automatic AI-generated cocktail images for recipes",
+      "Smooth image loading with skeleton placeholders",
+      "Support for user-uploaded order photos",
+      "Image caching for faster loading"
+    ]
+  },
+  {
+    version: "1.2.0",
+    date: "Oct 2024",
+    title: "Enhanced Recommendations",
+    features: [
+      "Personalized recommendations based on your palate profile",
+      "Menu scanning to find best drinks at any bar",
+      "Bar Assist AI chat for cocktail questions",
+      "Improved rating system with flavor profiling"
+    ]
+  },
+  {
+    version: "1.1.0",
+    date: "Oct 2024",
+    title: "DIY Ingredients & Inventory",
+    features: [
+      "Homemade ingredient recipes with scalable quantities",
+      "Expiration tracking with visual status indicators",
+      "Shopping list generation from recipes",
+      "Pantry inventory management"
+    ]
+  },
+  {
+    version: "1.0.0",
+    date: "Sep 2024",
+    title: "Initial Release",
+    features: [
+      "Recipe library with classic and modern cocktails",
+      "Flavor profile radar charts",
+      "User accounts with Replit Auth",
+      "Recipe import from URLs and screenshots"
+    ]
+  }
+];
 
 interface Props {
   isOpen: boolean;
@@ -30,6 +109,8 @@ const SettingsModal: React.FC<Props> = ({
   onRefreshRecipes
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'master' | 'admin'>('general');
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+  const [expandedReleases, setExpandedReleases] = useState<Set<string>>(new Set(['1.5.0']));
   
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
@@ -422,6 +503,78 @@ const SettingsModal: React.FC<Props> = ({
             {/* GENERAL SETTINGS */}
             {activeTab === 'general' && (
                 <div className="space-y-8">
+                    
+                    {/* RELEASE NOTES */}
+                    <div className="bg-secondary/10 rounded-2xl border border-secondary/30 overflow-hidden">
+                        <button
+                            onClick={() => setShowReleaseNotes(!showReleaseNotes)}
+                            className="w-full p-4 flex items-center justify-between hover:bg-secondary/5 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
+                                    <Megaphone className="w-5 h-5 text-white" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="text-sm font-bold text-white">What's New</h3>
+                                    <p className="text-xs text-stone-400">v{RELEASE_NOTES[0].version} - {RELEASE_NOTES[0].title}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {RELEASE_NOTES[0].isNew && (
+                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 bg-primary text-white rounded-full">New</span>
+                                )}
+                                <ChevronDown className={`w-5 h-5 text-stone-400 transition-transform ${showReleaseNotes ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        
+                        {showReleaseNotes && (
+                            <div className="border-t border-secondary/20 max-h-80 overflow-y-auto">
+                                {RELEASE_NOTES.map((release, idx) => (
+                                    <div key={release.version} className={`border-b border-stone-800 last:border-b-0 ${idx === 0 ? 'bg-secondary/5' : ''}`}>
+                                        <button
+                                            onClick={() => {
+                                                const next = new Set(expandedReleases);
+                                                if (next.has(release.version)) {
+                                                    next.delete(release.version);
+                                                } else {
+                                                    next.add(release.version);
+                                                }
+                                                setExpandedReleases(next);
+                                            }}
+                                            className="w-full px-4 py-3 flex items-center justify-between hover:bg-stone-800/30 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs font-mono text-secondary bg-secondary/10 px-2 py-0.5 rounded">
+                                                    v{release.version}
+                                                </span>
+                                                <span className="text-sm font-bold text-white">{release.title}</span>
+                                                {release.isNew && (
+                                                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-stone-500">{release.date}</span>
+                                                <ChevronRight className={`w-4 h-4 text-stone-500 transition-transform ${expandedReleases.has(release.version) ? 'rotate-90' : ''}`} />
+                                            </div>
+                                        </button>
+                                        
+                                        {expandedReleases.has(release.version) && (
+                                            <div className="px-4 pb-3">
+                                                <ul className="space-y-1.5 pl-4">
+                                                    {release.features.map((feature, fIdx) => (
+                                                        <li key={fIdx} className="text-xs text-stone-300 flex items-start gap-2">
+                                                            <span className="text-secondary mt-1">•</span>
+                                                            {feature}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     
                     {/* HANDEDNESS */}
                     <div>
