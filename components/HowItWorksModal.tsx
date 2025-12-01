@@ -1,13 +1,21 @@
 import React from 'react';
-import { X, Info, Zap, BarChart3, ScanLine, Brain, Star, ShieldCheck, FlaskConical, Disc, GitBranch, Camera, Beaker, ShoppingBag, Target, Volume2, Layers, Sparkles } from 'lucide-react';
+import { X, Info, Zap, BarChart3, ScanLine, Brain, Star, ShieldCheck, FlaskConical, Disc, GitBranch, Camera, Beaker, ShoppingBag, Target, Volume2, Layers, Sparkles, Megaphone, ChevronRight, Heart, Atom } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onOpenSettings?: () => void;
 }
 
-const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
+const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose, onOpenSettings }) => {
   if (!isOpen) return null;
+
+  const handleOpenWhatsNew = () => {
+    onClose();
+    if (onOpenSettings) {
+      onOpenSettings();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/90 backdrop-blur-sm animate-in fade-in duration-200">
@@ -25,19 +33,87 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
             
-            <div className="space-y-2">
-                <p className="text-stone-300 text-sm leading-relaxed">
-                    My Barmassist is an AI-powered mixology companion that evolves with your taste. It understands flavor at a molecular level to provide personalized recommendations, help you create riffs, and track your homemade ingredients.
+            {/* WHAT'S NEW LINK */}
+            <button
+                onClick={handleOpenWhatsNew}
+                className="w-full bg-secondary/10 hover:bg-secondary/20 rounded-xl p-4 border border-secondary/30 flex items-center justify-between group transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
+                        <Megaphone className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                        <h3 className="text-sm font-bold text-white">What's New</h3>
+                        <p className="text-xs text-stone-400">See the latest features and updates</p>
+                    </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-secondary group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            {/* THE HEART & SOUL */}
+            <div className="bg-primary/10 rounded-xl p-4 border border-primary/30">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                        <Atom className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-white">The Heart & Soul</h3>
+                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Molecular Flavor Matching</p>
+                    </div>
+                </div>
+                <p className="text-sm text-stone-300 leading-relaxed">
+                    Barmassist breaks down every cocktail to its <strong className="text-primary">molecular flavor components</strong> across 8 dimensions. By understanding your preferences at this granular level, we match you with your <strong className="text-white">perfect cocktail</strong> — not just drinks you might like, but drinks crafted for <em>your</em> palate.
                 </p>
             </div>
 
+            {/* PALATE LEARNING - CORE FEATURE */}
+            <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
+                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-accent" />
+                    Palate Learning
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-3">
+                    Your <strong className="text-primary">Palate Profile</strong> (the red shape on radar charts) is your unique flavor fingerprint. It evolves with every rating you give.
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-stone-400 mb-3">
+                    <div className="bg-stone-800 p-2 rounded border border-stone-700">
+                        <Star className="w-3 h-3 text-secondary mb-1 fill-secondary" />
+                        <span className="font-bold text-white">5 Stars</span> = Strong preference (3x weight)
+                    </div>
+                    <div className="bg-stone-800 p-2 rounded border border-stone-700">
+                        <Star className="w-3 h-3 text-stone-500 mb-1" />
+                        <span className="font-bold text-white">1-2 Stars</span> = Ignored (no impact)
+                    </div>
+                </div>
+                <p className="text-[10px] text-stone-500 italic">
+                    The more you rate, the smarter your recommendations become.
+                </p>
+            </div>
+
+            {/* MATCH SCORING */}
+            <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
+                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-500" />
+                    Match Scoring
+                </h3>
+                <p className="text-xs text-stone-300 leading-relaxed mb-2">
+                    The <span className="font-bold text-green-400">Match %</span> is calculated by comparing your Palate Profile to each cocktail's flavor DNA:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li><strong className="text-white">Flavor Overlap:</strong> How closely the drink matches your preferred taste profile</li>
+                    <li><strong className="text-white">Pantry Availability:</strong> Bonus for drinks you can make right now</li>
+                    <li><strong className="text-white">Historical Patterns:</strong> Spirit types and styles you've loved before</li>
+                </ul>
+            </div>
+
+            {/* THE FLAVOR SCALE */}
             <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-primary" />
-                    The Flavor Scale (0-10)
+                    <BarChart3 className="w-4 h-4 text-secondary" />
+                    The 8 Flavor Dimensions
                 </h3>
                 <p className="text-xs text-stone-400 mb-3">
-                    Every drink is analyzed by AI and scored on 8 dimensions:
+                    Every cocktail is AI-analyzed and scored 0-10 on each dimension:
                 </p>
                 <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                     <div className="text-stone-300"><span className="font-bold text-secondary">Sweet:</span> 0 (Dry) → 10 (Liqueur)</div>
@@ -125,41 +201,6 @@ const HowItWorksModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     <li><strong>Menu Scanner:</strong> Photograph bar menus for personalized recommendations</li>
                     <li><strong>Order History:</strong> Track drinks at bars with photos and notes</li>
                     <li><strong>Bottle Recognition:</strong> Scan your cabinet to auto-fill inventory</li>
-                </ul>
-            </div>
-
-            <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
-                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-accent" />
-                    Palate Learning
-                </h3>
-                <p className="text-xs text-stone-300 leading-relaxed mb-2">
-                    Your <strong>Palate Profile</strong> (the red shape on charts) evolves from your ratings.
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-[10px] text-stone-400">
-                    <div className="bg-stone-800 p-2 rounded border border-stone-700">
-                        <Star className="w-3 h-3 text-secondary mb-1 fill-secondary" />
-                        <span className="font-bold text-white">5 Stars</span> = Strong (3x weight)
-                    </div>
-                    <div className="bg-stone-800 p-2 rounded border border-stone-700">
-                        <Star className="w-3 h-3 text-stone-500 mb-1" />
-                        <span className="font-bold text-white">1-2 Stars</span> = Ignored
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-stone-900/50 rounded-xl p-4 border border-stone-800">
-                 <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-500" />
-                    Match Scoring
-                </h3>
-                <p className="text-xs text-stone-300 leading-relaxed">
-                    The <span className="font-bold text-green-400">Match %</span> considers:
-                </p>
-                <ul className="list-disc list-inside mt-2 space-y-1 text-xs text-stone-400">
-                    <li>Overlap with your Flavor Profile</li>
-                    <li>Ingredient availability in your Pantry</li>
-                    <li>Historical preferences (spirit types, styles)</li>
                 </ul>
             </div>
 

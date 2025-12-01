@@ -1945,6 +1945,7 @@ function MainApp() {
        <HowItWorksModal 
           isOpen={isHowItWorksOpen}
           onClose={() => setIsHowItWorksOpen(false)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
        />
 
        <AuthModal 
