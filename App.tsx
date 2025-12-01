@@ -2184,21 +2184,23 @@ function MainApp() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="w-28 bg-stone-900 relative shrink-0 border-l border-stone-700 group h-full">
+                                                        <div className="w-28 bg-stone-900 relative shrink-0 border-l border-stone-700 group h-full overflow-hidden">
                                                             {drink.imageUrl ? (
                                                                 <>
+                                                                    <div className="absolute inset-0 skeleton-shimmer"></div>
                                                                     <img 
                                                                         src={drink.imageUrl} 
                                                                         alt={drink.name} 
-                                                                        className="w-full h-full object-cover"
+                                                                        className="w-full h-full object-cover img-fade relative z-10"
+                                                                        onLoad={(e) => e.currentTarget.classList.add('loaded')}
                                                                         onError={(e) => {
-                                                                            // Don't clear imageUrl - just show fallback inline to prevent retry loops
+                                                                            e.currentTarget.classList.add('loaded');
                                                                             e.currentTarget.src = FALLBACK_IMAGE;
                                                                         }}
                                                                     />
-                                                                    <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent"></div>
+                                                                    <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent z-20 pointer-events-none"></div>
                                                                     {drink.imageUrl?.startsWith('/cocktail-images/') && (
-                                                                        <div className="absolute bottom-1 right-1 text-[8px] text-primary/90 font-bold uppercase flex items-center gap-0.5 bg-black/40 px-1 py-0.5 rounded backdrop-blur-sm">
+                                                                        <div className="absolute bottom-1 right-1 text-[8px] text-primary/90 font-bold uppercase flex items-center gap-0.5 bg-black/40 px-1 py-0.5 rounded backdrop-blur-sm z-20">
                                                                             <Sparkles className="w-2 h-2" /> AI Generated
                                                                         </div>
                                                                     )}
@@ -2986,21 +2988,24 @@ function MainApp() {
                                     </div>
                                 </div>
                                 
-                                <div className="w-28 bg-stone-900 relative shrink-0 border-l border-stone-700 group h-full">
+                                <div className="w-28 bg-stone-900 relative shrink-0 border-l border-stone-700 group h-full overflow-hidden">
                                     {drink.imageUrl ? (
                                         <>
+                                            <div className="absolute inset-0 skeleton-shimmer"></div>
                                             <img 
                                                 src={drink.imageUrl} 
                                                 alt={drink.name} 
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-cover img-fade relative z-10"
+                                                onLoad={(e) => e.currentTarget.classList.add('loaded')}
                                                 onError={(e) => {
+                                                     e.currentTarget.classList.add('loaded');
                                                      e.currentTarget.src = FALLBACK_IMAGE;
                                                 }}
                                             />
-                                            <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent"></div>
+                                            <div className="absolute inset-0 bg-gradient-to-r from-surface/50 to-transparent z-20 pointer-events-none"></div>
                                             <label 
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="absolute bottom-1 right-1 p-1.5 bg-stone-900/80 rounded-full cursor-pointer hover:bg-stone-800 transition-colors opacity-0 group-hover:opacity-100"
+                                                className="absolute bottom-1 right-1 p-1.5 bg-stone-900/80 rounded-full cursor-pointer hover:bg-stone-800 transition-colors opacity-0 group-hover:opacity-100 z-30"
                                             >
                                                 <Camera className="w-3.5 h-3.5 text-primary" />
                                                 <input 
