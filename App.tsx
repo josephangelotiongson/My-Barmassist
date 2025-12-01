@@ -2028,14 +2028,14 @@ function MainApp() {
                  <div className="flex bg-stone-800 p-1 rounded-xl border border-stone-700">
                    <button 
                       onClick={() => setFormularyView('drinks')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formularyView === 'drinks' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${formularyView === 'drinks' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <Layers className="w-4 h-4" />
                       Drinks
                    </button>
                    <button 
                       onClick={() => setFormularyView('creators')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formularyView === 'creators' ? 'bg-surface text-white shadow-lg border border-stone-600' : 'text-stone-400'}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${formularyView === 'creators' ? 'bg-surface text-secondary shadow-lg border border-secondary/50' : 'text-stone-400 hover:text-stone-300'}`}
                    >
                       <User className="w-4 h-4" />
                       Creators
