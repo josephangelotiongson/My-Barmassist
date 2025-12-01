@@ -69,3 +69,60 @@ None set yet - will be documented as user expresses preferences during developme
 - **PostgreSQL**: Primary database for all persistent data.
 - **Replit Auth**: User authentication service.
 - **Replit App Storage (Object Storage)**: For storing cocktail images.
+
+## Development Changelog
+
+### How to Update Release Notes
+When adding new features, update `components/SettingsModal.tsx` → `RELEASE_NOTES` array:
+1. Add a new entry at the TOP of the array
+2. Set `isNew: true` on the newest release (remove from previous)
+3. Update `expandedReleases` default state to the new version
+4. Group related features under meaningful version titles
+
+### Version History
+
+#### v1.6.0 (Dec 1, 2025) - UI Polish & Release Notes
+- Smooth image loading with skeleton shimmer effects
+- Consistent gold theme across all tabs and cards
+- What's New feature in Settings with version history
+- Improved How This Works documentation
+
+#### v1.5.0 (Nov 30, 2025) - De-Proofing & Dilution Science
+- 3-tier ABV reduction: Zero-Proof, Low-Proof, Low-ABV
+- Industry-standard dilution calculations (shaking vs stirring)
+- Metric/Imperial measurement toggle
+- Interactive volume lever for balanced modifications
+- Real-time flavor impact visualization during adjustments
+
+#### v1.4.0 (Nov 29, 2025) - Flavor Lab & 3-Tier Taxonomy
+- Cocktail Laboratory with Recipe, Build, and De-Proof modes
+- Editable 3-tier flavor wheel (categories → subcategories → notes)
+- Precise flavor note matching with AI commentary
+- Target volume tracking with golden ratio guidance
+- Lab riff saving with automatic lineage integration
+
+#### v1.3.0 (Nov 29, 2025) - Cocktail Lineage & Family Trees
+- AI-powered drink genealogy based on Cocktail Codex philosophy
+- Six root templates: Old Fashioned, Martini, Daiquiri, Sidecar, Highball, Flip
+- View ancestors, siblings, descendants, and flavor bridges
+- Clickable drinks navigate to recipes in your library
+
+#### v1.2.0 (Nov 29, 2025) - DIY Ingredients & AI Images
+- Homemade ingredient recipes with scalable calculators
+- "I Made This!" tracking with expiration dates
+- AI-generated cocktail images with cloud storage
+- Order history with photo uploads
+- Freshness indicators and expiry warnings
+
+#### v1.1.0 (Nov 29, 2025) - AI Enrichment & Recommendations
+- Automatic flavor profile and nutrition enrichment
+- Menu scanning for personalized bar recommendations
+- Duplicate detection using name and ingredient matching
+- Global recipe database with admin seeding tools
+
+#### v1.0.0 (Nov 28, 2025) - Initial Release
+- Recipe library with classic and modern cocktails
+- 8-dimension flavor profile radar charts
+- User accounts with Replit Auth
+- Recipe import from URLs and screenshots
+- Pantry inventory and shopping lists

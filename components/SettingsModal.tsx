@@ -12,71 +12,85 @@ interface ReleaseNote {
 
 const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: "1.5.0",
-    date: "Dec 2024",
-    title: "Flavor Laboratory & De-Proofing",
+    version: "1.6.0",
+    date: "Dec 1, 2025",
+    title: "UI Polish & Release Notes",
     isNew: true,
     features: [
-      "New Flavor Lab with Recipe, Build, and De-Proof modes",
+      "Smooth image loading with skeleton shimmer effects",
+      "Consistent gold theme across all tabs and cards",
+      "What's New feature in Settings with version history",
+      "Improved How This Works documentation"
+    ]
+  },
+  {
+    version: "1.5.0",
+    date: "Nov 30, 2025",
+    title: "De-Proofing & Dilution Science",
+    features: [
       "3-tier ABV reduction: Zero-Proof, Low-Proof, Low-ABV",
+      "Industry-standard dilution calculations (shaking vs stirring)",
+      "Metric/Imperial measurement toggle",
       "Interactive volume lever for balanced modifications",
-      "Industry-standard dilution calculations for accurate ABV",
-      "Editable hierarchical flavor wheel with 8 categories"
+      "Real-time flavor impact visualization during adjustments"
     ]
   },
   {
     version: "1.4.0",
-    date: "Nov 2024",
-    title: "Cocktail Lineage & Family Trees",
+    date: "Nov 29, 2025",
+    title: "Flavor Lab & 3-Tier Taxonomy",
     features: [
-      "AI-powered drink genealogy mapping evolutionary relationships",
-      "Six root cocktail templates: Old Fashioned, Martini, Daiquiri, Sidecar, Whiskey Highball, Flip",
-      "View ancestors, siblings, descendants, and flavor bridges",
-      "Evolution narratives explaining how drinks developed"
+      "Cocktail Laboratory with Recipe, Build, and De-Proof modes",
+      "Editable 3-tier flavor wheel (categories → subcategories → notes)",
+      "Precise flavor note matching with AI commentary",
+      "Target volume tracking with golden ratio guidance",
+      "Lab riff saving with automatic lineage integration"
     ]
   },
   {
     version: "1.3.0",
-    date: "Nov 2024",
-    title: "AI Image Generation",
+    date: "Nov 29, 2025",
+    title: "Cocktail Lineage & Family Trees",
     features: [
-      "Automatic AI-generated cocktail images for recipes",
-      "Smooth image loading with skeleton placeholders",
-      "Support for user-uploaded order photos",
-      "Image caching for faster loading"
+      "AI-powered drink genealogy based on Cocktail Codex philosophy",
+      "Six root templates: Old Fashioned, Martini, Daiquiri, Sidecar, Highball, Flip",
+      "View ancestors, siblings, descendants, and flavor bridges",
+      "Clickable drinks navigate to recipes in your library"
     ]
   },
   {
     version: "1.2.0",
-    date: "Oct 2024",
-    title: "Enhanced Recommendations",
+    date: "Nov 29, 2025",
+    title: "DIY Ingredients & AI Images",
     features: [
-      "Personalized recommendations based on your palate profile",
-      "Menu scanning to find best drinks at any bar",
-      "Bar Assist AI chat for cocktail questions",
-      "Improved rating system with flavor profiling"
+      "Homemade ingredient recipes with scalable calculators",
+      "\"I Made This!\" tracking with expiration dates",
+      "AI-generated cocktail images with cloud storage",
+      "Order history with photo uploads",
+      "Freshness indicators and expiry warnings"
     ]
   },
   {
     version: "1.1.0",
-    date: "Oct 2024",
-    title: "DIY Ingredients & Inventory",
+    date: "Nov 29, 2025",
+    title: "AI Enrichment & Recommendations",
     features: [
-      "Homemade ingredient recipes with scalable quantities",
-      "Expiration tracking with visual status indicators",
-      "Shopping list generation from recipes",
-      "Pantry inventory management"
+      "Automatic flavor profile and nutrition enrichment",
+      "Menu scanning for personalized bar recommendations",
+      "Duplicate detection using name and ingredient matching",
+      "Global recipe database with admin seeding tools"
     ]
   },
   {
     version: "1.0.0",
-    date: "Sep 2024",
+    date: "Nov 28, 2025",
     title: "Initial Release",
     features: [
       "Recipe library with classic and modern cocktails",
-      "Flavor profile radar charts",
+      "8-dimension flavor profile radar charts",
       "User accounts with Replit Auth",
-      "Recipe import from URLs and screenshots"
+      "Recipe import from URLs and screenshots",
+      "Pantry inventory and shopping lists"
     ]
   }
 ];
@@ -110,7 +124,7 @@ const SettingsModal: React.FC<Props> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'master' | 'admin'>('general');
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
-  const [expandedReleases, setExpandedReleases] = useState<Set<string>>(new Set(['1.5.0']));
+  const [expandedReleases, setExpandedReleases] = useState<Set<string>>(new Set(['1.6.0']));
   
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
