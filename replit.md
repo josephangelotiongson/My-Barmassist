@@ -5,6 +5,16 @@ The Bar Assistant is a full-stack, AI-powered cocktail application designed to b
 
 The project aims to offer a sophisticated, user-friendly experience for exploring, creating, and managing cocktail recipes, complete with advanced features like AI-driven enrichment of flavor profiles and nutritional data, and robust support for user-generated content.
 
+## Core Philosophy: Molecular Flavor Matching
+The heart and soul of Barmassist is breaking down cocktails to their molecular flavor components. Every cocktail is analyzed across 8 flavor dimensions (Sweet, Fruity, Floral, Herbal, Spicy, Earthy, Sour, Boozy) scored 0-10. By understanding user preferences at this granular level, the app matches users with their "perfect cocktail" — not just drinks they might like, but drinks crafted specifically for their palate.
+
+**Key Principles:**
+- Flavor profiles are the DNA of every cocktail
+- User ratings build a unique "Palate Profile" (flavor fingerprint)
+- Match scoring compares user preferences to cocktail flavor DNA
+- AI recommendations consider flavor overlap, pantry availability, and historical patterns
+- All features (Lab, Lineage, Recommendations) connect back to this molecular understanding
+
 ## User Preferences
 None set yet - will be documented as user expresses preferences during development.
 
