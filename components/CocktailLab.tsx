@@ -720,9 +720,9 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
 
   return (
     <div className="space-y-4">
-      <div className="bg-gradient-to-br from-amber-950/40 to-stone-900 rounded-2xl p-4 border border-amber-800/30">
+      <div className="bg-secondary/10 rounded-2xl p-4 border border-secondary/30">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
             <FlaskConical className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -746,7 +746,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
           onClick={() => handleModeSwitch('recipe')}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             labMode === 'recipe' 
-              ? 'bg-surface text-white shadow-lg border border-stone-600' 
+              ? 'bg-surface text-secondary shadow-lg border border-secondary/50' 
               : 'text-stone-400 hover:text-stone-300'
           }`}
         >
@@ -757,7 +757,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
           onClick={() => handleModeSwitch('build')}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             labMode === 'build' 
-              ? 'bg-surface text-white shadow-lg border border-stone-600' 
+              ? 'bg-surface text-secondary shadow-lg border border-secondary/50' 
               : 'text-stone-400 hover:text-stone-300'
           }`}
         >
@@ -768,7 +768,7 @@ const CocktailLab: React.FC<Props> = ({ allRecipes, onSaveExperiment, initialRec
           onClick={() => handleModeSwitch('deproof')}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             labMode === 'deproof' 
-              ? 'bg-surface text-white shadow-lg border border-stone-600' 
+              ? 'bg-surface text-secondary shadow-lg border border-secondary/50' 
               : 'text-stone-400 hover:text-stone-300'
           }`}
         >
